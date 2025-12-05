@@ -55,12 +55,16 @@ sudo ntx-utility-menu
 The script shows a numbered interactive menu. Enter the number of the action you want to run and press Enter.
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 ### Download & run (one-liner)
 =======
 ### Command-line (tested on Debian / Ubuntu)
 >>>>>>> aea6eb4 (Add command-line usage instructions for downloading and running the script)
+=======
+### Run from the command line (download & run)
+>>>>>>> ba07bf3 (Add instructions for downloading and running the script directly from the command line)
 
-You can download and run the script directly from the command line. This method has been tested and works on Debian and Ubuntu systems:
+You can quickly download the script and run it directly on a server using curl and bash. Always review scripts downloaded from the internet before running them.
 
 ```bash
 curl -fsSL -o ntx-utility-menu.sh https://raw.githubusercontent.com/ntx007/ntx-linux-utility-menu/refs/heads/main/ntx-utility-menu.sh
@@ -68,7 +72,7 @@ curl -fsSL -o ntx-utility-menu.sh https://raw.githubusercontent.com/ntx007/ntx-l
 bash ntx-utility-menu.sh
 ```
 
-If you prefer to make the script executable and run it directly:
+If you prefer to make it executable and run it from the current directory:
 
 ```bash
 chmod +x ntx-utility-menu.sh
