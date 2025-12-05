@@ -2,7 +2,6 @@
 
 A portable, menu-driven Bash utility for common Linux admin tasks: `ntx-utility-menu.sh`. Built for Debian/Ubuntu (and derivatives), it centralizes updates, diagnostics, networking tools, security hardening, and maintenance in a single interactive script.
 
-<<<<<<< HEAD
 ## Highlights (v0.3)
 
 - Interactive, nested menu (Bash) with shortcuts for Help, Status dashboard, and Logs
@@ -15,18 +14,6 @@ A portable, menu-driven Bash utility for common Linux admin tasks: `ntx-utility-
 - Logging/backups: `/var/log/ntx-menu.log` with rotation; `/etc/resolv.conf` backups to `/var/backups/ntx-menu`
 - Modes: `DRY_RUN=true` to preview commands; `SAFE_MODE=true` to skip destructive actions
 - Search: type `/keyword` (e.g., `/docker`, `/dns`) in the main menu to jump to a section
-=======
-This repository provides a menu-driven shell script you can run on Debian/Ubuntu (and derivatives) to perform system updates, quick diagnostics, networking helpers, install common tools, and more.
-
-## Features
-
-- Interactive, text-based menu (Bash/sh), versioned (v0.2)
-- Common sysadmin helpers (updates, unattended-upgrades, networking tools, DNS backups/restore)
-- Security/remote helpers (UFW, Fail2ban, OpenSSH, Tailscale, Netmaker netclient)
-- Quick system information, monitoring (top processes, iostat, SMART), and maintenance actions
-- Logging to `/var/log/ntx-menu.log` and backups for `/etc/resolv.conf` in `/var/backups/ntx-menu`
-- Easy to customize — edit the script to add or remove menu items
->>>>>>> 40eec2c (...)
 
 ## Requirements
 
@@ -77,10 +64,6 @@ You can quickly download the script and run it directly on a server using curl a
 
 ```bash
 curl -fsSL -o ntx-utility-menu.sh https://raw.githubusercontent.com/ntx007/ntx-linux-utility-menu/refs/heads/main/ntx-utility-menu.sh
-<<<<<<< HEAD
-=======
-
->>>>>>> 40eec2c (...)
 sudo bash ntx-utility-menu.sh
 ```
 
@@ -91,7 +74,6 @@ chmod +x ntx-utility-menu.sh
 ./ntx-utility-menu.sh
 ```
 
-<<<<<<< HEAD
 ## Menu map (v0.3)
 
 - **System update**: standard upgrade, reboot-if-needed, unattended-upgrades (enable/disable/status/run), list/remove custom apt sources
@@ -126,22 +108,6 @@ Search tip: in the main menu, type `/keyword` (e.g., `/docker`, `/dns`) to jump 
 - Use the status dashboard (`s`) to check key services (SSH, UFW, Fail2ban, Tailscale, Netmaker, CrowdSec, Docker), pending upgrades, kernel vs. running versions, public/private IPs, and CPU/mem/disk/inode snapshot.
 - Before adding repos, review custom sources in **System update → list/remove apt sources**.
 - For VPN/remote, use the Security menu: Tailscale, Netmaker netclient, CrowdSec + bouncer, and WireGuard (client/server installs).
-=======
-## Menu highlights (v0.2)
-
-- System update: standard upgrade, upgrade + reboot-if-needed, unattended-upgrades enable/check/run
-- DNS: view/edit with automatic backups and restore option
-- Network/IP: public IP (with fallback), interfaces, routes, active connections
-- Benchmarks: install/run Speedtest and YABS
-- Security/remote: UFW, Fail2ban, OpenSSH server, Tailscale install/up, Netmaker netclient install
-- Tools/environment: essentials, extended tools, ibramenu, QEMU guest agent
-- Containers: Docker + Compose plugin
-- Monitoring: node exporter, top CPU/mem processes, iostat summary, SMART health check
-- System info: `/etc/os-release`, neofetch, memory info, VM check, link to project GitHub
-- Maintenance/disks: cleanup, disks usage, largest `/var` dirs
-- Users/time: create sudo user, time sync info, chrony install
-- System control: reboot, power down
->>>>>>> 40eec2c (...)
 
 ## Customization
 
@@ -181,10 +147,3 @@ SPDX-License-Identifier: CC-BY-4.0
 ## Author
 
 ntx007 — maintained by the repository owner.
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-
->>>>>>> a9cb803 (Remove unnecessary suggestions for future enhancements from README. Check the CHANGELOG.)
-=======
->>>>>>> 40eec2c (...)
