@@ -4,7 +4,6 @@ A portable, menu-driven Bash utility for common Linux admin tasks: `ntx-utility-
 
 ## Highlights (v0.3)
 
-<<<<<<< HEAD
 - Interactive, nested menu (Bash) with shortcuts for Help, Status dashboard, and Logs
 - Updates: unattended-upgrades enable/disable/status/run; reboot-if-needed flow; apt source hygiene (list/remove)
 - Networking: public IP with fallback, interfaces/routes/connections, DNS backups/restore, ping common endpoints, traceroute
@@ -15,17 +14,6 @@ A portable, menu-driven Bash utility for common Linux admin tasks: `ntx-utility-
 - Logging/backups: `/var/log/ntx-menu.log` with rotation; `/etc/resolv.conf` backups to `/var/backups/ntx-menu`
 - Modes: `DRY_RUN=true` to preview commands; `SAFE_MODE=true` to skip destructive actions
 - Search: type `/keyword` (e.g., `/docker`, `/dns`) in the main menu to jump to a section
-=======
-## Features
-
-- Interactive, text-based menu (Bash/sh), versioned (v0.3-dev) with nested sections
-- Common sysadmin helpers (updates, unattended-upgrades enable/disable/status/run, networking tools, DNS backups/restore)
-- Security/remote helpers (UFW, Fail2ban, OpenSSH, Tailscale, Netmaker netclient + repo removal)
-- Quick system information, monitoring (top processes, iostat, SMART), and maintenance actions
-- Logging to `/var/log/ntx-menu.log` with rotation and backups for `/etc/resolv.conf` in `/var/backups/ntx-menu`
-- DRY_RUN support (`DRY_RUN=true ./ntx-utility-menu.sh`) to preview commands
-- Easy to customize — edit the script to add or remove menu items
->>>>>>> 8cd0d8a (Enhance usability and features in ntx Command Center (v0.3-dev))
 
 ## Requirements
 
@@ -70,24 +58,12 @@ sudo ntx-utility-menu
 
 The script shows a numbered interactive menu. Enter the number of the action you want to run and press Enter.
 
-<<<<<<< HEAD
-<<<<<<< HEAD
 ### Download & run (one-liner)
-=======
-### Run from the command line (download & run)
->>>>>>> ba07bf3 (Add instructions for downloading and running the script directly from the command line)
-=======
-### Download & run (one-liner)
->>>>>>> 35aa4af (Refactor command-line usage instructions in README for clarity and conciseness. Check out CHANGELOG)
 
 You can quickly download the script and run it directly on a server using curl and bash. Always review scripts downloaded from the internet before running them.
 
 ```bash
 curl -fsSL -o ntx-utility-menu.sh https://raw.githubusercontent.com/ntx007/ntx-linux-utility-menu/refs/heads/main/ntx-utility-menu.sh
-<<<<<<< HEAD
-=======
-
->>>>>>> 8cd0d8a (Enhance usability and features in ntx Command Center (v0.3-dev))
 sudo bash ntx-utility-menu.sh
 ```
 
@@ -98,7 +74,6 @@ chmod +x ntx-utility-menu.sh
 ./ntx-utility-menu.sh
 ```
 
-<<<<<<< HEAD
 ## Menu map (v0.3)
 
 - **System update**: standard upgrade, reboot-if-needed, unattended-upgrades (enable/disable/status/run), list/remove custom apt sources
@@ -133,23 +108,6 @@ Search tip: in the main menu, type `/keyword` (e.g., `/docker`, `/dns`) to jump 
 - Use the status dashboard (`s`) to check key services (SSH, UFW, Fail2ban, Tailscale, Netmaker, CrowdSec, Docker), pending upgrades, kernel vs. running versions, public/private IPs, and CPU/mem/disk/inode snapshot.
 - Before adding repos, review custom sources in **System update → list/remove apt sources**.
 - For VPN/remote, use the Security menu: Tailscale, Netmaker netclient, CrowdSec + bouncer, and WireGuard (client/server installs).
-=======
-## Menu highlights (v0.3-dev)
-
-- System update: standard upgrade, upgrade + reboot-if-needed, unattended-upgrades enable/disable/status/run
-- DNS: view/edit with automatic backups and restore
-- Network/IP: public IP (with fallback), interfaces, routes, active connections
-- Benchmarks: install/run Speedtest, manage Speedtest repo/key, run YABS
-- Security/remote: UFW, Fail2ban, OpenSSH server, Tailscale install/up, Netmaker netclient install/remove repo/key, firewall/SSH status, failed logins
-- Tools/environment: essentials, extended tools, ibramenu, QEMU guest agent
-- Containers: Docker + Compose plugin
-- Monitoring: node exporter, top CPU/mem processes, iostat summary, SMART health check
-- System info: `/etc/os-release`, neofetch, memory info, VM check, link to project GitHub
-- Maintenance/disks: cleanup, disks usage, largest `/var` dirs
-- Users/time: create sudo user, time sync info, chrony install
-- System control: reboot, power down
-- Help/logs: Help/About screen, tail latest log lines
->>>>>>> 8cd0d8a (Enhance usability and features in ntx Command Center (v0.3-dev))
 
 ## Customization
 
