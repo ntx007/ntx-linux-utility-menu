@@ -54,6 +54,23 @@ ntx-utility-menu
 
 The script shows a numbered interactive menu. Enter the number of the action you want to run and press Enter.
 
+### Command-line (tested on Debian / Ubuntu)
+
+You can download and run the script directly from the command line. This method has been tested and works on Debian and Ubuntu systems:
+
+```bash
+curl -fsSL -o ntx-utility-menu.sh https://raw.githubusercontent.com/ntx007/ntx-linux-utility-menu/refs/heads/main/ntx-utility-menu.sh
+
+bash ntx-utility-menu.sh
+```
+
+If you prefer to make the script executable and run it directly:
+
+```bash
+chmod +x ntx-utility-menu.sh
+./ntx-utility-menu.sh
+```
+
 ## Examples
 
 Below are short examples of the most commonly used menu options and a sample interaction. Menu numbers in your copy may differ — use the on-screen numbers the script prints.
