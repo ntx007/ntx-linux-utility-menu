@@ -1,6 +1,6 @@
-# Ntx Command Center
+# ntx Command Center
 
-A small, portable, interactive Bash utility menu ("Ntx Command Center") that bundles common Linux admin and maintenance tasks into a single script: `ntx-utility-menu.sh`.
+A small, portable, interactive Bash utility menu ("ntx Command Center") that bundles common Linux admin and maintenance tasks into a single script: `ntx-utility-menu.sh`.
 
 This repository provides a menu-driven shell script you can run on Debian/Ubuntu and many other Linux distributions to perform system updates, quick diagnostics, networking helpers, install common tools, and more.
 
@@ -86,7 +86,7 @@ Below are short examples of the most commonly used menu options and a sample int
 Sample interaction (illustrative):
 
 ```text
-Welcome to Ntx Command Center
+Welcome to ntx Command Center
 1) System update
 2) Network tools
 3) Install tools

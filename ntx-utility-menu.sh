@@ -1,8 +1,7 @@
-```bash
 #!/bin/bash
 
 ###############################################################################
-# Simple server helper menu
+# NTX Command Center - Simple server helper menu
 ###############################################################################
 
 msgbox() {
@@ -99,7 +98,7 @@ run_yabs() {
     curl -sL https://yabs.sh | bash
 }
 
-# --- SSH / remote access ---
+# --- SSH / remote access / security ---
 
 change_ssh_proxmox() {
     curl -fsSL "https://cloud.io.anatolium.eu/s/jR9crxfoLHz5474/download" | bash
@@ -117,6 +116,20 @@ tailscale_install() {
 
 tailscale_up_qr() {
     tailscale up -qr
+}
+
+install_ufw_basic() {
+    apt update
+    apt install ufw -y
+    ufw allow 22/tcp
+    echo "y" | ufw enable
+    ufw status
+}
+
+install_fail2ban() {
+    apt update
+    apt install fail2ban -y
+    systemctl enable --now fail2ban
 }
 
 # --- Tools & environment ---
@@ -156,6 +169,29 @@ install_qemu_guest_agent() {
     systemctl enable --now qemu-guest-agent
 }
 
+# --- Containers / Docker ---
+
+install_docker() {
+    apt update
+    apt install ca-certificates curl gnupg -y
+    install -m 0755 -d /etc/apt/keyrings
+    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+    echo \
+"deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+$(. /etc/os-release && echo \$VERSION_CODENAME) stable" > /etc/apt/sources.list.d/docker.list
+    apt update
+    apt install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin -y
+    systemctl enable --now docker
+}
+
+# --- Monitoring ---
+
+install_node_exporter() {
+    apt update
+    apt install prometheus-node-exporter -y
+    systemctl enable --now prometheus-node-exporter
+}
+
 # --- System information ---
 
 os_release_check() {
@@ -173,6 +209,55 @@ memory_information() {
     free -h
     read -p "Press Enter to continue..."
     dmidecode -t memory
+}
+
+vm_check() {
+    systemd-detect-virt
+}
+
+# --- Maintenance / disks ---
+
+system_cleanup() {
+    apt-get autoremove -y
+    apt-get autoclean -y
+    journalctl --vacuum-time=7d 2>/dev/null || true
+}
+
+show_disks() {
+    echo "lsblk:"
+    lsblk
+    echo
+    echo "df -h:"
+    df -h
+}
+
+show_big_var_dirs() {
+    echo "Largest directories in /var (top 10):"
+    du -sh /var/* 2>/dev/null | sort -h | tail
+}
+
+# --- Users & time ---
+
+create_sudo_user() {
+    read -p "Enter new username: " NEWUSER
+    if id "$NEWUSER" &>/dev/null; then
+        echo "User $NEWUSER already exists."
+        return
+    fi
+    adduser "$NEWUSER"
+    usermod -aG sudo "$NEWUSER"
+    echo "User $NEWUSER created and added to sudo group."
+}
+
+show_time_sync() {
+    timedatectl
+}
+
+install_chrony() {
+    apt update
+    apt install chrony -y
+    systemctl enable --now chrony
+    timedatectl
 }
 
 # --- System control ---
@@ -200,51 +285,71 @@ system_powerdown() {
 ###############################################################################
 
 show_menu() {
-    echo "================= SYSTEM UPDATE ================="
+    echo "================= NTX COMMAND CENTER ================="
+    echo "================= SYSTEM UPDATE ======================="
     echo " 1) Update all (apt-get update && upgrade)"
     echo " 2) Update all with sudo and reboot"
     echo
-    echo "================= DNS MANAGEMENT ================="
+    echo "================= DNS MANAGEMENT ======================"
     echo " 3) Show DNS (/etc/resolv.conf)"
     echo " 4) Edit DNS (/etc/resolv.conf in nano)"
     echo " 5) Append Netcup DNS 46.38.225.230 + 1.1.1.1"
     echo " 6) Overwrite Netcup DNS 46.38.225.230 + 1.1.1.1"
     echo " 7) Overwrite DNS with 1.1.1.1 + 8.8.8.8"
     echo
-    echo "================ NETWORK / IP ===================="
+    echo "================ NETWORK / IP ========================="
     echo " 8) Show public IP (dig / OpenDNS)"
     echo " 9) Show ifconfig"
     echo
-    echo "============= SPEEDTEST & BENCHMARKS ============="
+    echo "============= SPEEDTEST & BENCHMARKS =================="
     echo "10) Install Speedtest (repo + package)"
     echo "11) Update Speedtest repo list (jammy)"
     echo "12) Install Speedtest after repo update"
     echo "13) Run Speedtest"
     echo "14) Run YABS (Yet-Another-Bench-Script)"
     echo
-    echo "============= SSH / REMOTE ACCESS ================"
-    echo "15) Update SSH config for Proxmox (remote script)"
-    echo "16) Install OpenSSH server"
-    echo "17) Install Tailscale"
-    echo "18) Tailscale up (QR mode)"
+    echo "============= SECURITY / REMOTE ACCESS ================"
+    echo "15) Install UFW (allow SSH, enable)"
+    echo "16) Install Fail2ban"
+    echo "17) Update SSH config for Proxmox (remote script)"
+    echo "18) Install OpenSSH server"
+    echo "19) Install Tailscale"
+    echo "20) Tailscale up (QR mode)"
     echo
-    echo "========== TOOLS & ENVIRONMENT SETUP ============="
-    echo "19) Install essentials (sudo, nano, curl, net-tools)"
-    echo "20) Install extra tools (unzip, python, gdown, glances, tmux, zsh, mc)"
-    echo "21) Install ibramenu"
-    echo "22) Install QEMU guest agent"
+    echo "========== TOOLS & ENVIRONMENT SETUP =================="
+    echo "21) Install essentials (sudo, nano, curl, net-tools)"
+    echo "22) Install extra tools (unzip, python, gdown, glances, tmux, zsh, mc)"
+    echo "23) Install ibramenu"
+    echo "24) Install QEMU guest agent"
     echo
-    echo "============ SYSTEM INFORMATION =================="
-    echo "23) Show /etc/os-release"
-    echo "24) General system info (neofetch)"
-    echo "25) Memory information"
+    echo "============= CONTAINERS / DOCKER ====================="
+    echo "25) Install Docker & Docker Compose plugin"
     echo
-    echo "============== SYSTEM CONTROL ===================="
-    echo "26) Reboot"
-    echo "27) Power down"
+    echo "================== MONITORING ========================="
+    echo "26) Install node exporter (prometheus-node-exporter)"
+    echo
+    echo "============ SYSTEM INFORMATION ======================="
+    echo "27) Show /etc/os-release"
+    echo "28) General system info (neofetch)"
+    echo "29) Memory information"
+    echo "30) VM / virtualization check"
+    echo
+    echo "================= MAINTENANCE ========================="
+    echo "31) System cleanup (APT autoremove/autoclean, logs 7d)"
+    echo "32) Show disks (lsblk + df -h)"
+    echo "33) Show biggest /var directories"
+    echo
+    echo "=============== USERS & TIME =========================="
+    echo "34) Create sudo user"
+    echo "35) Show time sync (timedatectl)"
+    echo "36) Install chrony (NTP) and show time status"
+    echo
+    echo "================ SYSTEM CONTROL ======================="
+    echo "37) Reboot"
+    echo "38) Power down"
     echo
     echo " 0) Exit"
-    echo "================================================="
+    echo "======================================================="
 }
 
 ###############################################################################
@@ -256,6 +361,8 @@ if [[ $EUID -ne 0 ]]; then
    echo "Please run as root (e.g. sudo bash $0)."
    exit 1
 fi
+
+echo "Starting NTX Command Center..."
 
 while true; do
     show_menu
@@ -275,23 +382,33 @@ while true; do
         12) install_speedtest_after_list ;;
         13) run_speedtest ;;
         14) run_yabs ;;
-        15) change_ssh_proxmox ;;
-        16) install_openssh ;;
-        17) tailscale_install ;;
-        18) tailscale_up_qr ;;
-        19) install_essentials ;;
-        20) install_tools ;;
-        21) install_ibramenu ;;
-        22) install_qemu_guest_agent ;;
-        23) os_release_check ;;
-        24) general_information ;;
-        25) memory_information ;;
-        26) system_reboot ;;
-        27) system_powerdown ;;
-        0)  echo "Exiting."; exit 0 ;;
+        15) install_ufw_basic ;;
+        16) install_fail2ban ;;
+        17) change_ssh_proxmox ;;
+        18) install_openssh ;;
+        19) tailscale_install ;;
+        20) tailscale_up_qr ;;
+        21) install_essentials ;;
+        22) install_tools ;;
+        23) install_ibramenu ;;
+        24) install_qemu_guest_agent ;;
+        25) install_docker ;;
+        26) install_node_exporter ;;
+        27) os_release_check ;;
+        28) general_information ;;
+        29) memory_information ;;
+        30) vm_check ;;
+        31) system_cleanup ;;
+        32) show_disks ;;
+        33) show_big_var_dirs ;;
+        34) create_sudo_user ;;
+        35) show_time_sync ;;
+        36) install_chrony ;;
+        37) system_reboot ;;
+        38) system_powerdown ;;
+        0)  echo "Exiting NTX Command Center."; exit 0 ;;
         *)  echo "Invalid choice." ;;
     esac
     echo
     read -p "Press Enter to continue..."
 done
-```
