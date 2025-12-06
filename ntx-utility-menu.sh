@@ -122,6 +122,7 @@ preflight_dependencies() {
     ensure_cmd ps procps
     ensure_cmd awk gawk
     ensure_cmd sed sed
+    ensure_cmd ip iproute2
 }
 
 show_service_status() {
@@ -139,6 +140,17 @@ show_service_status() {
 
 heading() {
     echo -e "${C_CYN}$1${C_RST}"
+}
+
+cpu_mem_snapshot() {
+    echo "Load / uptime: $(uptime | sed 's/^.*load average: //')"
+    echo "Memory:"
+    free -h
+}
+
+list_private_ips() {
+    echo "IPs (IPv4) per interface:"
+    ip -brief -family inet address 2>/dev/null || ip addr show
 }
 
 skip_if_safe() {
@@ -404,6 +416,15 @@ remove_netclient_repo() {
         run_cmd "Remove Netmaker keyring" rm -f /usr/share/keyrings/netmaker-keyring.gpg
     fi
     run_cmd "apt-get update after Netmaker repo removal" apt-get update
+}
+
+install_wireguard_client() {
+    run_cmd "Install WireGuard (client)" apt-get install -y wireguard wireguard-tools
+}
+
+install_wireguard_server() {
+    run_cmd "Install WireGuard (server)" apt-get install -y wireguard wireguard-tools
+    echo "Remember to configure /etc/wireguard/wg0.conf and enable via: systemctl enable --now wg-quick@wg0"
 }
 
 install_crowdsec() {
@@ -677,6 +698,7 @@ status_dashboard() {
     show_service_status fail2ban
     show_service_status tailscaled
     show_service_status docker
+    show_service_status netclient
     show_service_status crowdsec
     show_service_status crowdsec-firewall-bouncer
     if [[ -f /var/run/reboot-required ]]; then
@@ -684,6 +706,8 @@ status_dashboard() {
     fi
     echo "Public IP:"
     whats_my_ip
+    list_private_ips
+    cpu_mem_snapshot
 }
 
 ###############################################################################
@@ -840,6 +864,8 @@ menu_security() {
 11) Show recent failed logins
 12) Install CrowdSec
 13) Install CrowdSec firewall bouncer (iptables)
+14) Install WireGuard (client)
+15) Install WireGuard (server)
  0) Back
 EOF
         read -p "Select: " c
@@ -857,6 +883,8 @@ EOF
             11) show_failed_logins ;;
             12) install_crowdsec ;;
             13) install_crowdsec_firewall_bouncer ;;
+            14) install_wireguard_client ;;
+            15) install_wireguard_server ;;
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
