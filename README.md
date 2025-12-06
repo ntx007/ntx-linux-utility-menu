@@ -1,18 +1,18 @@
-# ntx Command Center
+# NTX Command Center
 
-A small, portable, interactive Bash utility menu ("ntx Command Center") that bundles common Linux admin and maintenance tasks into a single script: `ntx-utility-menu.sh`.
+A portable, menu-driven Bash utility for common Linux admin tasks: `ntx-utility-menu.sh`. Built for Debian/Ubuntu (and derivatives), it centralizes updates, diagnostics, networking tools, security hardening, and maintenance in a single interactive script.
 
-This repository provides a menu-driven shell script you can run on Debian/Ubuntu (and derivatives) to perform system updates, quick diagnostics, networking helpers, install common tools, and more.
+## Highlights (v0.3-dev)
 
-## Features
-
-- Interactive, text-based menu (Bash/sh), versioned (v0.3-dev) with nested sections
-- Common sysadmin helpers (updates, unattended-upgrades enable/disable/status/run, networking tools, DNS backups/restore)
-- Security/remote helpers (UFW, Fail2ban, OpenSSH, Tailscale, Netmaker netclient + repo removal)
-- Quick system information, monitoring (top processes, iostat, SMART), and maintenance actions
-- Logging to `/var/log/ntx-menu.log` with rotation and backups for `/etc/resolv.conf` in `/var/backups/ntx-menu`
-- DRY_RUN support (`DRY_RUN=true ./ntx-utility-menu.sh`) to preview commands
-- Easy to customize — edit the script to add or remove menu items
+- Interactive, nested menu (Bash) with shortcuts for help, status dashboard, and logs
+- Updates: unattended-upgrades enable/disable/status/run; reboot-if-needed flow
+- Networking: public IP with fallback, interfaces/routes/connections, DNS backups/restore, ping common endpoints, traceroute
+- Security/remote: UFW, Fail2ban, OpenSSH, Tailscale, Netmaker netclient (install/remove repo), CrowdSec + firewall bouncer, firewall/SSH status, failed logins
+- Tools/monitoring: essentials/extra tools, node exporter, top CPU/mem, iostat summary, SMART checks, status dashboard
+- Containers: Docker + Compose plugin install, service status, short info, running containers
+- Maintenance/info: apt source hygiene, cleanup, disk usage, largest `/var` dirs, system info (os-release, neofetch, VM check), GitHub link
+- Logging/backups: `/var/log/ntx-menu.log` with rotation; `/etc/resolv.conf` backups to `/var/backups/ntx-menu`
+- Modes: `DRY_RUN=true` to preview commands; `SAFE_MODE=true` to skip destructive actions
 
 ## Requirements
 
@@ -63,7 +63,6 @@ You can quickly download the script and run it directly on a server using curl a
 
 ```bash
 curl -fsSL -o ntx-utility-menu.sh https://raw.githubusercontent.com/ntx007/ntx-linux-utility-menu/refs/heads/main/ntx-utility-menu.sh
-
 sudo bash ntx-utility-menu.sh
 ```
 
@@ -74,21 +73,27 @@ chmod +x ntx-utility-menu.sh
 ./ntx-utility-menu.sh
 ```
 
-## Menu highlights (v0.3-dev)
+## Menu map (v0.3-dev)
 
-- System update: standard upgrade, upgrade + reboot-if-needed, unattended-upgrades enable/disable/status/run
-- DNS: view/edit with automatic backups and restore
-- Network/IP: public IP (with fallback), interfaces, routes, active connections
-- Benchmarks: install/run Speedtest, manage Speedtest repo/key, run YABS
-- Security/remote: UFW, Fail2ban, OpenSSH server, Tailscale install/up, Netmaker netclient install/remove repo/key, firewall/SSH status, failed logins
-- Tools/environment: essentials, extended tools, ibramenu, QEMU guest agent
-- Containers: Docker + Compose plugin
-- Monitoring: node exporter, top CPU/mem processes, iostat summary, SMART health check
-- System info: `/etc/os-release`, neofetch, memory info, VM check, link to project GitHub
-- Maintenance/disks: cleanup, disks usage, largest `/var` dirs
-- Users/time: create sudo user, time sync info, chrony install
-- System control: reboot, power down
-- Help/logs: Help/About screen, tail latest log lines
+- **System update**: standard upgrade, reboot-if-needed, unattended-upgrades (enable/disable/status/run), list/remove custom apt sources
+- **DNS**: view/edit with backups, preset DNS choices, restore last backup
+- **Network/IP**: public IP (fallback), interfaces, routes, connections, ping common endpoints, traceroute
+- **Speedtest/benchmarks**: Speedtest install/update/run, repo/key removal, YABS
+- **Security/remote**: UFW, Fail2ban, OpenSSH, Tailscale, Netmaker netclient (install/remove repo), CrowdSec + firewall bouncer, firewall/SSH status, failed logins
+- **Tools/env**: essentials, extra tools, ibramenu, QEMU guest agent
+- **Containers**: Docker + Compose plugin, service status, short info, running containers
+- **Monitoring**: node exporter, top CPU/mem processes, iostat summary, SMART health check, status dashboard
+- **System info**: `/etc/os-release`, neofetch, memory info, VM check, GitHub link
+- **Maintenance/disks**: cleanup, disks usage, largest `/var` dirs
+- **Users/time**: create sudo user, time sync info, chrony install
+- **System control**: reboot, power down (SAFE_MODE-aware)
+- **Help/logs**: Help/About (config, modes, repo), tail log
+
+## Modes and shortcuts
+
+- `DRY_RUN=true ./ntx-utility-menu.sh`: print commands instead of executing them.
+- `SAFE_MODE=true ./ntx-utility-menu.sh`: skip destructive actions (cleanup, reboot, powerdown, apt source removal).
+- Shortcuts in the main menu: `h` Help/About, `s` Status dashboard, `l` Tail log, `q` Quit.
 
 ## Customization
 
