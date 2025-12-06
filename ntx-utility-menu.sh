@@ -211,6 +211,7 @@ preflight_dependencies() {
 
 show_service_status() {
     local service="$1"
+<<<<<<< HEAD
     local unit="$2"
     unit="${unit:-$service}"
     if ! systemctl list-unit-files "$unit" --no-legend 2>/dev/null | grep -q "$unit"; then
@@ -218,6 +219,13 @@ show_service_status() {
         return 0
     fi
     if systemctl is-active --quiet "$unit"; then
+=======
+    if ! systemctl list-unit-files "$service" --no-legend 2>/dev/null | grep -q "$service"; then
+        echo -e "${C_YLW}$service: not installed${C_RST}"
+        return 0
+    fi
+    if systemctl is-active --quiet "$service"; then
+>>>>>>> 850bdb3 (Update CHANGELOG for v0.3-dev release with new features and improvements)
         echo -e "${C_GRN}$service: active${C_RST}"
     else
         echo -e "${C_RED}$service: inactive${C_RST}"
