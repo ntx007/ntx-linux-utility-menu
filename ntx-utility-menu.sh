@@ -9,6 +9,7 @@ LOG_FILE="/var/log/ntx-menu.log"
 BACKUP_DIR="/var/backups/ntx-menu"
 MAX_LOG_SIZE=$((1024 * 1024)) # 1 MiB
 DRY_RUN=${DRY_RUN:-false}
+SAFE_MODE=${SAFE_MODE:-false}
 VERSION="v0.3-dev"
 
 # Colors (fall back to plain if not a TTY)
@@ -137,6 +138,15 @@ heading() {
     echo -e "${C_CYN}$1${C_RST}"
 }
 
+skip_if_safe() {
+    local action="$1"
+    if [[ "$SAFE_MODE" == "true" ]]; then
+        echo "SAFE_MODE=true; skipping $action."
+        return 1
+    fi
+    return 0
+}
+
 ###############################################################################
 # Functions
 ###############################################################################
@@ -207,6 +217,29 @@ run_unattended_upgrade_now() {
     run_cmd "Run unattended-upgrade now" unattended-upgrade -v
 }
 
+list_custom_sources() {
+    echo "Custom sources (.list) in /etc/apt/sources.list.d:"
+    ls -1 /etc/apt/sources.list.d/*.list 2>/dev/null || echo "None found."
+}
+
+remove_custom_source() {
+    read -p "Enter path to .list file to remove: " SRC_FILE
+    [[ -z "$SRC_FILE" ]] && { echo "No file provided."; return 1; }
+    if [[ ! -f "$SRC_FILE" ]]; then
+        echo "File not found: $SRC_FILE"
+        return 1
+    fi
+    if ! skip_if_safe "removing $SRC_FILE"; then return 1; fi
+    read -p "Remove $SRC_FILE? (y/N): " -n 1 -r
+    echo
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        run_cmd "Remove custom source $SRC_FILE" rm -f "$SRC_FILE"
+        run_cmd "apt-get update after source removal" apt-get update
+    else
+        echo "Cancelled."
+    fi
+}
+
 # --- DNS management ---
 
 show_dns() {
@@ -274,6 +307,22 @@ show_connections() {
     else
         netstat -tupn
     fi
+}
+
+ping_common() {
+    ensure_cmd ping iputils-ping
+    for host in 1.1.1.1 8.8.8.8 github.com; do
+        echo "Pinging $host..."
+        ping -c 3 -W 2 "$host" || true
+        echo
+    done
+}
+
+trace_route() {
+    ensure_cmd traceroute traceroute
+    read -p "Enter host/IP to traceroute: " TARGET
+    [[ -z "$TARGET" ]] && { echo "No target provided."; return 1; }
+    traceroute "$TARGET"
 }
 
 # --- Speedtest & benchmarks ---
@@ -352,6 +401,17 @@ remove_netclient_repo() {
         run_cmd "Remove Netmaker keyring" rm -f /usr/share/keyrings/netmaker-keyring.gpg
     fi
     run_cmd "apt-get update after Netmaker repo removal" apt-get update
+}
+
+install_crowdsec() {
+    run_cmd "Install CrowdSec repo" bash -c "curl -s https://packagecloud.io/install/repositories/crowdsec/crowdsec/script.deb.sh | bash"
+    run_cmd "Install crowdsec" apt-get install -y crowdsec
+    show_service_status crowdsec
+}
+
+install_crowdsec_firewall_bouncer() {
+    run_cmd "Install CrowdSec firewall bouncer (iptables)" apt-get install -y crowdsec-firewall-bouncer-iptables
+    show_service_status crowdsec-firewall-bouncer
 }
 
 install_ufw_basic() {
@@ -436,6 +496,26 @@ $(. /etc/os-release && echo \$VERSION_CODENAME) stable" > /etc/apt/sources.list.
     systemctl enable --now docker
 }
 
+docker_service_status() {
+    show_service_status docker
+}
+
+docker_ps() {
+    if ! command -v docker >/dev/null 2>&1; then
+        echo "Docker not installed."
+        return 1
+    fi
+    docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Image}}"
+}
+
+docker_info_short() {
+    if ! command -v docker >/dev/null 2>&1; then
+        echo "Docker not installed."
+        return 1
+    fi
+    docker info --format 'Server Version: {{.ServerVersion}}\nStorage Driver: {{.Driver}}\nCgroup Driver: {{.CgroupDriver}}'
+}
+
 # --- Monitoring ---
 
 install_node_exporter() {
@@ -495,6 +575,7 @@ vm_check() {
 # --- Maintenance / disks ---
 
 system_cleanup() {
+    if ! skip_if_safe "system cleanup"; then return 1; fi
     apt-get autoremove -y
     apt-get autoclean -y
     journalctl --vacuum-time=7d 2>/dev/null || true
@@ -548,6 +629,7 @@ install_chrony() {
 # --- System control ---
 
 system_reboot() {
+    if ! skip_if_safe "reboot"; then return 1; fi
     msgbox "System Reboot"
     read -p "Are you sure (y/N)? " -n 1 -r
     echo
@@ -557,6 +639,7 @@ system_reboot() {
 }
 
 system_powerdown() {
+    if ! skip_if_safe "power down"; then return 1; fi
     msgbox "System Power Down"
     read -p "Are you sure (y/N)? " -n 1 -r
     echo
@@ -576,10 +659,28 @@ show_help_about() {
 Log file: $LOG_FILE (rotates at ~$(($MAX_LOG_SIZE/1024)) KiB)
 Backups:  $BACKUP_DIR (resolv.conf snapshots)
 Dry run:  $DRY_RUN (set DRY_RUN=true to preview commands)
+Safe mode: $SAFE_MODE (set SAFE_MODE=true to skip destructive actions)
 Repo:     https://github.com/ntx007/ntx-linux-utility-menu
 
 Use the main menu to choose a section, then pick an action.
+Shortcuts: h/help, l/log tail, q/quit.
 EOF
+}
+
+status_dashboard() {
+    heading "Status dashboard"
+    show_service_status ssh
+    show_service_status ufw
+    show_service_status fail2ban
+    show_service_status tailscaled
+    show_service_status docker
+    show_service_status crowdsec
+    show_service_status crowdsec-firewall-bouncer
+    if [[ -f /var/run/reboot-required ]]; then
+        echo -e "${C_YLW}Reboot required.${C_RST}"
+    fi
+    echo "Public IP:"
+    whats_my_ip
 }
 
 ###############################################################################
@@ -602,6 +703,7 @@ main_menu() {
 11) Users & time
 12) System control
 h) Help / About
+s) Status dashboard
 l) Tail logs
 q) Quit
 ================================================================
@@ -619,6 +721,8 @@ menu_update() {
  5) Disable unattended upgrades
  6) Check unattended upgrades status
  7) Run unattended upgrade now
+ 8) List custom apt sources
+ 9) Remove custom apt source (.list)
  0) Back
 EOF
         read -p "Select: " c
@@ -630,6 +734,8 @@ EOF
             5) disable_unattended_upgrades ;;
             6) check_unattended_status ;;
             7) run_unattended_upgrade_now ;;
+            8) list_custom_sources ;;
+            9) remove_custom_source ;;
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
@@ -670,6 +776,8 @@ menu_network() {
  2) Show ifconfig
  3) Show routing table
  4) Show active connections
+ 5) Ping common endpoints
+ 6) Traceroute to host
  0) Back
 EOF
         read -p "Select: " c
@@ -678,6 +786,8 @@ EOF
             2) show_ifconfig ;;
             3) show_routes ;;
             4) show_connections ;;
+            5) ping_common ;;
+            6) trace_route ;;
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
@@ -725,6 +835,8 @@ menu_security() {
  9) Show firewall status
 10) Show SSH status
 11) Show recent failed logins
+12) Install CrowdSec
+13) Install CrowdSec firewall bouncer (iptables)
  0) Back
 EOF
         read -p "Select: " c
@@ -740,6 +852,8 @@ EOF
             9) show_firewall_status ;;
             10) show_ssh_status ;;
             11) show_failed_logins ;;
+            12) install_crowdsec ;;
+            13) install_crowdsec_firewall_bouncer ;;
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
@@ -773,11 +887,17 @@ menu_containers() {
         cat <<EOF
 [Containers / Docker]
  1) Install Docker & Docker Compose plugin
+ 2) Docker service status
+ 3) Docker info (short)
+ 4) Docker ps (running containers)
  0) Back
 EOF
         read -p "Select: " c
         case "$c" in
             1) install_docker ;;
+            2) docker_service_status ;;
+            3) docker_info_short ;;
+            4) docker_ps ;;
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
@@ -792,6 +912,7 @@ menu_monitoring() {
  2) Show top CPU/mem processes
  3) Show IO stats (iostat)
  4) SMART health check (first disk)
+ 5) Status dashboard (services + IP)
  0) Back
 EOF
         read -p "Select: " c
@@ -800,6 +921,7 @@ EOF
             2) show_top_processes ;;
             3) show_iostat_summary ;;
             4) smart_health_check ;;
+            5) status_dashboard ;;
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
@@ -922,6 +1044,7 @@ while true; do
         11) menu_users_time ;;
         12) menu_control ;;
         h|H) show_help_about ;;
+        s|S) status_dashboard ;;
         l|L) tail_logs ;;
         q|Q|0) echo "Exiting NTX Command Center."; exit 0 ;;
         *)  echo "Invalid choice." ;;

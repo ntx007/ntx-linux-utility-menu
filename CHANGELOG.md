@@ -1,12 +1,16 @@
 # Changelog
 
 ## Unreleased
-- Bumped development version to v0.3-dev on the develop branch.
-- Added nested section-based menus, help/about screen, and log tail option for usability.
-- Added DRY_RUN support, log rotation, and preflight dependency checks.
-- Added repo/key removal for Speedtest and Netmaker, firewall/SSH status views, and failed login summary.
-- Improved safety toggles (disable unattended-upgrades) and kept DNS backups/restore flow.
-- Fixed preflight dependency installs to use correct package names (dnsutils, gnupg, etc.).
+- Version: bumped to v0.3-dev (develop branch).
+- Menu/UX: switched to nested section menus; added Help/About, status dashboard shortcut, and log tail shortcut.
+- Execution modes: added DRY_RUN (preview commands) and SAFE_MODE (skip destructive actions), exposed in Help/About.
+- Logging: log rotation added for `/var/log/ntx-menu.log`; log tail view in main menu.
+- Safety/maint: improved unattended-upgrades with disable option; kept DNS backups/restore; apt source list/removal added.
+- Dependencies: preflight now installs correct packages (dnsutils, gnupg, etc.).
+- Networking: added ping common endpoints and traceroute helpers.
+- Security: added firewall/SSH status views, failed login summary, CrowdSec installer, and CrowdSec firewall bouncer.
+- Repos: added repo/key removal for Speedtest and Netmaker.
+- Docker: expanded menu with service status, short info, and running containers view.
 
 ## v0.2
 - Added logging to `/var/log/ntx-menu.log` plus environment checks for Debian/Ubuntu and apt presence.
