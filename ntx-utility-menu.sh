@@ -21,6 +21,7 @@ BACKUP_DIR="/var/backups/ntx-menu"
 MAX_LOG_SIZE=$((1024 * 1024)) # 1 MiB
 DRY_RUN=${DRY_RUN:-false}
 SAFE_MODE=${SAFE_MODE:-false}
+<<<<<<< HEAD
 VERSION="v0.3"
 # Service unit map (adjust if your distro uses different names)
 SSH_UNIT="${SSH_UNIT:-ssh}"
@@ -46,6 +47,8 @@ VERSION="v0.2"
 MAX_LOG_SIZE=$((1024 * 1024)) # 1 MiB
 DRY_RUN=${DRY_RUN:-false}
 >>>>>>> 8cd0d8a (Enhance usability and features in ntx Command Center (v0.3-dev))
+=======
+>>>>>>> 28b13f9 (Enhance NTX Command Center with new features and safety modes)
 VERSION="v0.3-dev"
 >>>>>>> b3bc974 (Update version to v0.3-dev in README, CHANGELOG, and script file)
 
@@ -289,7 +292,19 @@ heading() {
     echo -e "${C_CYN}$1${C_RST}"
 }
 
+<<<<<<< HEAD
 >>>>>>> 8cd0d8a (Enhance usability and features in ntx Command Center (v0.3-dev))
+=======
+skip_if_safe() {
+    local action="$1"
+    if [[ "$SAFE_MODE" == "true" ]]; then
+        echo "SAFE_MODE=true; skipping $action."
+        return 1
+    fi
+    return 0
+}
+
+>>>>>>> 28b13f9 (Enhance NTX Command Center with new features and safety modes)
 ###############################################################################
 # Functions
 ###############################################################################
@@ -370,6 +385,9 @@ run_unattended_upgrade_now() {
 }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 28b13f9 (Enhance NTX Command Center with new features and safety modes)
 list_custom_sources() {
     echo "Custom sources (.list) in /etc/apt/sources.list.d:"
     ls -1 /etc/apt/sources.list.d/*.list 2>/dev/null || echo "None found."
@@ -393,8 +411,11 @@ remove_custom_source() {
     fi
 }
 
+<<<<<<< HEAD
 =======
 >>>>>>> 40eec2c (...)
+=======
+>>>>>>> 28b13f9 (Enhance NTX Command Center with new features and safety modes)
 # --- DNS management ---
 
 show_dns() {
@@ -486,6 +507,9 @@ show_connections() {
 }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 28b13f9 (Enhance NTX Command Center with new features and safety modes)
 ping_common() {
     ensure_cmd ping iputils-ping
     for host in 1.1.1.1 8.8.8.8 github.com; do
@@ -502,8 +526,11 @@ trace_route() {
     traceroute "$TARGET"
 }
 
+<<<<<<< HEAD
 =======
 >>>>>>> 40eec2c (...)
+=======
+>>>>>>> 28b13f9 (Enhance NTX Command Center with new features and safety modes)
 # --- Speedtest & benchmarks ---
 
 install_speedtest_full() {
@@ -587,6 +614,7 @@ remove_netclient_repo() {
 }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 install_wireguard_client() {
     run_cmd "Install WireGuard (client)" apt-get install -y wireguard wireguard-tools
 }
@@ -618,6 +646,8 @@ disable_wg_quick() {
     run_cmd "Disable wg-quick@wg0" systemctl disable --now wg-quick@wg0
 }
 
+=======
+>>>>>>> 28b13f9 (Enhance NTX Command Center with new features and safety modes)
 install_crowdsec() {
     run_cmd "Install CrowdSec repo" bash -c "curl -s https://packagecloud.io/install/repositories/crowdsec/crowdsec/script.deb.sh | bash"
     run_cmd "Install crowdsec" apt-get install -y crowdsec
@@ -629,10 +659,13 @@ install_crowdsec_firewall_bouncer() {
     show_service_status crowdsec-firewall-bouncer
 }
 
+<<<<<<< HEAD
 =======
 >>>>>>> 40eec2c (...)
 =======
 >>>>>>> 8cd0d8a (Enhance usability and features in ntx Command Center (v0.3-dev))
+=======
+>>>>>>> 28b13f9 (Enhance NTX Command Center with new features and safety modes)
 install_ufw_basic() {
     apt update
     apt install ufw -y
@@ -894,6 +927,7 @@ Log file: $LOG_FILE (rotates at ~$(($MAX_LOG_SIZE/1024)) KiB)
 Backups:  $BACKUP_DIR (resolv.conf snapshots)
 Dry run:  $DRY_RUN (set DRY_RUN=true to preview commands)
 <<<<<<< HEAD
+<<<<<<< HEAD
 Safe mode: $SAFE_MODE (set SAFE_MODE=true to skip destructive actions)
 Repo:     https://github.com/ntx007/ntx-linux-utility-menu
 
@@ -926,13 +960,36 @@ status_dashboard() {
 }
 
 =======
+=======
+Safe mode: $SAFE_MODE (set SAFE_MODE=true to skip destructive actions)
+>>>>>>> 28b13f9 (Enhance NTX Command Center with new features and safety modes)
 Repo:     https://github.com/ntx007/ntx-linux-utility-menu
 
 Use the main menu to choose a section, then pick an action.
+Shortcuts: h/help, l/log tail, q/quit.
 EOF
 }
 
+<<<<<<< HEAD
 >>>>>>> 8cd0d8a (Enhance usability and features in ntx Command Center (v0.3-dev))
+=======
+status_dashboard() {
+    heading "Status dashboard"
+    show_service_status ssh
+    show_service_status ufw
+    show_service_status fail2ban
+    show_service_status tailscaled
+    show_service_status docker
+    show_service_status crowdsec
+    show_service_status crowdsec-firewall-bouncer
+    if [[ -f /var/run/reboot-required ]]; then
+        echo -e "${C_YLW}Reboot required.${C_RST}"
+    fi
+    echo "Public IP:"
+    whats_my_ip
+}
+
+>>>>>>> 28b13f9 (Enhance NTX Command Center with new features and safety modes)
 ###############################################################################
 # Menus
 ###############################################################################
@@ -958,6 +1015,9 @@ main_menu() {
 12) System control
 h) Help / About
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 28b13f9 (Enhance NTX Command Center with new features and safety modes)
 s) Status dashboard
 l) Tail logs
 c) Show config/env
@@ -1001,10 +1061,15 @@ menu_update() {
  6) Check unattended upgrades status
  7) Run unattended upgrade now
 <<<<<<< HEAD
+<<<<<<< HEAD
  8) List custom apt sources
  9) Remove custom apt source (.list)
 =======
 >>>>>>> 8cd0d8a (Enhance usability and features in ntx Command Center (v0.3-dev))
+=======
+ 8) List custom apt sources
+ 9) Remove custom apt source (.list)
+>>>>>>> 28b13f9 (Enhance NTX Command Center with new features and safety modes)
  0) Back
 EOF
         read -p "Select: " c
@@ -1017,10 +1082,15 @@ EOF
             6) check_unattended_status ;;
             7) run_unattended_upgrade_now ;;
 <<<<<<< HEAD
+<<<<<<< HEAD
             8) list_custom_sources ;;
             9) remove_custom_source ;;
 =======
 >>>>>>> 8cd0d8a (Enhance usability and features in ntx Command Center (v0.3-dev))
+=======
+            8) list_custom_sources ;;
+            9) remove_custom_source ;;
+>>>>>>> 28b13f9 (Enhance NTX Command Center with new features and safety modes)
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
@@ -1076,10 +1146,15 @@ menu_network() {
  3) Show routing table
  4) Show active connections
 <<<<<<< HEAD
+<<<<<<< HEAD
  5) Ping common endpoints
  6) Traceroute to host
 =======
 >>>>>>> 8cd0d8a (Enhance usability and features in ntx Command Center (v0.3-dev))
+=======
+ 5) Ping common endpoints
+ 6) Traceroute to host
+>>>>>>> 28b13f9 (Enhance NTX Command Center with new features and safety modes)
  0) Back
 EOF
         read -p "Select: " c
@@ -1089,10 +1164,15 @@ EOF
             3) show_routes ;;
             4) show_connections ;;
 <<<<<<< HEAD
+<<<<<<< HEAD
             5) ping_common ;;
             6) trace_route ;;
 =======
 >>>>>>> 8cd0d8a (Enhance usability and features in ntx Command Center (v0.3-dev))
+=======
+            5) ping_common ;;
+            6) trace_route ;;
+>>>>>>> 28b13f9 (Enhance NTX Command Center with new features and safety modes)
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
@@ -1141,6 +1221,7 @@ menu_security() {
 10) Show SSH status
 11) Show recent failed logins
 <<<<<<< HEAD
+<<<<<<< HEAD
 12) Install CrowdSec
 13) Install CrowdSec firewall bouncer (iptables)
 14) Install WireGuard (client)
@@ -1150,6 +1231,10 @@ menu_security() {
 18) Disable wg-quick@wg0
 =======
 >>>>>>> 8cd0d8a (Enhance usability and features in ntx Command Center (v0.3-dev))
+=======
+12) Install CrowdSec
+13) Install CrowdSec firewall bouncer (iptables)
+>>>>>>> 28b13f9 (Enhance NTX Command Center with new features and safety modes)
  0) Back
 EOF
         read -p "Select: " c
@@ -1166,6 +1251,7 @@ EOF
             10) show_ssh_status ;;
             11) show_failed_logins ;;
 <<<<<<< HEAD
+<<<<<<< HEAD
             12) install_crowdsec ;;
             13) install_crowdsec_firewall_bouncer ;;
             14) install_wireguard_client ;;
@@ -1175,6 +1261,10 @@ EOF
             18) disable_wg_quick ;;
 =======
 >>>>>>> 8cd0d8a (Enhance usability and features in ntx Command Center (v0.3-dev))
+=======
+            12) install_crowdsec ;;
+            13) install_crowdsec_firewall_bouncer ;;
+>>>>>>> 28b13f9 (Enhance NTX Command Center with new features and safety modes)
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
@@ -1209,22 +1299,34 @@ menu_containers() {
 [Containers / Docker]
  1) Install Docker & Docker Compose plugin
 <<<<<<< HEAD
+<<<<<<< HEAD
  2) Docker service status
  3) Docker info (short)
  4) Docker ps (running containers)
 =======
 >>>>>>> 8cd0d8a (Enhance usability and features in ntx Command Center (v0.3-dev))
+=======
+ 2) Docker service status
+ 3) Docker info (short)
+ 4) Docker ps (running containers)
+>>>>>>> 28b13f9 (Enhance NTX Command Center with new features and safety modes)
  0) Back
 EOF
         read -p "Select: " c
         case "$c" in
             1) install_docker ;;
 <<<<<<< HEAD
+<<<<<<< HEAD
             2) docker_service_status ;;
             3) docker_info_short ;;
             4) docker_ps ;;
 =======
 >>>>>>> 8cd0d8a (Enhance usability and features in ntx Command Center (v0.3-dev))
+=======
+            2) docker_service_status ;;
+            3) docker_info_short ;;
+            4) docker_ps ;;
+>>>>>>> 28b13f9 (Enhance NTX Command Center with new features and safety modes)
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
@@ -1240,9 +1342,13 @@ menu_monitoring() {
  3) Show IO stats (iostat)
  4) SMART health check (first disk)
 <<<<<<< HEAD
+<<<<<<< HEAD
  5) Status dashboard (services + IP)
 =======
 >>>>>>> 8cd0d8a (Enhance usability and features in ntx Command Center (v0.3-dev))
+=======
+ 5) Status dashboard (services + IP)
+>>>>>>> 28b13f9 (Enhance NTX Command Center with new features and safety modes)
  0) Back
 EOF
         read -p "Select: " c
@@ -1252,9 +1358,13 @@ EOF
             3) show_iostat_summary ;;
             4) smart_health_check ;;
 <<<<<<< HEAD
+<<<<<<< HEAD
             5) status_dashboard ;;
 =======
 >>>>>>> 8cd0d8a (Enhance usability and features in ntx Command Center (v0.3-dev))
+=======
+            5) status_dashboard ;;
+>>>>>>> 28b13f9 (Enhance NTX Command Center with new features and safety modes)
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
@@ -1484,7 +1594,10 @@ while true; do
         12) menu_control ;;
         h|H) show_help_about ;;
 <<<<<<< HEAD
+<<<<<<< HEAD
         c|C) show_config ;;
+=======
+>>>>>>> 28b13f9 (Enhance NTX Command Center with new features and safety modes)
         s|S) status_dashboard ;;
         l|L) tail_logs ;;
         q|Q|0) echo "Exiting NTX Command Center."; exit 0 ;;
