@@ -9,7 +9,7 @@ This repository provides a menu-driven shell script you can run on Debian/Ubuntu
 - Interactive, text-based menu (Bash/sh)
 - Common sysadmin helpers (updates, package installs, networking tools)
 - Quick system information and maintenance actions (reboot, shutdown)
-- Easy to customize — edit the script to add or remove menu items
+- Easy to customize — edit the script to add or remove menu itemss
 
 ## Requirements
 
@@ -53,23 +53,6 @@ ntx-utility-menu
 ```
 
 The script shows a numbered interactive menu. Enter the number of the action you want to run and press Enter.
-
-### Run from the command line (download & run)
-
-You can quickly download the script and run it directly on a server using curl and bash. Always review scripts downloaded from the internet before running them.
-
-```bash
-curl -fsSL -o ntx-utility-menu.sh https://raw.githubusercontent.com/ntx007/ntx-linux-utility-menu/refs/heads/main/ntx-utility-menu.sh
-
-bash ntx-utility-menu.sh
-```
-
-If you prefer to make it executable and run it from the current directory:
-
-```bash
-chmod +x ntx-utility-menu.sh
-./ntx-utility-menu.sh
-```
 
 ## Examples
 
@@ -158,13 +141,3 @@ SPDX-License-Identifier: CC-BY-4.0
 ## Author
 
 ntx007 — maintained by the repository owner.
-
----
-
-If you want, I can also:
-
-- Add a short example of the most commonly used menu options.
-- Add a `LICENSE` file (MIT recommended for small utilities).
-- Add a small test or a CI check that lints shell scripts (shellcheck) before merging.
-
-Tell me which you'd like next and I'll apply it.
