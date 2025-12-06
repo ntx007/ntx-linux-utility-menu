@@ -1,5 +1,8 @@
 # Changelog
 
+## Unreleased
+- Bumped development version to v0.3-dev on the develop branch.
+
 ## v0.2
 - Added logging to `/var/log/ntx-menu.log` plus environment checks for Debian/Ubuntu and apt presence.
 - Added backup/restore flow for `/etc/resolv.conf` and created shared backup directory `/var/backups/ntx-menu`.

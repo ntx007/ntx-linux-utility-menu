@@ -2,12 +2,12 @@
 
 ###############################################################################
 # NTX Command Center - Simple server helper menu
-# Version: v0.2
+# Version: v0.3-dev
 ###############################################################################
 
 LOG_FILE="/var/log/ntx-menu.log"
 BACKUP_DIR="/var/backups/ntx-menu"
-VERSION="v0.2"
+VERSION="v0.3-dev"
 
 msgbox() {
     echo
