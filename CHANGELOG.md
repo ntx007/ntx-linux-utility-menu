@@ -11,6 +11,7 @@
 - Security: added firewall/SSH status views, failed login summary, CrowdSec installer, and CrowdSec firewall bouncer.
 - Repos: added repo/key removal for Speedtest and Netmaker.
 - Docker: expanded menu with service status, short info, and running containers view.
+- Status dashboard: now reports "not installed" cleanly when services/units are absent (avoids noisy errors).
 
 ## v0.2
 - Added logging to `/var/log/ntx-menu.log` plus environment checks for Debian/Ubuntu and apt presence.
