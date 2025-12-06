@@ -3,14 +3,19 @@
 ###############################################################################
 # NTX Command Center - Simple server helper menu
 <<<<<<< HEAD
+<<<<<<< HEAD
 # Version: v0.3-dev
 =======
 # Version: v0.2
 >>>>>>> 40eec2c (...)
+=======
+# Version: v0.3-dev
+>>>>>>> b3bc974 (Update version to v0.3-dev in README, CHANGELOG, and script file)
 ###############################################################################
 
 LOG_FILE="/var/log/ntx-menu.log"
 BACKUP_DIR="/var/backups/ntx-menu"
+<<<<<<< HEAD
 <<<<<<< HEAD
 MAX_LOG_SIZE=$((1024 * 1024)) # 1 MiB
 DRY_RUN=${DRY_RUN:-false}
@@ -35,6 +40,9 @@ fi
 =======
 VERSION="v0.2"
 >>>>>>> 40eec2c (...)
+=======
+VERSION="v0.3-dev"
+>>>>>>> b3bc974 (Update version to v0.3-dev in README, CHANGELOG, and script file)
 
 msgbox() {
     echo

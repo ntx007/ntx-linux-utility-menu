@@ -1,6 +1,7 @@
 # Changelog
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 ## Unreleased
 - Version: bumped to v0.3 (release branch).
 - Menu/UX: switched to nested section menus; added Help/About, status dashboard shortcut, and log tail shortcut.
@@ -28,6 +29,11 @@
 
 =======
 >>>>>>> 40eec2c (...)
+=======
+## Unreleased
+- Bumped development version to v0.3-dev on the develop branch.
+
+>>>>>>> b3bc974 (Update version to v0.3-dev in README, CHANGELOG, and script file)
 ## v0.2
 - Added logging to `/var/log/ntx-menu.log` plus environment checks for Debian/Ubuntu and apt presence.
 - Added backup/restore flow for `/etc/resolv.conf` and created shared backup directory `/var/backups/ntx-menu`.

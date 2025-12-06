@@ -6,9 +6,17 @@ This repository provides a menu-driven shell script you can run on Debian/Ubuntu
 
 ## Features
 
+<<<<<<< HEAD
 - Interactive, text-based menu (Bash/sh)
 - Common sysadmin helpers (updates, package installs, networking tools)
 - Quick system information and maintenance actions (reboot, shutdown)
+=======
+- Interactive, text-based menu (Bash/sh), versioned (v0.3-dev)
+- Common sysadmin helpers (updates, unattended-upgrades, networking tools, DNS backups/restore)
+- Security/remote helpers (UFW, Fail2ban, OpenSSH, Tailscale, Netmaker netclient)
+- Quick system information, monitoring (top processes, iostat, SMART), and maintenance actions
+- Logging to `/var/log/ntx-menu.log` and backups for `/etc/resolv.conf` in `/var/backups/ntx-menu`
+>>>>>>> b3bc974 (Update version to v0.3-dev in README, CHANGELOG, and script file)
 - Easy to customize — edit the script to add or remove menu items
 
 ## Requirements
