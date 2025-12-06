@@ -17,6 +17,7 @@ LOG_FILE="/var/log/ntx-menu.log"
 BACKUP_DIR="/var/backups/ntx-menu"
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 MAX_LOG_SIZE=$((1024 * 1024)) # 1 MiB
 DRY_RUN=${DRY_RUN:-false}
 SAFE_MODE=${SAFE_MODE:-false}
@@ -41,8 +42,19 @@ fi
 VERSION="v0.2"
 >>>>>>> 40eec2c (...)
 =======
+=======
+MAX_LOG_SIZE=$((1024 * 1024)) # 1 MiB
+DRY_RUN=${DRY_RUN:-false}
+>>>>>>> 8cd0d8a (Enhance usability and features in ntx Command Center (v0.3-dev))
 VERSION="v0.3-dev"
 >>>>>>> b3bc974 (Update version to v0.3-dev in README, CHANGELOG, and script file)
+
+# Colors (fall back to plain if not a TTY)
+if [[ -t 1 ]]; then
+    C_RED="\033[31m"; C_GRN="\033[32m"; C_YLW="\033[33m"; C_CYN="\033[36m"; C_RST="\033[0m"
+else
+    C_RED=""; C_GRN=""; C_YLW=""; C_CYN=""; C_RST=""
+fi
 
 msgbox() {
     echo
@@ -58,6 +70,9 @@ log_line() {
 }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 8cd0d8a (Enhance usability and features in ntx Command Center (v0.3-dev))
 rotate_log() {
     if [[ -f "$LOG_FILE" ]]; then
         local size
@@ -70,6 +85,7 @@ rotate_log() {
     fi
 }
 
+<<<<<<< HEAD
 run_cmd() {
     local description="$1"; shift
     log_line "RUN: $description"
@@ -86,9 +102,16 @@ run_cmd() {
         log_line "FAIL: $description"
         echo "Result: FAIL"
 =======
+=======
+>>>>>>> 8cd0d8a (Enhance usability and features in ntx Command Center (v0.3-dev))
 run_cmd() {
     local description="$1"; shift
     log_line "RUN: $description"
+    if [[ "$DRY_RUN" == "true" ]]; then
+        echo "[DRY RUN] $*"
+        log_line "OK : $description (dry run)"
+        return 0
+    fi
     if "$@"; then
         log_line "OK : $description"
     else
@@ -102,9 +125,13 @@ ensure_dirs() {
     mkdir -p "$BACKUP_DIR"
     touch "$LOG_FILE"
 <<<<<<< HEAD
+<<<<<<< HEAD
     rotate_log
 =======
 >>>>>>> 40eec2c (...)
+=======
+    rotate_log
+>>>>>>> 8cd0d8a (Enhance usability and features in ntx Command Center (v0.3-dev))
 }
 
 ensure_cmd() {
@@ -145,10 +172,14 @@ check_environment() {
         exit 1
     fi
 <<<<<<< HEAD
+<<<<<<< HEAD
     if ! grep -qiE 'debian|ubuntu|mint|pop' /etc/os-release; then
 =======
     if ! grep -qiE 'debian|ubuntu' /etc/os-release; then
 >>>>>>> 40eec2c (...)
+=======
+    if ! grep -qiE 'debian|ubuntu|mint|pop' /etc/os-release; then
+>>>>>>> 8cd0d8a (Enhance usability and features in ntx Command Center (v0.3-dev))
         echo "This script targets Debian/Ubuntu systems. Aborting."
         exit 1
     fi
@@ -159,6 +190,9 @@ check_environment() {
 }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 8cd0d8a (Enhance usability and features in ntx Command Center (v0.3-dev))
 preflight_dependencies() {
     ensure_cmd curl curl
     ensure_cmd gpg gnupg
@@ -168,6 +202,7 @@ preflight_dependencies() {
     ensure_cmd ps procps
     ensure_cmd awk gawk
     ensure_cmd sed sed
+<<<<<<< HEAD
     ensure_cmd ip iproute2
 }
 
@@ -233,17 +268,28 @@ skip_if_safe() {
 }
 
 =======
+=======
+}
+
+>>>>>>> 8cd0d8a (Enhance usability and features in ntx Command Center (v0.3-dev))
 show_service_status() {
     local service="$1"
     if systemctl is-active --quiet "$service"; then
-        echo "$service: active"
+        echo -e "${C_GRN}$service: active${C_RST}"
     else
-        echo "$service: inactive"
+        echo -e "${C_RED}$service: inactive${C_RST}"
         systemctl status "$service" --no-pager || true
     fi
 }
 
+<<<<<<< HEAD
 >>>>>>> 40eec2c (...)
+=======
+heading() {
+    echo -e "${C_CYN}$1${C_RST}"
+}
+
+>>>>>>> 8cd0d8a (Enhance usability and features in ntx Command Center (v0.3-dev))
 ###############################################################################
 # Functions
 ###############################################################################
@@ -283,6 +329,9 @@ enable_unattended_upgrades() {
 }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 8cd0d8a (Enhance usability and features in ntx Command Center (v0.3-dev))
 disable_unattended_upgrades() {
     if ! dpkg -s unattended-upgrades >/dev/null 2>&1; then
         echo "unattended-upgrades is not installed."
@@ -292,8 +341,11 @@ disable_unattended_upgrades() {
     echo "Unattended upgrades disabled."
 }
 
+<<<<<<< HEAD
 =======
 >>>>>>> 40eec2c (...)
+=======
+>>>>>>> 8cd0d8a (Enhance usability and features in ntx Command Center (v0.3-dev))
 check_unattended_status() {
     if ! dpkg -s unattended-upgrades >/dev/null 2>&1; then
         echo "unattended-upgrades is not installed. Please enable it first."
@@ -521,6 +573,9 @@ install_netclient() {
 }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 8cd0d8a (Enhance usability and features in ntx Command Center (v0.3-dev))
 remove_netclient_repo() {
     if [[ -f /etc/apt/sources.list.d/netclient.list ]]; then
         run_cmd "Remove Netmaker repo list" rm -f /etc/apt/sources.list.d/netclient.list
@@ -531,6 +586,7 @@ remove_netclient_repo() {
     run_cmd "apt-get update after Netmaker repo removal" apt-get update
 }
 
+<<<<<<< HEAD
 install_wireguard_client() {
     run_cmd "Install WireGuard (client)" apt-get install -y wireguard wireguard-tools
 }
@@ -575,6 +631,8 @@ install_crowdsec_firewall_bouncer() {
 
 =======
 >>>>>>> 40eec2c (...)
+=======
+>>>>>>> 8cd0d8a (Enhance usability and features in ntx Command Center (v0.3-dev))
 install_ufw_basic() {
     apt update
     apt install ufw -y
@@ -814,6 +872,7 @@ tail_logs() {
     tail -n 40 "$LOG_FILE" 2>/dev/null || echo "Log file not found."
 }
 
+<<<<<<< HEAD
 show_config() {
     heading "Config / Environment"
     cat <<EOF
@@ -826,12 +885,15 @@ Units:          SSH=$SSH_UNIT, UFW=$UFW_UNIT, Fail2ban=$FAIL2BAN_UNIT, Tailscale
 EOF
 }
 
+=======
+>>>>>>> 8cd0d8a (Enhance usability and features in ntx Command Center (v0.3-dev))
 show_help_about() {
     heading "NTX Command Center ($VERSION)"
     cat <<EOF
 Log file: $LOG_FILE (rotates at ~$(($MAX_LOG_SIZE/1024)) KiB)
 Backups:  $BACKUP_DIR (resolv.conf snapshots)
 Dry run:  $DRY_RUN (set DRY_RUN=true to preview commands)
+<<<<<<< HEAD
 Safe mode: $SAFE_MODE (set SAFE_MODE=true to skip destructive actions)
 Repo:     https://github.com/ntx007/ntx-linux-utility-menu
 
@@ -863,11 +925,22 @@ status_dashboard() {
     cpu_mem_snapshot
 }
 
+=======
+Repo:     https://github.com/ntx007/ntx-linux-utility-menu
+
+Use the main menu to choose a section, then pick an action.
+EOF
+}
+
+>>>>>>> 8cd0d8a (Enhance usability and features in ntx Command Center (v0.3-dev))
 ###############################################################################
 # Menus
 ###############################################################################
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 8cd0d8a (Enhance usability and features in ntx Command Center (v0.3-dev))
 main_menu() {
     cat <<EOF
 ================= NTX COMMAND CENTER ($VERSION) =================
@@ -884,14 +957,19 @@ main_menu() {
 11) Users & time
 12) System control
 h) Help / About
+<<<<<<< HEAD
 s) Status dashboard
 l) Tail logs
 c) Show config/env
+=======
+l) Tail logs
+>>>>>>> 8cd0d8a (Enhance usability and features in ntx Command Center (v0.3-dev))
 q) Quit
 ================================================================
 EOF
 }
 
+<<<<<<< HEAD
 search_section() {
     local query="$1"
     local -a names=("system update" "dns" "network" "speedtest" "security" "tools" "containers" "monitoring" "system information" "maintenance" "users" "control" "status" "help" "logs" "config")
@@ -909,6 +987,8 @@ search_section() {
     fi
 }
 
+=======
+>>>>>>> 8cd0d8a (Enhance usability and features in ntx Command Center (v0.3-dev))
 menu_update() {
     while true; do
         cat <<EOF
@@ -920,8 +1000,11 @@ menu_update() {
  5) Disable unattended upgrades
  6) Check unattended upgrades status
  7) Run unattended upgrade now
+<<<<<<< HEAD
  8) List custom apt sources
  9) Remove custom apt source (.list)
+=======
+>>>>>>> 8cd0d8a (Enhance usability and features in ntx Command Center (v0.3-dev))
  0) Back
 EOF
         read -p "Select: " c
@@ -933,8 +1016,11 @@ EOF
             5) disable_unattended_upgrades ;;
             6) check_unattended_status ;;
             7) run_unattended_upgrade_now ;;
+<<<<<<< HEAD
             8) list_custom_sources ;;
             9) remove_custom_source ;;
+=======
+>>>>>>> 8cd0d8a (Enhance usability and features in ntx Command Center (v0.3-dev))
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
@@ -950,10 +1036,14 @@ menu_dns() {
  3) Append Netcup DNS 46.38.225.230 + 1.1.1.1
  4) Overwrite Netcup DNS 46.38.225.230 + 1.1.1.1
  5) Overwrite DNS with 1.1.1.1 + 8.8.8.8
+<<<<<<< HEAD
  6) Append DNS with 1.1.1.1 + 8.8.8.8
  7) Overwrite DNS with IPv6 (2606:4700:4700::1111 + 2001:4860:4860::8888)
  8) Append DNS with IPv6 (2606:4700:4700::1111 + 2001:4860:4860::8888)
  9) Restore DNS from latest backup
+=======
+ 6) Restore DNS from latest backup
+>>>>>>> 8cd0d8a (Enhance usability and features in ntx Command Center (v0.3-dev))
  0) Back
 EOF
         read -p "Select: " c
@@ -963,10 +1053,14 @@ EOF
             3) add_dns_netcup_append ;;
             4) set_dns_netcup_overwrite ;;
             5) set_dns_cloudflare_google ;;
+<<<<<<< HEAD
             6) add_dns_cloudflare_google_append ;;
             7) set_dns_cloudflare_google_ipv6 ;;
             8) add_dns_cloudflare_google_ipv6_append ;;
             9) restore_dns_backup ;;
+=======
+            6) restore_dns_backup ;;
+>>>>>>> 8cd0d8a (Enhance usability and features in ntx Command Center (v0.3-dev))
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
@@ -981,8 +1075,11 @@ menu_network() {
  2) Show ifconfig
  3) Show routing table
  4) Show active connections
+<<<<<<< HEAD
  5) Ping common endpoints
  6) Traceroute to host
+=======
+>>>>>>> 8cd0d8a (Enhance usability and features in ntx Command Center (v0.3-dev))
  0) Back
 EOF
         read -p "Select: " c
@@ -991,8 +1088,11 @@ EOF
             2) show_ifconfig ;;
             3) show_routes ;;
             4) show_connections ;;
+<<<<<<< HEAD
             5) ping_common ;;
             6) trace_route ;;
+=======
+>>>>>>> 8cd0d8a (Enhance usability and features in ntx Command Center (v0.3-dev))
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
@@ -1040,6 +1140,7 @@ menu_security() {
  9) Show firewall status
 10) Show SSH status
 11) Show recent failed logins
+<<<<<<< HEAD
 12) Install CrowdSec
 13) Install CrowdSec firewall bouncer (iptables)
 14) Install WireGuard (client)
@@ -1047,6 +1148,8 @@ menu_security() {
 16) Show WireGuard sample config
 17) Enable wg-quick@wg0
 18) Disable wg-quick@wg0
+=======
+>>>>>>> 8cd0d8a (Enhance usability and features in ntx Command Center (v0.3-dev))
  0) Back
 EOF
         read -p "Select: " c
@@ -1062,6 +1165,7 @@ EOF
             9) show_firewall_status ;;
             10) show_ssh_status ;;
             11) show_failed_logins ;;
+<<<<<<< HEAD
             12) install_crowdsec ;;
             13) install_crowdsec_firewall_bouncer ;;
             14) install_wireguard_client ;;
@@ -1069,6 +1173,8 @@ EOF
             16) print_wireguard_sample ;;
             17) enable_wg_quick ;;
             18) disable_wg_quick ;;
+=======
+>>>>>>> 8cd0d8a (Enhance usability and features in ntx Command Center (v0.3-dev))
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
@@ -1102,17 +1208,23 @@ menu_containers() {
         cat <<EOF
 [Containers / Docker]
  1) Install Docker & Docker Compose plugin
+<<<<<<< HEAD
  2) Docker service status
  3) Docker info (short)
  4) Docker ps (running containers)
+=======
+>>>>>>> 8cd0d8a (Enhance usability and features in ntx Command Center (v0.3-dev))
  0) Back
 EOF
         read -p "Select: " c
         case "$c" in
             1) install_docker ;;
+<<<<<<< HEAD
             2) docker_service_status ;;
             3) docker_info_short ;;
             4) docker_ps ;;
+=======
+>>>>>>> 8cd0d8a (Enhance usability and features in ntx Command Center (v0.3-dev))
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
@@ -1127,7 +1239,10 @@ menu_monitoring() {
  2) Show top CPU/mem processes
  3) Show IO stats (iostat)
  4) SMART health check (first disk)
+<<<<<<< HEAD
  5) Status dashboard (services + IP)
+=======
+>>>>>>> 8cd0d8a (Enhance usability and features in ntx Command Center (v0.3-dev))
  0) Back
 EOF
         read -p "Select: " c
@@ -1136,7 +1251,10 @@ EOF
             2) show_top_processes ;;
             3) show_iostat_summary ;;
             4) smart_health_check ;;
+<<<<<<< HEAD
             5) status_dashboard ;;
+=======
+>>>>>>> 8cd0d8a (Enhance usability and features in ntx Command Center (v0.3-dev))
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
@@ -1223,6 +1341,7 @@ EOF
             *) echo "Invalid choice." ;;
         esac
     done
+<<<<<<< HEAD
 =======
 show_menu() {
     echo "================= NTX COMMAND CENTER ================="
@@ -1303,6 +1422,8 @@ show_menu() {
     echo " 0) Exit"
     echo "======================================================="
 >>>>>>> 40eec2c (...)
+=======
+>>>>>>> 8cd0d8a (Enhance usability and features in ntx Command Center (v0.3-dev))
 }
 
 ###############################################################################
@@ -1318,9 +1439,13 @@ fi
 check_environment
 ensure_dirs
 <<<<<<< HEAD
+<<<<<<< HEAD
 preflight_dependencies
 =======
 >>>>>>> 40eec2c (...)
+=======
+preflight_dependencies
+>>>>>>> 8cd0d8a (Enhance usability and features in ntx Command Center (v0.3-dev))
 log_line "Starting NTX Command Center..."
 
 echo "Starting NTX Command Center $VERSION..."
@@ -1328,6 +1453,7 @@ echo "Starting NTX Command Center $VERSION..."
 while true; do
     main_menu
     read -p "Select a section: " choice
+<<<<<<< HEAD
     if [[ "$choice" == /* ]]; then
         choice="${choice#/}"
         choice=$(echo "$choice" | tr '[:upper:]' '[:lower:]')
@@ -1341,6 +1467,9 @@ while true; do
     fi
     case "$choice" in
 <<<<<<< HEAD
+=======
+    case "$choice" in
+>>>>>>> 8cd0d8a (Enhance usability and features in ntx Command Center (v0.3-dev))
         1) menu_update ;;
         2) menu_dns ;;
         3) menu_network ;;
@@ -1354,6 +1483,7 @@ while true; do
         11) menu_users_time ;;
         12) menu_control ;;
         h|H) show_help_about ;;
+<<<<<<< HEAD
         c|C) show_config ;;
         s|S) status_dashboard ;;
         l|L) tail_logs ;;
@@ -1411,6 +1541,10 @@ while true; do
         50) system_powerdown ;;
         0)  echo "Exiting NTX Command Center."; exit 0 ;;
 >>>>>>> 40eec2c (...)
+=======
+        l|L) tail_logs ;;
+        q|Q|0) echo "Exiting NTX Command Center."; exit 0 ;;
+>>>>>>> 8cd0d8a (Enhance usability and features in ntx Command Center (v0.3-dev))
         *)  echo "Invalid choice." ;;
     esac
     echo

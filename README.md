@@ -7,6 +7,7 @@ This repository provides a menu-driven shell script you can run on Debian/Ubuntu
 ## Features
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 - Interactive, text-based menu (Bash/sh)
 - Common sysadmin helpers (updates, package installs, networking tools)
 - Quick system information and maintenance actions (reboot, shutdown)
@@ -17,6 +18,14 @@ This repository provides a menu-driven shell script you can run on Debian/Ubuntu
 - Quick system information, monitoring (top processes, iostat, SMART), and maintenance actions
 - Logging to `/var/log/ntx-menu.log` and backups for `/etc/resolv.conf` in `/var/backups/ntx-menu`
 >>>>>>> b3bc974 (Update version to v0.3-dev in README, CHANGELOG, and script file)
+=======
+- Interactive, text-based menu (Bash/sh), versioned (v0.3-dev) with nested sections
+- Common sysadmin helpers (updates, unattended-upgrades enable/disable/status/run, networking tools, DNS backups/restore)
+- Security/remote helpers (UFW, Fail2ban, OpenSSH, Tailscale, Netmaker netclient + repo removal)
+- Quick system information, monitoring (top processes, iostat, SMART), and maintenance actions
+- Logging to `/var/log/ntx-menu.log` with rotation and backups for `/etc/resolv.conf` in `/var/backups/ntx-menu`
+- DRY_RUN support (`DRY_RUN=true ./ntx-utility-menu.sh`) to preview commands
+>>>>>>> 8cd0d8a (Enhance usability and features in ntx Command Center (v0.3-dev))
 - Easy to customize — edit the script to add or remove menu items
 
 ## Requirements
@@ -81,7 +90,7 @@ You can quickly download the script and run it directly on a server using curl a
 ```bash
 curl -fsSL -o ntx-utility-menu.sh https://raw.githubusercontent.com/ntx007/ntx-linux-utility-menu/refs/heads/main/ntx-utility-menu.sh
 
-bash ntx-utility-menu.sh
+sudo bash ntx-utility-menu.sh
 ```
 
 If you prefer to make it executable and run it from the current directory:
@@ -91,54 +100,21 @@ chmod +x ntx-utility-menu.sh
 ./ntx-utility-menu.sh
 ```
 
-## Examples
+## Menu highlights (v0.3-dev)
 
-Below are short examples of the most commonly used menu options and a sample interaction. Menu numbers in your copy may differ — use the on-screen numbers the script prints.
-
-- Update system and installed packages (typical):
-
-	1) Select "System update / upgrade" from the menu
-	2) Confirm when prompted (or run with sudo to avoid extra prompts)
-
-- Install common tools (curl, jq, htop):
-
-	1) Select "Install essential tools" / "Install packages"
-	2) Choose the recommended preset or enter package names when prompted
-
-- View network configuration and active interfaces:
-
-	1) Select "Network info / IP tools" → "Show interfaces" or "Show IPs"
-	2) Use the displayed info to choose a specific interface for further actions
-
-- Quick speed and connectivity check (Speedtest / YABS):
-
-	1) Select "Run Speedtest" or "Run YABS" from the menu
-	2) Wait for the test to finish and review latency / upload / download
-
-- Enable SSH or set up Tailscale (when available):
-
-	1) Select "SSH setup" to install/configure OpenSSH
-	2) Select "Tailscale" to install and walk through authentication
-
-Sample interaction (illustrative):
-
-```text
-Welcome to ntx Command Center
-1) System update
-2) Network tools
-3) Install tools
-4) Speedtest
-5) SSH setup
-6) Reboot
-q) Quit
-
-Enter choice: 1
-Running apt update && apt upgrade -y...
-Done. Packages upgraded.
-Return to menu (press Enter)
-```
-
-These examples are intentionally short — open `ntx-utility-menu.sh` to see the exact menu labels and any additional submenus your copy provides.
+- System update: standard upgrade, upgrade + reboot-if-needed, unattended-upgrades enable/disable/status/run
+- DNS: view/edit with automatic backups and restore
+- Network/IP: public IP (with fallback), interfaces, routes, active connections
+- Benchmarks: install/run Speedtest, manage Speedtest repo/key, run YABS
+- Security/remote: UFW, Fail2ban, OpenSSH server, Tailscale install/up, Netmaker netclient install/remove repo/key, firewall/SSH status, failed logins
+- Tools/environment: essentials, extended tools, ibramenu, QEMU guest agent
+- Containers: Docker + Compose plugin
+- Monitoring: node exporter, top CPU/mem processes, iostat summary, SMART health check
+- System info: `/etc/os-release`, neofetch, memory info, VM check, link to project GitHub
+- Maintenance/disks: cleanup, disks usage, largest `/var` dirs
+- Users/time: create sudo user, time sync info, chrony install
+- System control: reboot, power down
+- Help/logs: Help/About screen, tail latest log lines
 
 ## Customization
 

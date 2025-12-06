@@ -32,6 +32,11 @@
 =======
 ## Unreleased
 - Bumped development version to v0.3-dev on the develop branch.
+- Added nested section-based menus, help/about screen, and log tail option for usability.
+- Added DRY_RUN support, log rotation, and preflight dependency checks.
+- Added repo/key removal for Speedtest and Netmaker, firewall/SSH status views, and failed login summary.
+- Improved safety toggles (disable unattended-upgrades) and kept DNS backups/restore flow.
+- Fixed preflight dependency installs to use correct package names (dnsutils, gnupg, etc.).
 
 >>>>>>> b3bc974 (Update version to v0.3-dev in README, CHANGELOG, and script file)
 ## v0.2
