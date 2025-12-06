@@ -2,11 +2,16 @@
 
 ###############################################################################
 # NTX Command Center - Simple server helper menu
+<<<<<<< HEAD
 # Version: v0.3-dev
+=======
+# Version: v0.2
+>>>>>>> 40eec2c (...)
 ###############################################################################
 
 LOG_FILE="/var/log/ntx-menu.log"
 BACKUP_DIR="/var/backups/ntx-menu"
+<<<<<<< HEAD
 MAX_LOG_SIZE=$((1024 * 1024)) # 1 MiB
 DRY_RUN=${DRY_RUN:-false}
 SAFE_MODE=${SAFE_MODE:-false}
@@ -27,6 +32,9 @@ if [[ -t 1 ]]; then
 else
     C_RED=""; C_GRN=""; C_YLW=""; C_CYN=""; C_RST=""
 fi
+=======
+VERSION="v0.2"
+>>>>>>> 40eec2c (...)
 
 msgbox() {
     echo
@@ -41,6 +49,7 @@ log_line() {
     echo "$(date '+%Y-%m-%d %H:%M:%S') | $message" | tee -a "$LOG_FILE"
 }
 
+<<<<<<< HEAD
 rotate_log() {
     if [[ -f "$LOG_FILE" ]]; then
         local size
@@ -68,6 +77,15 @@ run_cmd() {
     else
         log_line "FAIL: $description"
         echo "Result: FAIL"
+=======
+run_cmd() {
+    local description="$1"; shift
+    log_line "RUN: $description"
+    if "$@"; then
+        log_line "OK : $description"
+    else
+        log_line "FAIL: $description"
+>>>>>>> 40eec2c (...)
         return 1
     fi
 }
@@ -75,7 +93,10 @@ run_cmd() {
 ensure_dirs() {
     mkdir -p "$BACKUP_DIR"
     touch "$LOG_FILE"
+<<<<<<< HEAD
     rotate_log
+=======
+>>>>>>> 40eec2c (...)
 }
 
 ensure_cmd() {
@@ -115,7 +136,11 @@ check_environment() {
         echo "Cannot find /etc/os-release. Unsupported system."
         exit 1
     fi
+<<<<<<< HEAD
     if ! grep -qiE 'debian|ubuntu|mint|pop' /etc/os-release; then
+=======
+    if ! grep -qiE 'debian|ubuntu' /etc/os-release; then
+>>>>>>> 40eec2c (...)
         echo "This script targets Debian/Ubuntu systems. Aborting."
         exit 1
     fi
@@ -125,6 +150,7 @@ check_environment() {
     fi
 }
 
+<<<<<<< HEAD
 preflight_dependencies() {
     ensure_cmd curl curl
     ensure_cmd gpg gnupg
@@ -198,6 +224,18 @@ skip_if_safe() {
     return 0
 }
 
+=======
+show_service_status() {
+    local service="$1"
+    if systemctl is-active --quiet "$service"; then
+        echo "$service: active"
+    else
+        echo "$service: inactive"
+        systemctl status "$service" --no-pager || true
+    fi
+}
+
+>>>>>>> 40eec2c (...)
 ###############################################################################
 # Functions
 ###############################################################################
@@ -236,6 +274,7 @@ enable_unattended_upgrades() {
     echo "Unattended upgrades enabled."
 }
 
+<<<<<<< HEAD
 disable_unattended_upgrades() {
     if ! dpkg -s unattended-upgrades >/dev/null 2>&1; then
         echo "unattended-upgrades is not installed."
@@ -245,6 +284,8 @@ disable_unattended_upgrades() {
     echo "Unattended upgrades disabled."
 }
 
+=======
+>>>>>>> 40eec2c (...)
 check_unattended_status() {
     if ! dpkg -s unattended-upgrades >/dev/null 2>&1; then
         echo "unattended-upgrades is not installed. Please enable it first."
@@ -268,6 +309,7 @@ run_unattended_upgrade_now() {
     run_cmd "Run unattended-upgrade now" unattended-upgrade -v
 }
 
+<<<<<<< HEAD
 list_custom_sources() {
     echo "Custom sources (.list) in /etc/apt/sources.list.d:"
     ls -1 /etc/apt/sources.list.d/*.list 2>/dev/null || echo "None found."
@@ -291,6 +333,8 @@ remove_custom_source() {
     fi
 }
 
+=======
+>>>>>>> 40eec2c (...)
 # --- DNS management ---
 
 show_dns() {
@@ -326,6 +370,7 @@ nameserver 8.8.8.8
 EOF
 }
 
+<<<<<<< HEAD
 add_dns_cloudflare_google_append() {
     backup_file /etc/resolv.conf
     echo -e "nameserver 1.1.1.1\nnameserver 8.8.8.8" | tee -a /etc/resolv.conf > /dev/null
@@ -344,6 +389,8 @@ add_dns_cloudflare_google_ipv6_append() {
     echo -e "nameserver 2606:4700:4700::1111\nnameserver 2001:4860:4860::8888" | tee -a /etc/resolv.conf > /dev/null
 }
 
+=======
+>>>>>>> 40eec2c (...)
 restore_dns_backup() {
     restore_backup /etc/resolv.conf
 }
@@ -378,6 +425,7 @@ show_connections() {
     fi
 }
 
+<<<<<<< HEAD
 ping_common() {
     ensure_cmd ping iputils-ping
     for host in 1.1.1.1 8.8.8.8 github.com; do
@@ -394,6 +442,8 @@ trace_route() {
     traceroute "$TARGET"
 }
 
+=======
+>>>>>>> 40eec2c (...)
 # --- Speedtest & benchmarks ---
 
 install_speedtest_full() {
@@ -462,6 +512,7 @@ install_netclient() {
     run_cmd "Install netclient" apt-get install -y netclient
 }
 
+<<<<<<< HEAD
 remove_netclient_repo() {
     if [[ -f /etc/apt/sources.list.d/netclient.list ]]; then
         run_cmd "Remove Netmaker repo list" rm -f /etc/apt/sources.list.d/netclient.list
@@ -514,6 +565,8 @@ install_crowdsec_firewall_bouncer() {
     show_service_status crowdsec-firewall-bouncer
 }
 
+=======
+>>>>>>> 40eec2c (...)
 install_ufw_basic() {
     apt update
     apt install ufw -y
@@ -806,6 +859,7 @@ status_dashboard() {
 # Menus
 ###############################################################################
 
+<<<<<<< HEAD
 main_menu() {
     cat <<EOF
 ================= NTX COMMAND CENTER ($VERSION) =================
@@ -1161,6 +1215,86 @@ EOF
             *) echo "Invalid choice." ;;
         esac
     done
+=======
+show_menu() {
+    echo "================= NTX COMMAND CENTER ================="
+    echo "================= SYSTEM UPDATE ======================="
+    echo " 1) Update all (apt-get update && upgrade)"
+    echo " 2) Update all with sudo and reboot"
+    echo " 3) Update all and reboot if required"
+    echo " 4) Enable unattended upgrades"
+    echo " 5) Check unattended upgrades status"
+    echo " 6) Run unattended upgrade now"
+    echo
+    echo "================= DNS MANAGEMENT ======================"
+    echo " 7) Show DNS (/etc/resolv.conf)"
+    echo " 8) Edit DNS (/etc/resolv.conf in nano)"
+    echo " 9) Append Netcup DNS 46.38.225.230 + 1.1.1.1"
+    echo "10) Overwrite Netcup DNS 46.38.225.230 + 1.1.1.1"
+    echo "11) Overwrite DNS with 1.1.1.1 + 8.8.8.8"
+    echo "12) Restore DNS from latest backup"
+    echo
+    echo "================ NETWORK / IP ========================="
+    echo "13) Show public IP (dig / OpenDNS)"
+    echo "14) Show ifconfig"
+    echo "15) Show routing table"
+    echo "16) Show active connections"
+    echo
+    echo "============= SPEEDTEST & BENCHMARKS =================="
+    echo "17) Install Speedtest (repo + package)"
+    echo "18) Update Speedtest repo list (jammy)"
+    echo "19) Install Speedtest after repo update"
+    echo "20) Run Speedtest"
+    echo "21) Run YABS (Yet-Another-Bench-Script)"
+    echo
+    echo "============= SECURITY / REMOTE ACCESS ================"
+    echo "22) Install UFW (allow SSH, enable)"
+    echo "23) Install Fail2ban"
+    echo "24) Update SSH config for Proxmox (remote script)"
+    echo "25) Install OpenSSH server"
+    echo "26) Install Tailscale"
+    echo "27) Tailscale up (QR mode)"
+    echo "28) Install Netmaker netclient"
+    echo
+    echo "========== TOOLS & ENVIRONMENT SETUP =================="
+    echo "29) Install essentials (sudo, nano, curl, net-tools)"
+    echo "30) Install extra tools (unzip, python, gdown, glances, tmux, zsh, mc)"
+    echo "31) Install ibramenu"
+    echo "32) Install QEMU guest agent"
+    echo
+    echo "============= CONTAINERS / DOCKER ====================="
+    echo "33) Install Docker & Docker Compose plugin"
+    echo
+    echo "================== MONITORING ========================="
+    echo "34) Install node exporter (prometheus-node-exporter)"
+    echo "35) Show top CPU/mem processes"
+    echo "36) Show IO stats (iostat)"
+    echo "37) SMART health check (first disk)"
+    echo
+    echo "============ SYSTEM INFORMATION ======================="
+    echo "38) Show /etc/os-release"
+    echo "39) General system info (neofetch)"
+    echo "40) Memory information"
+    echo "41) VM / virtualization check"
+    echo "42) Visit project GitHub"
+    echo
+    echo "================= MAINTENANCE ========================="
+    echo "43) System cleanup (APT autoremove/autoclean, logs 7d)"
+    echo "44) Show disks (lsblk + df -h)"
+    echo "45) Show biggest /var directories"
+    echo
+    echo "=============== USERS & TIME =========================="
+    echo "46) Create sudo user"
+    echo "47) Show time sync (timedatectl)"
+    echo "48) Install chrony (NTP) and show time status"
+    echo
+    echo "================ SYSTEM CONTROL ======================="
+    echo "49) Reboot"
+    echo "50) Power down"
+    echo
+    echo " 0) Exit"
+    echo "======================================================="
+>>>>>>> 40eec2c (...)
 }
 
 ###############################################################################
@@ -1175,7 +1309,10 @@ fi
 
 check_environment
 ensure_dirs
+<<<<<<< HEAD
 preflight_dependencies
+=======
+>>>>>>> 40eec2c (...)
 log_line "Starting NTX Command Center..."
 
 echo "Starting NTX Command Center $VERSION..."
@@ -1195,6 +1332,7 @@ while true; do
         fi
     fi
     case "$choice" in
+<<<<<<< HEAD
         1) menu_update ;;
         2) menu_dns ;;
         3) menu_network ;;
@@ -1212,6 +1350,59 @@ while true; do
         s|S) status_dashboard ;;
         l|L) tail_logs ;;
         q|Q|0) echo "Exiting NTX Command Center."; exit 0 ;;
+=======
+        1)  update_all ;;
+        2)  update_all_with_sudo_reboot ;;
+        3)  update_all_reboot_if_needed ;;
+        4)  enable_unattended_upgrades ;;
+        5)  check_unattended_status ;;
+        6)  run_unattended_upgrade_now ;;
+        7)  show_dns ;;
+        8)  edit_dns ;;
+        9)  add_dns_netcup_append ;;
+        10) set_dns_netcup_overwrite ;;
+        11) set_dns_cloudflare_google ;;
+        12) restore_dns_backup ;;
+        13) whats_my_ip ;;
+        14) show_ifconfig ;;
+        15) show_routes ;;
+        16) show_connections ;;
+        17) install_speedtest_full ;;
+        18) change_speedtest_apt_list ;;
+        19) install_speedtest_after_list ;;
+        20) run_speedtest ;;
+        21) run_yabs ;;
+        22) install_ufw_basic ;;
+        23) install_fail2ban ;;
+        24) change_ssh_proxmox ;;
+        25) install_openssh ;;
+        26) tailscale_install ;;
+        27) tailscale_up_qr ;;
+        28) install_netclient ;;
+        29) install_essentials ;;
+        30) install_tools ;;
+        31) install_ibramenu ;;
+        32) install_qemu_guest_agent ;;
+        33) install_docker ;;
+        34) install_node_exporter ;;
+        35) show_top_processes ;;
+        36) show_iostat_summary ;;
+        37) smart_health_check ;;
+        38) os_release_check ;;
+        39) general_information ;;
+        40) memory_information ;;
+        41) vm_check ;;
+        42) visit_project_github ;;
+        43) system_cleanup ;;
+        44) show_disks ;;
+        45) show_big_var_dirs ;;
+        46) create_sudo_user ;;
+        47) show_time_sync ;;
+        48) install_chrony ;;
+        49) system_reboot ;;
+        50) system_powerdown ;;
+        0)  echo "Exiting NTX Command Center."; exit 0 ;;
+>>>>>>> 40eec2c (...)
         *)  echo "Invalid choice." ;;
     esac
     echo

@@ -1,5 +1,6 @@
 # Changelog
 
+<<<<<<< HEAD
 ## Unreleased
 - Version: bumped to v0.3 (release branch).
 - Menu/UX: switched to nested section menus; added Help/About, status dashboard shortcut, and log tail shortcut.
@@ -25,6 +26,8 @@
 - Docs: cleaned menu map (removed duplicates) and added a pre-run checklist to review config paths, DNS presets, and unit names.
 - Known behavior: pending update count uses `apt-get -s upgrade | grep '^Inst'` and may undercount on localized systems; WireGuard enable/disable assumes `/etc/wireguard/wg0.conf` exists; service status may show “not installed” if units use non-default names.
 
+=======
+>>>>>>> 40eec2c (...)
 ## v0.2
 - Added logging to `/var/log/ntx-menu.log` plus environment checks for Debian/Ubuntu and apt presence.
 - Added backup/restore flow for `/etc/resolv.conf` and created shared backup directory `/var/backups/ntx-menu`.

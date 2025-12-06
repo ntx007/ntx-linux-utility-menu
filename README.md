@@ -1,19 +1,15 @@
 # NTX Command Center
 
-A portable, menu-driven Bash utility for common Linux admin tasks: `ntx-utility-menu.sh`. Built for Debian/Ubuntu (and derivatives), it centralizes updates, diagnostics, networking tools, security hardening, and maintenance in a single interactive script.
+A small, portable, interactive Bash utility menu ("ntx Command Center") that bundles common Linux admin and maintenance tasks into a single script: `ntx-utility-menu.sh`.
 
-## Highlights (v0.3)
+This repository provides a menu-driven shell script you can run on Debian/Ubuntu and many other Linux distributions to perform system updates, quick diagnostics, networking helpers, install common tools, and more.
 
-- Interactive, nested menu (Bash) with shortcuts for Help, Status dashboard, and Logs
-- Updates: unattended-upgrades enable/disable/status/run; reboot-if-needed flow; apt source hygiene (list/remove)
-- Networking: public IP with fallback, interfaces/routes/connections, DNS backups/restore, ping common endpoints, traceroute
-- Security/remote: UFW, Fail2ban, OpenSSH, Tailscale, Netmaker netclient (install/remove repo), CrowdSec + firewall bouncer, WireGuard (client/server), firewall/SSH status, failed logins
-- Tools/monitoring: essentials/extra tools, node exporter, top CPU/mem, iostat summary, SMART checks, status dashboard
-- Containers: Docker + Compose plugin install, service status/info, running containers
-- Maintenance/info: cleanup, disk usage, largest `/var` dirs, system info (os-release, neofetch, VM check), GitHub link
-- Logging/backups: `/var/log/ntx-menu.log` with rotation; `/etc/resolv.conf` backups to `/var/backups/ntx-menu`
-- Modes: `DRY_RUN=true` to preview commands; `SAFE_MODE=true` to skip destructive actions
-- Search: type `/keyword` (e.g., `/docker`, `/dns`) in the main menu to jump to a section
+## Features
+
+- Interactive, text-based menu (Bash/sh)
+- Common sysadmin helpers (updates, package installs, networking tools)
+- Quick system information and maintenance actions (reboot, shutdown)
+- Easy to customize — edit the script to add or remove menu items
 
 ## Requirements
 
@@ -64,7 +60,8 @@ You can quickly download the script and run it directly on a server using curl a
 
 ```bash
 curl -fsSL -o ntx-utility-menu.sh https://raw.githubusercontent.com/ntx007/ntx-linux-utility-menu/refs/heads/main/ntx-utility-menu.sh
-sudo bash ntx-utility-menu.sh
+
+bash ntx-utility-menu.sh
 ```
 
 If you prefer to make it executable and run it from the current directory:
@@ -74,40 +71,54 @@ chmod +x ntx-utility-menu.sh
 ./ntx-utility-menu.sh
 ```
 
-## Menu map (v0.3)
+## Examples
 
-- **System update**: standard upgrade, reboot-if-needed, unattended-upgrades (enable/disable/status/run), list/remove custom apt sources
-- **DNS**: view/edit with backups, preset DNS choices, restore last backup, append/overwrite IPv4 Cloudflare/Google and IPv6 Cloudflare/Google
-- **Network/IP**: public IP (fallback), interfaces, routes, connections, ping common endpoints, traceroute
-- **Speedtest/benchmarks**: Speedtest install/update/run, repo/key removal, YABS
-- **Security/remote**: UFW, Fail2ban, OpenSSH, Tailscale, Netmaker netclient (install/remove repo), CrowdSec + firewall bouncer, WireGuard (client/server), firewall/SSH status, failed logins
-- **Tools/env**: essentials, extra tools, ibramenu, QEMU guest agent
-- **Containers**: Docker + Compose plugin, service status, short info, running containers
-- **Monitoring**: node exporter, top CPU/mem processes, iostat summary, SMART health check, status dashboard (services, IPs, CPU/mem snapshot)
-- **System info**: `/etc/os-release`, neofetch, memory info, VM check, GitHub link
-- **Maintenance/disks**: cleanup, disks usage, largest `/var` dirs
-- **Users/time**: create sudo user, time sync info, chrony install
-- **System control**: reboot, power down (SAFE_MODE-aware)
-- **Help/logs**: Help/About (config, modes, repo), tail log
+Below are short examples of the most commonly used menu options and a sample interaction. Menu numbers in your copy may differ — use the on-screen numbers the script prints.
 
-## Modes and shortcuts
+- Update system and installed packages (typical):
 
-- `DRY_RUN=true ./ntx-utility-menu.sh`: print commands instead of executing them.
-- `SAFE_MODE=true ./ntx-utility-menu.sh`: skip destructive actions (cleanup, reboot, powerdown, apt source removal).
-- Shortcuts in the main menu: `h` Help/About, `s` Status dashboard, `l` Tail log, `c` Config/env, `q` Quit.
+	1) Select "System update / upgrade" from the menu
+	2) Confirm when prompted (or run with sudo to avoid extra prompts)
 
-Note on service status: the dashboard queries systemd unit names like `ssh`, `docker`, etc. If a service uses a non-standard unit name, it may show as “not installed.” Adjust the unit names in `show_service_status` if your distro uses different service names.
+- Install common tools (curl, jq, htop):
 
-Search tip: in the main menu, type `/keyword` (e.g., `/docker`, `/dns`) to jump directly to a matching section.
+	1) Select "Install essential tools" / "Install packages"
+	2) Choose the recommended preset or enter package names when prompted
 
-## Quick start (best practice)
+- View network configuration and active interfaces:
 
-- Run as root on Debian/Ubuntu (or derivatives). If testing, start with `DRY_RUN=true` or `SAFE_MODE=true`.
-- Before first use, skim the config section in the script for paths (log/backup), DNS presets, and service unit names.
-- Open `Help/About` (`h`) to see paths, modes, and shortcuts; tail the log (`l`) if something looks off.
-- Use the status dashboard (`s`) to check key services (SSH, UFW, Fail2ban, Tailscale, Netmaker, CrowdSec, Docker), pending upgrades, kernel vs. running versions, public/private IPs, and CPU/mem/disk/inode snapshot.
-- Before adding repos, review custom sources in **System update → list/remove apt sources**.
-- For VPN/remote, use the Security menu: Tailscale, Netmaker netclient, CrowdSec + bouncer, and WireGuard (client/server installs).
+	1) Select "Network info / IP tools" → "Show interfaces" or "Show IPs"
+	2) Use the displayed info to choose a specific interface for further actions
+
+- Quick speed and connectivity check (Speedtest / YABS):
+
+	1) Select "Run Speedtest" or "Run YABS" from the menu
+	2) Wait for the test to finish and review latency / upload / download
+
+- Enable SSH or set up Tailscale (when available):
+
+	1) Select "SSH setup" to install/configure OpenSSH
+	2) Select "Tailscale" to install and walk through authentication
+
+Sample interaction (illustrative):
+
+```text
+Welcome to ntx Command Center
+1) System update
+2) Network tools
+3) Install tools
+4) Speedtest
+5) SSH setup
+6) Reboot
+q) Quit
+
+Enter choice: 1
+Running apt update && apt upgrade -y...
+Done. Packages upgraded.
+Return to menu (press Enter)
+```
+
+These examples are intentionally short — open `ntx-utility-menu.sh` to see the exact menu labels and any additional submenus your copy provides.
 
 ## Customization
 
