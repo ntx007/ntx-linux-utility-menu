@@ -7,7 +7,16 @@
 
 LOG_FILE="/var/log/ntx-menu.log"
 BACKUP_DIR="/var/backups/ntx-menu"
+MAX_LOG_SIZE=$((1024 * 1024)) # 1 MiB
+DRY_RUN=${DRY_RUN:-false}
 VERSION="v0.3-dev"
+
+# Colors (fall back to plain if not a TTY)
+if [[ -t 1 ]]; then
+    C_RED="\033[31m"; C_GRN="\033[32m"; C_YLW="\033[33m"; C_CYN="\033[36m"; C_RST="\033[0m"
+else
+    C_RED=""; C_GRN=""; C_YLW=""; C_CYN=""; C_RST=""
+fi
 
 msgbox() {
     echo
@@ -22,9 +31,26 @@ log_line() {
     echo "$(date '+%Y-%m-%d %H:%M:%S') | $message" | tee -a "$LOG_FILE"
 }
 
+rotate_log() {
+    if [[ -f "$LOG_FILE" ]]; then
+        local size
+        size=$(stat -f%z "$LOG_FILE" 2>/dev/null || stat -c%s "$LOG_FILE" 2>/dev/null || echo 0)
+        if [[ "$size" -gt "$MAX_LOG_SIZE" ]]; then
+            mv "$LOG_FILE" "${LOG_FILE}.1" 2>/dev/null || true
+            touch "$LOG_FILE"
+            log_line "Log rotated (previous -> ${LOG_FILE}.1)"
+        fi
+    fi
+}
+
 run_cmd() {
     local description="$1"; shift
     log_line "RUN: $description"
+    if [[ "$DRY_RUN" == "true" ]]; then
+        echo "[DRY RUN] $*"
+        log_line "OK : $description (dry run)"
+        return 0
+    fi
     if "$@"; then
         log_line "OK : $description"
     else
@@ -36,6 +62,7 @@ run_cmd() {
 ensure_dirs() {
     mkdir -p "$BACKUP_DIR"
     touch "$LOG_FILE"
+    rotate_log
 }
 
 ensure_cmd() {
@@ -75,7 +102,7 @@ check_environment() {
         echo "Cannot find /etc/os-release. Unsupported system."
         exit 1
     fi
-    if ! grep -qiE 'debian|ubuntu' /etc/os-release; then
+    if ! grep -qiE 'debian|ubuntu|mint|pop' /etc/os-release; then
         echo "This script targets Debian/Ubuntu systems. Aborting."
         exit 1
     fi
@@ -85,14 +112,29 @@ check_environment() {
     fi
 }
 
+preflight_dependencies() {
+    ensure_cmd curl curl
+    ensure_cmd gpg gnupg
+    ensure_cmd dig dnsutils
+    ensure_cmd lsblk util-linux
+    ensure_cmd df coreutils
+    ensure_cmd ps procps
+    ensure_cmd awk gawk
+    ensure_cmd sed sed
+}
+
 show_service_status() {
     local service="$1"
     if systemctl is-active --quiet "$service"; then
-        echo "$service: active"
+        echo -e "${C_GRN}$service: active${C_RST}"
     else
-        echo "$service: inactive"
+        echo -e "${C_RED}$service: inactive${C_RST}"
         systemctl status "$service" --no-pager || true
     fi
+}
+
+heading() {
+    echo -e "${C_CYN}$1${C_RST}"
 }
 
 ###############################################################################
@@ -131,6 +173,15 @@ enable_unattended_upgrades() {
     run_cmd "Install unattended-upgrades" apt-get install unattended-upgrades -y
     run_cmd "Enable unattended-upgrades service" systemctl enable --now unattended-upgrades
     echo "Unattended upgrades enabled."
+}
+
+disable_unattended_upgrades() {
+    if ! dpkg -s unattended-upgrades >/dev/null 2>&1; then
+        echo "unattended-upgrades is not installed."
+        return 0
+    fi
+    run_cmd "Stop unattended-upgrades service" systemctl disable --now unattended-upgrades
+    echo "Unattended upgrades disabled."
 }
 
 check_unattended_status() {
@@ -255,6 +306,16 @@ run_yabs() {
     curl -sL https://yabs.sh | bash
 }
 
+remove_speedtest_repo() {
+    if [[ -f /etc/apt/sources.list.d/ookla_speedtest-cli.list ]]; then
+        run_cmd "Remove Speedtest repo list" rm -f /etc/apt/sources.list.d/ookla_speedtest-cli.list
+    fi
+    if [[ -f /etc/apt/keyrings/ookla_speedtest-cli-archive-keyring.gpg ]]; then
+        run_cmd "Remove Speedtest keyring" rm -f /etc/apt/keyrings/ookla_speedtest-cli-archive-keyring.gpg
+    fi
+    run_cmd "apt-get update after Speedtest repo removal" apt-get update
+}
+
 # --- SSH / remote access / security ---
 
 change_ssh_proxmox() {
@@ -283,6 +344,16 @@ install_netclient() {
     run_cmd "Install netclient" apt-get install -y netclient
 }
 
+remove_netclient_repo() {
+    if [[ -f /etc/apt/sources.list.d/netclient.list ]]; then
+        run_cmd "Remove Netmaker repo list" rm -f /etc/apt/sources.list.d/netclient.list
+    fi
+    if [[ -f /usr/share/keyrings/netmaker-keyring.gpg ]]; then
+        run_cmd "Remove Netmaker keyring" rm -f /usr/share/keyrings/netmaker-keyring.gpg
+    fi
+    run_cmd "apt-get update after Netmaker repo removal" apt-get update
+}
+
 install_ufw_basic() {
     apt update
     apt install ufw -y
@@ -295,6 +366,22 @@ install_fail2ban() {
     apt update
     apt install fail2ban -y
     systemctl enable --now fail2ban
+}
+
+show_firewall_status() {
+    if command -v ufw >/dev/null 2>&1; then
+        ufw status
+    else
+        echo "UFW not installed."
+    fi
+}
+
+show_ssh_status() {
+    if systemctl list-unit-files | grep -q ssh.service; then
+        systemctl status ssh --no-pager || true
+    else
+        echo "SSH service not found."
+    fi
 }
 
 # --- Tools & environment ---
@@ -426,6 +513,14 @@ show_big_var_dirs() {
     du -sh /var/* 2>/dev/null | sort -h | tail
 }
 
+show_failed_logins() {
+    if command -v lastb >/dev/null 2>&1; then
+        lastb | head
+    else
+        echo "lastb not available."
+    fi
+}
+
 # --- Users & time ---
 
 create_sudo_user() {
@@ -470,88 +565,327 @@ system_powerdown() {
     fi
 }
 
+tail_logs() {
+    heading "Last 40 log lines ($LOG_FILE)"
+    tail -n 40 "$LOG_FILE" 2>/dev/null || echo "Log file not found."
+}
+
+show_help_about() {
+    heading "NTX Command Center ($VERSION)"
+    cat <<EOF
+Log file: $LOG_FILE (rotates at ~$(($MAX_LOG_SIZE/1024)) KiB)
+Backups:  $BACKUP_DIR (resolv.conf snapshots)
+Dry run:  $DRY_RUN (set DRY_RUN=true to preview commands)
+Repo:     https://github.com/ntx007/ntx-linux-utility-menu
+
+Use the main menu to choose a section, then pick an action.
+EOF
+}
+
 ###############################################################################
-# Menu
+# Menus
 ###############################################################################
 
-show_menu() {
-    echo "================= NTX COMMAND CENTER ================="
-    echo "================= SYSTEM UPDATE ======================="
-    echo " 1) Update all (apt-get update && upgrade)"
-    echo " 2) Update all with sudo and reboot"
-    echo " 3) Update all and reboot if required"
-    echo " 4) Enable unattended upgrades"
-    echo " 5) Check unattended upgrades status"
-    echo " 6) Run unattended upgrade now"
-    echo
-    echo "================= DNS MANAGEMENT ======================"
-    echo " 7) Show DNS (/etc/resolv.conf)"
-    echo " 8) Edit DNS (/etc/resolv.conf in nano)"
-    echo " 9) Append Netcup DNS 46.38.225.230 + 1.1.1.1"
-    echo "10) Overwrite Netcup DNS 46.38.225.230 + 1.1.1.1"
-    echo "11) Overwrite DNS with 1.1.1.1 + 8.8.8.8"
-    echo "12) Restore DNS from latest backup"
-    echo
-    echo "================ NETWORK / IP ========================="
-    echo "13) Show public IP (dig / OpenDNS)"
-    echo "14) Show ifconfig"
-    echo "15) Show routing table"
-    echo "16) Show active connections"
-    echo
-    echo "============= SPEEDTEST & BENCHMARKS =================="
-    echo "17) Install Speedtest (repo + package)"
-    echo "18) Update Speedtest repo list (jammy)"
-    echo "19) Install Speedtest after repo update"
-    echo "20) Run Speedtest"
-    echo "21) Run YABS (Yet-Another-Bench-Script)"
-    echo
-    echo "============= SECURITY / REMOTE ACCESS ================"
-    echo "22) Install UFW (allow SSH, enable)"
-    echo "23) Install Fail2ban"
-    echo "24) Update SSH config for Proxmox (remote script)"
-    echo "25) Install OpenSSH server"
-    echo "26) Install Tailscale"
-    echo "27) Tailscale up (QR mode)"
-    echo "28) Install Netmaker netclient"
-    echo
-    echo "========== TOOLS & ENVIRONMENT SETUP =================="
-    echo "29) Install essentials (sudo, nano, curl, net-tools)"
-    echo "30) Install extra tools (unzip, python, gdown, glances, tmux, zsh, mc)"
-    echo "31) Install ibramenu"
-    echo "32) Install QEMU guest agent"
-    echo
-    echo "============= CONTAINERS / DOCKER ====================="
-    echo "33) Install Docker & Docker Compose plugin"
-    echo
-    echo "================== MONITORING ========================="
-    echo "34) Install node exporter (prometheus-node-exporter)"
-    echo "35) Show top CPU/mem processes"
-    echo "36) Show IO stats (iostat)"
-    echo "37) SMART health check (first disk)"
-    echo
-    echo "============ SYSTEM INFORMATION ======================="
-    echo "38) Show /etc/os-release"
-    echo "39) General system info (neofetch)"
-    echo "40) Memory information"
-    echo "41) VM / virtualization check"
-    echo "42) Visit project GitHub"
-    echo
-    echo "================= MAINTENANCE ========================="
-    echo "43) System cleanup (APT autoremove/autoclean, logs 7d)"
-    echo "44) Show disks (lsblk + df -h)"
-    echo "45) Show biggest /var directories"
-    echo
-    echo "=============== USERS & TIME =========================="
-    echo "46) Create sudo user"
-    echo "47) Show time sync (timedatectl)"
-    echo "48) Install chrony (NTP) and show time status"
-    echo
-    echo "================ SYSTEM CONTROL ======================="
-    echo "49) Reboot"
-    echo "50) Power down"
-    echo
-    echo " 0) Exit"
-    echo "======================================================="
+main_menu() {
+    cat <<EOF
+================= NTX COMMAND CENTER ($VERSION) =================
+ 1) System update
+ 2) DNS management
+ 3) Network / IP
+ 4) Speedtest & benchmarks
+ 5) Security / remote access
+ 6) Tools & environment
+ 7) Containers / Docker
+ 8) Monitoring
+ 9) System information
+10) Maintenance / disks
+11) Users & time
+12) System control
+h) Help / About
+l) Tail logs
+q) Quit
+================================================================
+EOF
+}
+
+menu_update() {
+    while true; do
+        cat <<EOF
+[System update]
+ 1) Update all (apt-get update && upgrade)
+ 2) Update all with sudo and reboot
+ 3) Update all and reboot if required
+ 4) Enable unattended upgrades
+ 5) Disable unattended upgrades
+ 6) Check unattended upgrades status
+ 7) Run unattended upgrade now
+ 0) Back
+EOF
+        read -p "Select: " c
+        case "$c" in
+            1) update_all ;;
+            2) update_all_with_sudo_reboot ;;
+            3) update_all_reboot_if_needed ;;
+            4) enable_unattended_upgrades ;;
+            5) disable_unattended_upgrades ;;
+            6) check_unattended_status ;;
+            7) run_unattended_upgrade_now ;;
+            0) break ;;
+            *) echo "Invalid choice." ;;
+        esac
+    done
+}
+
+menu_dns() {
+    while true; do
+        cat <<EOF
+[DNS management]
+ 1) Show DNS (/etc/resolv.conf)
+ 2) Edit DNS (nano)
+ 3) Append Netcup DNS 46.38.225.230 + 1.1.1.1
+ 4) Overwrite Netcup DNS 46.38.225.230 + 1.1.1.1
+ 5) Overwrite DNS with 1.1.1.1 + 8.8.8.8
+ 6) Restore DNS from latest backup
+ 0) Back
+EOF
+        read -p "Select: " c
+        case "$c" in
+            1) show_dns ;;
+            2) edit_dns ;;
+            3) add_dns_netcup_append ;;
+            4) set_dns_netcup_overwrite ;;
+            5) set_dns_cloudflare_google ;;
+            6) restore_dns_backup ;;
+            0) break ;;
+            *) echo "Invalid choice." ;;
+        esac
+    done
+}
+
+menu_network() {
+    while true; do
+        cat <<EOF
+[Network / IP]
+ 1) Show public IP
+ 2) Show ifconfig
+ 3) Show routing table
+ 4) Show active connections
+ 0) Back
+EOF
+        read -p "Select: " c
+        case "$c" in
+            1) whats_my_ip ;;
+            2) show_ifconfig ;;
+            3) show_routes ;;
+            4) show_connections ;;
+            0) break ;;
+            *) echo "Invalid choice." ;;
+        esac
+    done
+}
+
+menu_bench() {
+    while true; do
+        cat <<EOF
+[Speedtest & benchmarks]
+ 1) Install Speedtest (repo + package)
+ 2) Update Speedtest repo list (jammy)
+ 3) Install Speedtest after repo update
+ 4) Run Speedtest
+ 5) Run YABS
+ 6) Remove Speedtest repo/key
+ 0) Back
+EOF
+        read -p "Select: " c
+        case "$c" in
+            1) install_speedtest_full ;;
+            2) change_speedtest_apt_list ;;
+            3) install_speedtest_after_list ;;
+            4) run_speedtest ;;
+            5) run_yabs ;;
+            6) remove_speedtest_repo ;;
+            0) break ;;
+            *) echo "Invalid choice." ;;
+        esac
+    done
+}
+
+menu_security() {
+    while true; do
+        cat <<EOF
+[Security / remote access]
+ 1) Install UFW (allow SSH, enable)
+ 2) Install Fail2ban
+ 3) Update SSH config for Proxmox (remote script)
+ 4) Install OpenSSH server
+ 5) Install Tailscale
+ 6) Tailscale up (QR mode)
+ 7) Install Netmaker netclient
+ 8) Remove Netmaker repo/key
+ 9) Show firewall status
+10) Show SSH status
+11) Show recent failed logins
+ 0) Back
+EOF
+        read -p "Select: " c
+        case "$c" in
+            1) install_ufw_basic ;;
+            2) install_fail2ban ;;
+            3) change_ssh_proxmox ;;
+            4) install_openssh ;;
+            5) tailscale_install ;;
+            6) tailscale_up_qr ;;
+            7) install_netclient ;;
+            8) remove_netclient_repo ;;
+            9) show_firewall_status ;;
+            10) show_ssh_status ;;
+            11) show_failed_logins ;;
+            0) break ;;
+            *) echo "Invalid choice." ;;
+        esac
+    done
+}
+
+menu_tools() {
+    while true; do
+        cat <<EOF
+[Tools & environment]
+ 1) Install essentials (sudo, nano, curl, net-tools)
+ 2) Install extra tools (unzip, python, gdown, glances, tmux, zsh, mc)
+ 3) Install ibramenu
+ 4) Install QEMU guest agent
+ 0) Back
+EOF
+        read -p "Select: " c
+        case "$c" in
+            1) install_essentials ;;
+            2) install_tools ;;
+            3) install_ibramenu ;;
+            4) install_qemu_guest_agent ;;
+            0) break ;;
+            *) echo "Invalid choice." ;;
+        esac
+    done
+}
+
+menu_containers() {
+    while true; do
+        cat <<EOF
+[Containers / Docker]
+ 1) Install Docker & Docker Compose plugin
+ 0) Back
+EOF
+        read -p "Select: " c
+        case "$c" in
+            1) install_docker ;;
+            0) break ;;
+            *) echo "Invalid choice." ;;
+        esac
+    done
+}
+
+menu_monitoring() {
+    while true; do
+        cat <<EOF
+[Monitoring]
+ 1) Install node exporter
+ 2) Show top CPU/mem processes
+ 3) Show IO stats (iostat)
+ 4) SMART health check (first disk)
+ 0) Back
+EOF
+        read -p "Select: " c
+        case "$c" in
+            1) install_node_exporter ;;
+            2) show_top_processes ;;
+            3) show_iostat_summary ;;
+            4) smart_health_check ;;
+            0) break ;;
+            *) echo "Invalid choice." ;;
+        esac
+    done
+}
+
+menu_sysinfo() {
+    while true; do
+        cat <<EOF
+[System information]
+ 1) Show /etc/os-release
+ 2) General system info (neofetch)
+ 3) Memory information
+ 4) VM / virtualization check
+ 5) Visit project GitHub
+ 0) Back
+EOF
+        read -p "Select: " c
+        case "$c" in
+            1) os_release_check ;;
+            2) general_information ;;
+            3) memory_information ;;
+            4) vm_check ;;
+            5) visit_project_github ;;
+            0) break ;;
+            *) echo "Invalid choice." ;;
+        esac
+    done
+}
+
+menu_maintenance() {
+    while true; do
+        cat <<EOF
+[Maintenance / disks]
+ 1) System cleanup (APT autoremove/autoclean, logs 7d)
+ 2) Show disks (lsblk + df -h)
+ 3) Show biggest /var directories
+ 0) Back
+EOF
+        read -p "Select: " c
+        case "$c" in
+            1) system_cleanup ;;
+            2) show_disks ;;
+            3) show_big_var_dirs ;;
+            0) break ;;
+            *) echo "Invalid choice." ;;
+        esac
+    done
+}
+
+menu_users_time() {
+    while true; do
+        cat <<EOF
+[Users & time]
+ 1) Create sudo user
+ 2) Show time sync (timedatectl)
+ 3) Install chrony (NTP) and show time status
+ 0) Back
+EOF
+        read -p "Select: " c
+        case "$c" in
+            1) create_sudo_user ;;
+            2) show_time_sync ;;
+            3) install_chrony ;;
+            0) break ;;
+            *) echo "Invalid choice." ;;
+        esac
+    done
+}
+
+menu_control() {
+    while true; do
+        cat <<EOF
+[System control]
+ 1) Reboot
+ 2) Power down
+ 0) Back
+EOF
+        read -p "Select: " c
+        case "$c" in
+            1) system_reboot ;;
+            2) system_powerdown ;;
+            0) break ;;
+            *) echo "Invalid choice." ;;
+        esac
+    done
 }
 
 ###############################################################################
@@ -566,65 +900,30 @@ fi
 
 check_environment
 ensure_dirs
+preflight_dependencies
 log_line "Starting NTX Command Center..."
 
 echo "Starting NTX Command Center $VERSION..."
 
 while true; do
-    show_menu
-    read -p "Select an option: " choice
+    main_menu
+    read -p "Select a section: " choice
     case "$choice" in
-        1)  update_all ;;
-        2)  update_all_with_sudo_reboot ;;
-        3)  update_all_reboot_if_needed ;;
-        4)  enable_unattended_upgrades ;;
-        5)  check_unattended_status ;;
-        6)  run_unattended_upgrade_now ;;
-        7)  show_dns ;;
-        8)  edit_dns ;;
-        9)  add_dns_netcup_append ;;
-        10) set_dns_netcup_overwrite ;;
-        11) set_dns_cloudflare_google ;;
-        12) restore_dns_backup ;;
-        13) whats_my_ip ;;
-        14) show_ifconfig ;;
-        15) show_routes ;;
-        16) show_connections ;;
-        17) install_speedtest_full ;;
-        18) change_speedtest_apt_list ;;
-        19) install_speedtest_after_list ;;
-        20) run_speedtest ;;
-        21) run_yabs ;;
-        22) install_ufw_basic ;;
-        23) install_fail2ban ;;
-        24) change_ssh_proxmox ;;
-        25) install_openssh ;;
-        26) tailscale_install ;;
-        27) tailscale_up_qr ;;
-        28) install_netclient ;;
-        29) install_essentials ;;
-        30) install_tools ;;
-        31) install_ibramenu ;;
-        32) install_qemu_guest_agent ;;
-        33) install_docker ;;
-        34) install_node_exporter ;;
-        35) show_top_processes ;;
-        36) show_iostat_summary ;;
-        37) smart_health_check ;;
-        38) os_release_check ;;
-        39) general_information ;;
-        40) memory_information ;;
-        41) vm_check ;;
-        42) visit_project_github ;;
-        43) system_cleanup ;;
-        44) show_disks ;;
-        45) show_big_var_dirs ;;
-        46) create_sudo_user ;;
-        47) show_time_sync ;;
-        48) install_chrony ;;
-        49) system_reboot ;;
-        50) system_powerdown ;;
-        0)  echo "Exiting NTX Command Center."; exit 0 ;;
+        1) menu_update ;;
+        2) menu_dns ;;
+        3) menu_network ;;
+        4) menu_bench ;;
+        5) menu_security ;;
+        6) menu_tools ;;
+        7) menu_containers ;;
+        8) menu_monitoring ;;
+        9) menu_sysinfo ;;
+        10) menu_maintenance ;;
+        11) menu_users_time ;;
+        12) menu_control ;;
+        h|H) show_help_about ;;
+        l|L) tail_logs ;;
+        q|Q|0) echo "Exiting NTX Command Center."; exit 0 ;;
         *)  echo "Invalid choice." ;;
     esac
     echo
