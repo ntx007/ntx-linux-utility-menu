@@ -56,7 +56,7 @@ sudo ntx-utility-menu
 
 The script shows a numbered interactive menu. Enter the number of the action you want to run and press Enter.
 
-### Run from the command line (download & run)
+### Download & run (one-liner)
 
 You can quickly download the script and run it directly on a server using curl and bash. Always review scripts downloaded from the internet before running them.
 
