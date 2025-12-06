@@ -6,7 +6,7 @@ This repository provides a menu-driven shell script you can run on Debian/Ubuntu
 
 ## Features
 
-- Interactive, text-based menu (Bash/sh), versioned (v0.2)
+- Interactive, text-based menu (Bash/sh), versioned (v0.3-dev)
 - Common sysadmin helpers (updates, unattended-upgrades, networking tools, DNS backups/restore)
 - Security/remote helpers (UFW, Fail2ban, OpenSSH, Tailscale, Netmaker netclient)
 - Quick system information, monitoring (top processes, iostat, SMART), and maintenance actions
