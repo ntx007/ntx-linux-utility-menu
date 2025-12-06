@@ -159,12 +159,3 @@ SPDX-License-Identifier: CC-BY-4.0
 
 ntx007 — maintained by the repository owner.
 
----
-
-If you want, I can also:
-
-- Add a short example of the most commonly used menu options.
-- Add a `LICENSE` file (MIT recommended for small utilities).
-- Add a small test or a CI check that lints shell scripts (shellcheck) before merging.
-
-Tell me which you'd like next and I'll apply it.
