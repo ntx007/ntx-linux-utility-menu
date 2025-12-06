@@ -206,6 +206,9 @@ preflight_dependencies() {
     ensure_cmd awk gawk
     ensure_cmd sed sed
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> c5aa4c3 (Enhance status dashboard with CPU/memory snapshot and IP listings; add WireGuard installation options; update README for clarity and new features.)
     ensure_cmd ip iproute2
 }
 
@@ -247,6 +250,7 @@ list_private_ips() {
     ip -brief -family inet address 2>/dev/null || ip addr show
 }
 
+<<<<<<< HEAD
 pending_updates_count() {
     local count
     count=$(apt-get -s upgrade 2>/dev/null | grep -c '^Inst ' || echo 0)
@@ -269,6 +273,8 @@ disk_inode_summary() {
     df -ih --output=source,ipcent,iavail,target | sed '1d' | head -5
 }
 
+=======
+>>>>>>> c5aa4c3 (Enhance status dashboard with CPU/memory snapshot and IP listings; add WireGuard installation options; update README for clarity and new features.)
 skip_if_safe() {
     local action="$1"
     if [[ "$SAFE_MODE" == "true" ]]; then
@@ -623,6 +629,9 @@ remove_netclient_repo() {
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> c5aa4c3 (Enhance status dashboard with CPU/memory snapshot and IP listings; add WireGuard installation options; update README for clarity and new features.)
 install_wireguard_client() {
     run_cmd "Install WireGuard (client)" apt-get install -y wireguard wireguard-tools
 }
@@ -632,6 +641,7 @@ install_wireguard_server() {
     echo "Remember to configure /etc/wireguard/wg0.conf and enable via: systemctl enable --now wg-quick@wg0"
 }
 
+<<<<<<< HEAD
 print_wireguard_sample() {
     cat <<'EOF'
 [Interface]
@@ -656,6 +666,8 @@ disable_wg_quick() {
 
 =======
 >>>>>>> 28b13f9 (Enhance NTX Command Center with new features and safety modes)
+=======
+>>>>>>> c5aa4c3 (Enhance status dashboard with CPU/memory snapshot and IP listings; add WireGuard installation options; update README for clarity and new features.)
 install_crowdsec() {
     run_cmd "Install CrowdSec repo" bash -c "curl -s https://packagecloud.io/install/repositories/crowdsec/crowdsec/script.deb.sh | bash"
     run_cmd "Install crowdsec" apt-get install -y crowdsec
@@ -988,6 +1000,7 @@ status_dashboard() {
     show_service_status fail2ban
     show_service_status tailscaled
     show_service_status docker
+    show_service_status netclient
     show_service_status crowdsec
     show_service_status crowdsec-firewall-bouncer
     if [[ -f /var/run/reboot-required ]]; then
@@ -995,6 +1008,8 @@ status_dashboard() {
     fi
     echo "Public IP:"
     whats_my_ip
+    list_private_ips
+    cpu_mem_snapshot
 }
 
 >>>>>>> 28b13f9 (Enhance NTX Command Center with new features and safety modes)
@@ -1234,6 +1249,7 @@ menu_security() {
 13) Install CrowdSec firewall bouncer (iptables)
 14) Install WireGuard (client)
 15) Install WireGuard (server)
+<<<<<<< HEAD
 16) Show WireGuard sample config
 17) Enable wg-quick@wg0
 18) Disable wg-quick@wg0
@@ -1243,6 +1259,8 @@ menu_security() {
 12) Install CrowdSec
 13) Install CrowdSec firewall bouncer (iptables)
 >>>>>>> 28b13f9 (Enhance NTX Command Center with new features and safety modes)
+=======
+>>>>>>> c5aa4c3 (Enhance status dashboard with CPU/memory snapshot and IP listings; add WireGuard installation options; update README for clarity and new features.)
  0) Back
 EOF
         read -p "Select: " c
@@ -1264,6 +1282,7 @@ EOF
             13) install_crowdsec_firewall_bouncer ;;
             14) install_wireguard_client ;;
             15) install_wireguard_server ;;
+<<<<<<< HEAD
             16) print_wireguard_sample ;;
             17) enable_wg_quick ;;
             18) disable_wg_quick ;;
@@ -1273,6 +1292,8 @@ EOF
             12) install_crowdsec ;;
             13) install_crowdsec_firewall_bouncer ;;
 >>>>>>> 28b13f9 (Enhance NTX Command Center with new features and safety modes)
+=======
+>>>>>>> c5aa4c3 (Enhance status dashboard with CPU/memory snapshot and IP listings; add WireGuard installation options; update README for clarity and new features.)
             0) break ;;
             *) echo "Invalid choice." ;;
         esac

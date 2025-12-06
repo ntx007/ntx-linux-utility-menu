@@ -42,6 +42,9 @@
 - Repos: added repo/key removal for Speedtest and Netmaker.
 - Docker: expanded menu with service status, short info, and running containers view.
 - Status dashboard: now reports "not installed" cleanly when services/units are absent (avoids noisy errors).
+- Status dashboard: added CPU/mem snapshot, public + private IPs, and Netmaker status.
+- Security: added WireGuard install options (client and server).
+- Docs: README refreshed with concise highlights, cleaned menu map, modes/shortcuts, service status caveats, and quick-start guidance.
 
 >>>>>>> b3bc974 (Update version to v0.3-dev in README, CHANGELOG, and script file)
 ## v0.2
