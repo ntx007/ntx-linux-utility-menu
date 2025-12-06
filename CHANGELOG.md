@@ -2,6 +2,11 @@
 
 ## Unreleased
 - Bumped development version to v0.3-dev on the develop branch.
+- Added nested section-based menus, help/about screen, and log tail option for usability.
+- Added DRY_RUN support, log rotation, and preflight dependency checks.
+- Added repo/key removal for Speedtest and Netmaker, firewall/SSH status views, and failed login summary.
+- Improved safety toggles (disable unattended-upgrades) and kept DNS backups/restore flow.
+- Fixed preflight dependency installs to use correct package names (dnsutils, gnupg, etc.).
 
 ## v0.2
 - Added logging to `/var/log/ntx-menu.log` plus environment checks for Debian/Ubuntu and apt presence.
