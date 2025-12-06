@@ -12,6 +12,9 @@
 - Repos: added repo/key removal for Speedtest and Netmaker.
 - Docker: expanded menu with service status, short info, and running containers view.
 - Status dashboard: now reports "not installed" cleanly when services/units are absent (avoids noisy errors).
+- Status dashboard: added CPU/mem snapshot, public + private IPs, and Netmaker status.
+- Security: added WireGuard install options (client and server).
+- Docs: README refreshed with concise highlights, cleaned menu map, modes/shortcuts, service status caveats, and quick-start guidance.
 
 ## v0.2
 - Added logging to `/var/log/ntx-menu.log` plus environment checks for Debian/Ubuntu and apt presence.

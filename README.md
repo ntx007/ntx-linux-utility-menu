@@ -4,13 +4,13 @@ A portable, menu-driven Bash utility for common Linux admin tasks: `ntx-utility-
 
 ## Highlights (v0.3-dev)
 
-- Interactive, nested menu (Bash) with shortcuts for help, status dashboard, and logs
-- Updates: unattended-upgrades enable/disable/status/run; reboot-if-needed flow
+- Interactive, nested menu (Bash) with shortcuts for Help, Status dashboard, and Logs
+- Updates: unattended-upgrades enable/disable/status/run; reboot-if-needed flow; apt source hygiene (list/remove)
 - Networking: public IP with fallback, interfaces/routes/connections, DNS backups/restore, ping common endpoints, traceroute
-- Security/remote: UFW, Fail2ban, OpenSSH, Tailscale, Netmaker netclient (install/remove repo), CrowdSec + firewall bouncer, firewall/SSH status, failed logins
+- Security/remote: UFW, Fail2ban, OpenSSH, Tailscale, Netmaker netclient (install/remove repo), CrowdSec + firewall bouncer, WireGuard (client/server), firewall/SSH status, failed logins
 - Tools/monitoring: essentials/extra tools, node exporter, top CPU/mem, iostat summary, SMART checks, status dashboard
-- Containers: Docker + Compose plugin install, service status, short info, running containers
-- Maintenance/info: apt source hygiene, cleanup, disk usage, largest `/var` dirs, system info (os-release, neofetch, VM check), GitHub link
+- Containers: Docker + Compose plugin install, service status/info, running containers
+- Maintenance/info: cleanup, disk usage, largest `/var` dirs, system info (os-release, neofetch, VM check), GitHub link
 - Logging/backups: `/var/log/ntx-menu.log` with rotation; `/etc/resolv.conf` backups to `/var/backups/ntx-menu`
 - Modes: `DRY_RUN=true` to preview commands; `SAFE_MODE=true` to skip destructive actions
 
@@ -79,10 +79,10 @@ chmod +x ntx-utility-menu.sh
 - **DNS**: view/edit with backups, preset DNS choices, restore last backup
 - **Network/IP**: public IP (fallback), interfaces, routes, connections, ping common endpoints, traceroute
 - **Speedtest/benchmarks**: Speedtest install/update/run, repo/key removal, YABS
-- **Security/remote**: UFW, Fail2ban, OpenSSH, Tailscale, Netmaker netclient (install/remove repo), CrowdSec + firewall bouncer, firewall/SSH status, failed logins
+- **Security/remote**: UFW, Fail2ban, OpenSSH, Tailscale, Netmaker netclient (install/remove repo), CrowdSec + firewall bouncer, WireGuard (client/server), firewall/SSH status, failed logins
 - **Tools/env**: essentials, extra tools, ibramenu, QEMU guest agent
 - **Containers**: Docker + Compose plugin, service status, short info, running containers
-- **Monitoring**: node exporter, top CPU/mem processes, iostat summary, SMART health check, status dashboard
+- **Monitoring**: node exporter, top CPU/mem processes, iostat summary, SMART health check, status dashboard (services, IPs, CPU/mem snapshot)
 - **System info**: `/etc/os-release`, neofetch, memory info, VM check, GitHub link
 - **Maintenance/disks**: cleanup, disks usage, largest `/var` dirs
 - **Users/time**: create sudo user, time sync info, chrony install
@@ -94,6 +94,16 @@ chmod +x ntx-utility-menu.sh
 - `DRY_RUN=true ./ntx-utility-menu.sh`: print commands instead of executing them.
 - `SAFE_MODE=true ./ntx-utility-menu.sh`: skip destructive actions (cleanup, reboot, powerdown, apt source removal).
 - Shortcuts in the main menu: `h` Help/About, `s` Status dashboard, `l` Tail log, `q` Quit.
+
+Note on service status: the dashboard queries systemd unit names like `ssh`, `docker`, etc. If a service uses a non-standard unit name, it may show as “not installed.” Adjust the unit names in `show_service_status` if your distro uses different service names.
+
+## Quick start (best practice)
+
+- Run as root on Debian/Ubuntu (or derivatives). If testing, start with `DRY_RUN=true` or `SAFE_MODE=true`.
+- Open `Help/About` (`h`) to see paths, modes, and shortcuts; tail the log (`l`) if something looks off.
+- Use the status dashboard (`s`) to check key services (SSH, UFW, Fail2ban, Tailscale, Netmaker, CrowdSec, Docker) plus public/private IPs and CPU/mem snapshot.
+- Before adding repos, review custom sources in **System update → list/remove apt sources**.
+- For VPN/remote, use the Security menu: Tailscale, Netmaker netclient, CrowdSec + bouncer, and WireGuard (client/server installs).
 
 ## Customization
 
