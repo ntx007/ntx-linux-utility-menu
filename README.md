@@ -147,3 +147,7 @@ SPDX-License-Identifier: CC-BY-4.0
 ## Author
 
 ntx007 — maintained by the repository owner.
+<<<<<<< HEAD
+=======
+
+>>>>>>> a9cb803 (Remove unnecessary suggestions for future enhancements from README. Check the CHANGELOG.)
