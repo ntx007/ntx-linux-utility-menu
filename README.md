@@ -56,6 +56,7 @@ The script shows a numbered interactive menu. Enter the number of the action you
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 ### Download & run (one-liner)
 =======
 ### Command-line (tested on Debian / Ubuntu)
@@ -63,6 +64,9 @@ The script shows a numbered interactive menu. Enter the number of the action you
 =======
 ### Run from the command line (download & run)
 >>>>>>> ba07bf3 (Add instructions for downloading and running the script directly from the command line)
+=======
+### Download & run (one-liner)
+>>>>>>> 35aa4af (Refactor command-line usage instructions in README for clarity and conciseness. Check out CHANGELOG)
 
 You can quickly download the script and run it directly on a server using curl and bash. Always review scripts downloaded from the internet before running them.
 
