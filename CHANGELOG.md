@@ -45,6 +45,15 @@
 - Status dashboard: added CPU/mem snapshot, public + private IPs, and Netmaker status.
 - Security: added WireGuard install options (client and server).
 - Docs: README refreshed with concise highlights, cleaned menu map, modes/shortcuts, service status caveats, and quick-start guidance.
+- DNS: added an option to append Cloudflare/Google (1.1.1.1 + 8.8.8.8) without overwriting existing entries.
+- DNS: added IPv6 Cloudflare/Google presets (overwrite or append) alongside the existing IPv4 options.
+- Known behavior: status dashboard uses standard systemd unit names (e.g., ssh, docker); if your distro names services differently they may show as “not installed.”
+- Config/UX: added unit name mapping, status dashboard extras (pending upgrades, kernel latest vs running, disk/inode summary), and menu search via `/keyword`.
+- Security: added WireGuard sample config helper.
+- Config/UX: exposed config/env in the menu, added wg-quick enable/disable actions, and show result lines after commands for clearer feedback.
+- Docs: README expanded with search shortcut, config/env shortcut, dashboard details, and config edit guidance.
+- Docs: cleaned menu map (removed duplicates) and added a pre-run checklist to review config paths, DNS presets, and unit names.
+- Known behavior: pending update count uses `apt-get -s upgrade | grep '^Inst'` and may undercount on localized systems; WireGuard enable/disable assumes `/etc/wireguard/wg0.conf` exists; service status may show “not installed” if units use non-default names.
 
 >>>>>>> b3bc974 (Update version to v0.3-dev in README, CHANGELOG, and script file)
 ## v0.2
