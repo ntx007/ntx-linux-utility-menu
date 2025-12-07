@@ -1,7 +1,7 @@
 # Changelog
 
 ## Unreleased
-- Version: bumped to v0.3-dev (develop branch).
+- Version: bumped to v0.3 (release branch).
 - Menu/UX: switched to nested section menus; added Help/About, status dashboard shortcut, and log tail shortcut.
 - Execution modes: added DRY_RUN (preview commands) and SAFE_MODE (skip destructive actions), exposed in Help/About.
 - Logging: log rotation added for `/var/log/ntx-menu.log`; log tail view in main menu.
