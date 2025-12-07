@@ -2,29 +2,14 @@
 
 ###############################################################################
 # NTX Command Center - Simple server helper menu
-<<<<<<< HEAD
-<<<<<<< HEAD
-# Version: v0.3-dev
-=======
-# Version: v0.2
->>>>>>> 40eec2c (...)
-=======
-# Version: v0.3-dev
->>>>>>> b3bc974 (Update version to v0.3-dev in README, CHANGELOG, and script file)
+# Version: v0.3
 ###############################################################################
 
 LOG_FILE="/var/log/ntx-menu.log"
 BACKUP_DIR="/var/backups/ntx-menu"
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
 MAX_LOG_SIZE=$((1024 * 1024)) # 1 MiB
 DRY_RUN=${DRY_RUN:-false}
 SAFE_MODE=${SAFE_MODE:-false}
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 0087f83 (Update version to v0.3 in CHANGELOG, README, and script; prepare for release.)
 VERSION="v0.3"
 # Service unit map (adjust if your distro uses different names)
 SSH_UNIT="${SSH_UNIT:-ssh}"
@@ -35,37 +20,6 @@ DOCKER_UNIT="${DOCKER_UNIT:-docker}"
 NETMAKER_UNIT="${NETMAKER_UNIT:-netclient}"
 CROWDSEC_UNIT="${CROWDSEC_UNIT:-crowdsec}"
 CROWDSEC_BOUNCER_UNIT="${CROWDSEC_BOUNCER_UNIT:-crowdsec-firewall-bouncer}"
-
-# Colors (fall back to plain if not a TTY)
-if [[ -t 1 ]]; then
-    C_RED="\033[31m"; C_GRN="\033[32m"; C_YLW="\033[33m"; C_CYN="\033[36m"; C_RST="\033[0m"
-else
-    C_RED=""; C_GRN=""; C_YLW=""; C_CYN=""; C_RST=""
-fi
-=======
-VERSION="v0.2"
->>>>>>> 40eec2c (...)
-=======
-=======
-MAX_LOG_SIZE=$((1024 * 1024)) # 1 MiB
-DRY_RUN=${DRY_RUN:-false}
->>>>>>> 8cd0d8a (Enhance usability and features in ntx Command Center (v0.3-dev))
-=======
->>>>>>> 28b13f9 (Enhance NTX Command Center with new features and safety modes)
-VERSION="v0.3-dev"
-<<<<<<< HEAD
->>>>>>> b3bc974 (Update version to v0.3-dev in README, CHANGELOG, and script file)
-=======
-# Service unit map (adjust if your distro uses different names)
-SSH_UNIT="${SSH_UNIT:-ssh}"
-UFW_UNIT="${UFW_UNIT:-ufw}"
-FAIL2BAN_UNIT="${FAIL2BAN_UNIT:-fail2ban}"
-TAILSCALE_UNIT="${TAILSCALE_UNIT:-tailscaled}"
-DOCKER_UNIT="${DOCKER_UNIT:-docker}"
-NETMAKER_UNIT="${NETMAKER_UNIT:-netclient}"
-CROWDSEC_UNIT="${CROWDSEC_UNIT:-crowdsec}"
-CROWDSEC_BOUNCER_UNIT="${CROWDSEC_BOUNCER_UNIT:-crowdsec-firewall-bouncer}"
->>>>>>> b5c2996 (Enhance CHANGELOG and README with new features; add DNS options, WireGuard config helper, and status dashboard improvements; update ntx-utility-menu.sh for unit name mapping and additional commands.)
 
 # Colors (fall back to plain if not a TTY)
 if [[ -t 1 ]]; then
@@ -87,10 +41,6 @@ log_line() {
     echo "$(date '+%Y-%m-%d %H:%M:%S') | $message" | tee -a "$LOG_FILE"
 }
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 8cd0d8a (Enhance usability and features in ntx Command Center (v0.3-dev))
 rotate_log() {
     if [[ -f "$LOG_FILE" ]]; then
         local size
@@ -103,7 +53,6 @@ rotate_log() {
     fi
 }
 
-<<<<<<< HEAD
 run_cmd() {
     local description="$1"; shift
     log_line "RUN: $description"
@@ -119,28 +68,6 @@ run_cmd() {
     else
         log_line "FAIL: $description"
         echo "Result: FAIL"
-=======
-=======
->>>>>>> 8cd0d8a (Enhance usability and features in ntx Command Center (v0.3-dev))
-run_cmd() {
-    local description="$1"; shift
-    log_line "RUN: $description"
-    if [[ "$DRY_RUN" == "true" ]]; then
-        echo "[DRY RUN] $*"
-        log_line "OK : $description (dry run)"
-        echo "Result: OK (dry run)"
-        return 0
-    fi
-    if "$@"; then
-        log_line "OK : $description"
-        echo "Result: OK"
-    else
-        log_line "FAIL: $description"
-<<<<<<< HEAD
->>>>>>> 40eec2c (...)
-=======
-        echo "Result: FAIL"
->>>>>>> b5c2996 (Enhance CHANGELOG and README with new features; add DNS options, WireGuard config helper, and status dashboard improvements; update ntx-utility-menu.sh for unit name mapping and additional commands.)
         return 1
     fi
 }
@@ -148,14 +75,7 @@ run_cmd() {
 ensure_dirs() {
     mkdir -p "$BACKUP_DIR"
     touch "$LOG_FILE"
-<<<<<<< HEAD
-<<<<<<< HEAD
     rotate_log
-=======
->>>>>>> 40eec2c (...)
-=======
-    rotate_log
->>>>>>> 8cd0d8a (Enhance usability and features in ntx Command Center (v0.3-dev))
 }
 
 ensure_cmd() {
@@ -195,15 +115,7 @@ check_environment() {
         echo "Cannot find /etc/os-release. Unsupported system."
         exit 1
     fi
-<<<<<<< HEAD
-<<<<<<< HEAD
     if ! grep -qiE 'debian|ubuntu|mint|pop' /etc/os-release; then
-=======
-    if ! grep -qiE 'debian|ubuntu' /etc/os-release; then
->>>>>>> 40eec2c (...)
-=======
-    if ! grep -qiE 'debian|ubuntu|mint|pop' /etc/os-release; then
->>>>>>> 8cd0d8a (Enhance usability and features in ntx Command Center (v0.3-dev))
         echo "This script targets Debian/Ubuntu systems. Aborting."
         exit 1
     fi
@@ -213,10 +125,6 @@ check_environment() {
     fi
 }
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 8cd0d8a (Enhance usability and features in ntx Command Center (v0.3-dev))
 preflight_dependencies() {
     ensure_cmd curl curl
     ensure_cmd gpg gnupg
@@ -226,17 +134,11 @@ preflight_dependencies() {
     ensure_cmd ps procps
     ensure_cmd awk gawk
     ensure_cmd sed sed
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> c5aa4c3 (Enhance status dashboard with CPU/memory snapshot and IP listings; add WireGuard installation options; update README for clarity and new features.)
     ensure_cmd ip iproute2
 }
 
 show_service_status() {
     local service="$1"
-<<<<<<< HEAD
-<<<<<<< HEAD
     local unit="$2"
     unit="${unit:-$service}"
     if ! systemctl list-unit-files "$unit" --no-legend 2>/dev/null | grep -q "$unit"; then
@@ -244,22 +146,6 @@ show_service_status() {
         return 0
     fi
     if systemctl is-active --quiet "$unit"; then
-=======
-    if ! systemctl list-unit-files "$service" --no-legend 2>/dev/null | grep -q "$service"; then
-        echo -e "${C_YLW}$service: not installed${C_RST}"
-        return 0
-    fi
-    if systemctl is-active --quiet "$service"; then
->>>>>>> 850bdb3 (Update CHANGELOG for v0.3-dev release with new features and improvements)
-=======
-    local unit="$2"
-    unit="${unit:-$service}"
-    if ! systemctl list-unit-files "$unit" --no-legend 2>/dev/null | grep -q "$unit"; then
-        echo -e "${C_YLW}$service: not installed${C_RST}"
-        return 0
-    fi
-    if systemctl is-active --quiet "$unit"; then
->>>>>>> b5c2996 (Enhance CHANGELOG and README with new features; add DNS options, WireGuard config helper, and status dashboard improvements; update ntx-utility-menu.sh for unit name mapping and additional commands.)
         echo -e "${C_GRN}$service: active${C_RST}"
     else
         echo -e "${C_RED}$service: inactive${C_RST}"
@@ -281,10 +167,6 @@ list_private_ips() {
     ip -brief -family inet address 2>/dev/null || ip addr show
 }
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> b5c2996 (Enhance CHANGELOG and README with new features; add DNS options, WireGuard config helper, and status dashboard improvements; update ntx-utility-menu.sh for unit name mapping and additional commands.)
 pending_updates_count() {
     local count
     count=$(apt-get -s upgrade 2>/dev/null | grep -c '^Inst ' || echo 0)
@@ -307,11 +189,6 @@ disk_inode_summary() {
     df -ih --output=source,ipcent,iavail,target | sed '1d' | head -5
 }
 
-<<<<<<< HEAD
-=======
->>>>>>> c5aa4c3 (Enhance status dashboard with CPU/memory snapshot and IP listings; add WireGuard installation options; update README for clarity and new features.)
-=======
->>>>>>> b5c2996 (Enhance CHANGELOG and README with new features; add DNS options, WireGuard config helper, and status dashboard improvements; update ntx-utility-menu.sh for unit name mapping and additional commands.)
 skip_if_safe() {
     local action="$1"
     if [[ "$SAFE_MODE" == "true" ]]; then
@@ -321,41 +198,6 @@ skip_if_safe() {
     return 0
 }
 
-=======
-=======
-}
-
->>>>>>> 8cd0d8a (Enhance usability and features in ntx Command Center (v0.3-dev))
-show_service_status() {
-    local service="$1"
-    if systemctl is-active --quiet "$service"; then
-        echo -e "${C_GRN}$service: active${C_RST}"
-    else
-        echo -e "${C_RED}$service: inactive${C_RST}"
-        systemctl status "$service" --no-pager || true
-    fi
-}
-
-<<<<<<< HEAD
->>>>>>> 40eec2c (...)
-=======
-heading() {
-    echo -e "${C_CYN}$1${C_RST}"
-}
-
-<<<<<<< HEAD
->>>>>>> 8cd0d8a (Enhance usability and features in ntx Command Center (v0.3-dev))
-=======
-skip_if_safe() {
-    local action="$1"
-    if [[ "$SAFE_MODE" == "true" ]]; then
-        echo "SAFE_MODE=true; skipping $action."
-        return 1
-    fi
-    return 0
-}
-
->>>>>>> 28b13f9 (Enhance NTX Command Center with new features and safety modes)
 ###############################################################################
 # Functions
 ###############################################################################
@@ -394,10 +236,6 @@ enable_unattended_upgrades() {
     echo "Unattended upgrades enabled."
 }
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 8cd0d8a (Enhance usability and features in ntx Command Center (v0.3-dev))
 disable_unattended_upgrades() {
     if ! dpkg -s unattended-upgrades >/dev/null 2>&1; then
         echo "unattended-upgrades is not installed."
@@ -407,11 +245,6 @@ disable_unattended_upgrades() {
     echo "Unattended upgrades disabled."
 }
 
-<<<<<<< HEAD
-=======
->>>>>>> 40eec2c (...)
-=======
->>>>>>> 8cd0d8a (Enhance usability and features in ntx Command Center (v0.3-dev))
 check_unattended_status() {
     if ! dpkg -s unattended-upgrades >/dev/null 2>&1; then
         echo "unattended-upgrades is not installed. Please enable it first."
@@ -435,10 +268,6 @@ run_unattended_upgrade_now() {
     run_cmd "Run unattended-upgrade now" unattended-upgrade -v
 }
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 28b13f9 (Enhance NTX Command Center with new features and safety modes)
 list_custom_sources() {
     echo "Custom sources (.list) in /etc/apt/sources.list.d:"
     ls -1 /etc/apt/sources.list.d/*.list 2>/dev/null || echo "None found."
@@ -462,11 +291,6 @@ remove_custom_source() {
     fi
 }
 
-<<<<<<< HEAD
-=======
->>>>>>> 40eec2c (...)
-=======
->>>>>>> 28b13f9 (Enhance NTX Command Center with new features and safety modes)
 # --- DNS management ---
 
 show_dns() {
@@ -502,10 +326,6 @@ nameserver 8.8.8.8
 EOF
 }
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> b5c2996 (Enhance CHANGELOG and README with new features; add DNS options, WireGuard config helper, and status dashboard improvements; update ntx-utility-menu.sh for unit name mapping and additional commands.)
 add_dns_cloudflare_google_append() {
     backup_file /etc/resolv.conf
     echo -e "nameserver 1.1.1.1\nnameserver 8.8.8.8" | tee -a /etc/resolv.conf > /dev/null
@@ -524,11 +344,6 @@ add_dns_cloudflare_google_ipv6_append() {
     echo -e "nameserver 2606:4700:4700::1111\nnameserver 2001:4860:4860::8888" | tee -a /etc/resolv.conf > /dev/null
 }
 
-<<<<<<< HEAD
-=======
->>>>>>> 40eec2c (...)
-=======
->>>>>>> b5c2996 (Enhance CHANGELOG and README with new features; add DNS options, WireGuard config helper, and status dashboard improvements; update ntx-utility-menu.sh for unit name mapping and additional commands.)
 restore_dns_backup() {
     restore_backup /etc/resolv.conf
 }
@@ -563,10 +378,6 @@ show_connections() {
     fi
 }
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 28b13f9 (Enhance NTX Command Center with new features and safety modes)
 ping_common() {
     ensure_cmd ping iputils-ping
     for host in 1.1.1.1 8.8.8.8 github.com; do
@@ -583,11 +394,6 @@ trace_route() {
     traceroute "$TARGET"
 }
 
-<<<<<<< HEAD
-=======
->>>>>>> 40eec2c (...)
-=======
->>>>>>> 28b13f9 (Enhance NTX Command Center with new features and safety modes)
 # --- Speedtest & benchmarks ---
 
 install_speedtest_full() {
@@ -656,10 +462,6 @@ install_netclient() {
     run_cmd "Install netclient" apt-get install -y netclient
 }
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 8cd0d8a (Enhance usability and features in ntx Command Center (v0.3-dev))
 remove_netclient_repo() {
     if [[ -f /etc/apt/sources.list.d/netclient.list ]]; then
         run_cmd "Remove Netmaker repo list" rm -f /etc/apt/sources.list.d/netclient.list
@@ -670,11 +472,6 @@ remove_netclient_repo() {
     run_cmd "apt-get update after Netmaker repo removal" apt-get update
 }
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> c5aa4c3 (Enhance status dashboard with CPU/memory snapshot and IP listings; add WireGuard installation options; update README for clarity and new features.)
 install_wireguard_client() {
     run_cmd "Install WireGuard (client)" apt-get install -y wireguard wireguard-tools
 }
@@ -684,10 +481,6 @@ install_wireguard_server() {
     echo "Remember to configure /etc/wireguard/wg0.conf and enable via: systemctl enable --now wg-quick@wg0"
 }
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> b5c2996 (Enhance CHANGELOG and README with new features; add DNS options, WireGuard config helper, and status dashboard improvements; update ntx-utility-menu.sh for unit name mapping and additional commands.)
 print_wireguard_sample() {
     cat <<'EOF'
 [Interface]
@@ -710,13 +503,6 @@ disable_wg_quick() {
     run_cmd "Disable wg-quick@wg0" systemctl disable --now wg-quick@wg0
 }
 
-<<<<<<< HEAD
-=======
->>>>>>> 28b13f9 (Enhance NTX Command Center with new features and safety modes)
-=======
->>>>>>> c5aa4c3 (Enhance status dashboard with CPU/memory snapshot and IP listings; add WireGuard installation options; update README for clarity and new features.)
-=======
->>>>>>> b5c2996 (Enhance CHANGELOG and README with new features; add DNS options, WireGuard config helper, and status dashboard improvements; update ntx-utility-menu.sh for unit name mapping and additional commands.)
 install_crowdsec() {
     run_cmd "Install CrowdSec repo" bash -c "curl -s https://packagecloud.io/install/repositories/crowdsec/crowdsec/script.deb.sh | bash"
     run_cmd "Install crowdsec" apt-get install -y crowdsec
@@ -728,13 +514,6 @@ install_crowdsec_firewall_bouncer() {
     show_service_status crowdsec-firewall-bouncer
 }
 
-<<<<<<< HEAD
-=======
->>>>>>> 40eec2c (...)
-=======
->>>>>>> 8cd0d8a (Enhance usability and features in ntx Command Center (v0.3-dev))
-=======
->>>>>>> 28b13f9 (Enhance NTX Command Center with new features and safety modes)
 install_ufw_basic() {
     apt update
     apt install ufw -y
@@ -974,10 +753,6 @@ tail_logs() {
     tail -n 40 "$LOG_FILE" 2>/dev/null || echo "Log file not found."
 }
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> b5c2996 (Enhance CHANGELOG and README with new features; add DNS options, WireGuard config helper, and status dashboard improvements; update ntx-utility-menu.sh for unit name mapping and additional commands.)
 show_config() {
     heading "Config / Environment"
     cat <<EOF
@@ -990,26 +765,18 @@ Units:          SSH=$SSH_UNIT, UFW=$UFW_UNIT, Fail2ban=$FAIL2BAN_UNIT, Tailscale
 EOF
 }
 
-<<<<<<< HEAD
-=======
->>>>>>> 8cd0d8a (Enhance usability and features in ntx Command Center (v0.3-dev))
-=======
->>>>>>> b5c2996 (Enhance CHANGELOG and README with new features; add DNS options, WireGuard config helper, and status dashboard improvements; update ntx-utility-menu.sh for unit name mapping and additional commands.)
 show_help_about() {
     heading "NTX Command Center ($VERSION)"
     cat <<EOF
 Log file: $LOG_FILE (rotates at ~$(($MAX_LOG_SIZE/1024)) KiB)
 Backups:  $BACKUP_DIR (resolv.conf snapshots)
 Dry run:  $DRY_RUN (set DRY_RUN=true to preview commands)
-<<<<<<< HEAD
-<<<<<<< HEAD
 Safe mode: $SAFE_MODE (set SAFE_MODE=true to skip destructive actions)
 Repo:     https://github.com/ntx007/ntx-linux-utility-menu
 
 Use the main menu to choose a section, then pick an action.
 Shortcuts: h/help, l/log tail, q/quit.
 Config:   see 'Show config/env' option.
-<<<<<<< HEAD
 EOF
 }
 
@@ -1035,53 +802,10 @@ status_dashboard() {
     cpu_mem_snapshot
 }
 
-=======
-=======
-Safe mode: $SAFE_MODE (set SAFE_MODE=true to skip destructive actions)
->>>>>>> 28b13f9 (Enhance NTX Command Center with new features and safety modes)
-Repo:     https://github.com/ntx007/ntx-linux-utility-menu
-
-Use the main menu to choose a section, then pick an action.
-Shortcuts: h/help, l/log tail, q/quit.
-=======
->>>>>>> b5c2996 (Enhance CHANGELOG and README with new features; add DNS options, WireGuard config helper, and status dashboard improvements; update ntx-utility-menu.sh for unit name mapping and additional commands.)
-EOF
-}
-
-<<<<<<< HEAD
->>>>>>> 8cd0d8a (Enhance usability and features in ntx Command Center (v0.3-dev))
-=======
-status_dashboard() {
-    heading "Status dashboard"
-    show_service_status ssh "$SSH_UNIT"
-    show_service_status ufw "$UFW_UNIT"
-    show_service_status fail2ban "$FAIL2BAN_UNIT"
-    show_service_status tailscale "$TAILSCALE_UNIT"
-    show_service_status docker "$DOCKER_UNIT"
-    show_service_status netmaker "$NETMAKER_UNIT"
-    show_service_status crowdsec "$CROWDSEC_UNIT"
-    show_service_status crowdsec-firewall-bouncer "$CROWDSEC_BOUNCER_UNIT"
-    if [[ -f /var/run/reboot-required ]]; then
-        echo -e "${C_YLW}Reboot required.${C_RST}"
-    fi
-    echo "Public IP:"
-    whats_my_ip
-    list_private_ips
-    pending_updates_count
-    kernel_version_summary
-    disk_inode_summary
-    cpu_mem_snapshot
-}
-
->>>>>>> 28b13f9 (Enhance NTX Command Center with new features and safety modes)
 ###############################################################################
 # Menus
 ###############################################################################
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 8cd0d8a (Enhance usability and features in ntx Command Center (v0.3-dev))
 main_menu() {
     cat <<EOF
 ================= NTX COMMAND CENTER ($VERSION) =================
@@ -1098,28 +822,14 @@ main_menu() {
 11) Users & time
 12) System control
 h) Help / About
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 28b13f9 (Enhance NTX Command Center with new features and safety modes)
 s) Status dashboard
 l) Tail logs
 c) Show config/env
-<<<<<<< HEAD
-=======
-l) Tail logs
->>>>>>> 8cd0d8a (Enhance usability and features in ntx Command Center (v0.3-dev))
-=======
->>>>>>> b5c2996 (Enhance CHANGELOG and README with new features; add DNS options, WireGuard config helper, and status dashboard improvements; update ntx-utility-menu.sh for unit name mapping and additional commands.)
 q) Quit
 ================================================================
 EOF
 }
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> b5c2996 (Enhance CHANGELOG and README with new features; add DNS options, WireGuard config helper, and status dashboard improvements; update ntx-utility-menu.sh for unit name mapping and additional commands.)
 search_section() {
     local query="$1"
     local -a names=("system update" "dns" "network" "speedtest" "security" "tools" "containers" "monitoring" "system information" "maintenance" "users" "control" "status" "help" "logs" "config")
@@ -1137,11 +847,6 @@ search_section() {
     fi
 }
 
-<<<<<<< HEAD
-=======
->>>>>>> 8cd0d8a (Enhance usability and features in ntx Command Center (v0.3-dev))
-=======
->>>>>>> b5c2996 (Enhance CHANGELOG and README with new features; add DNS options, WireGuard config helper, and status dashboard improvements; update ntx-utility-menu.sh for unit name mapping and additional commands.)
 menu_update() {
     while true; do
         cat <<EOF
@@ -1153,16 +858,8 @@ menu_update() {
  5) Disable unattended upgrades
  6) Check unattended upgrades status
  7) Run unattended upgrade now
-<<<<<<< HEAD
-<<<<<<< HEAD
  8) List custom apt sources
  9) Remove custom apt source (.list)
-=======
->>>>>>> 8cd0d8a (Enhance usability and features in ntx Command Center (v0.3-dev))
-=======
- 8) List custom apt sources
- 9) Remove custom apt source (.list)
->>>>>>> 28b13f9 (Enhance NTX Command Center with new features and safety modes)
  0) Back
 EOF
         read -p "Select: " c
@@ -1174,16 +871,8 @@ EOF
             5) disable_unattended_upgrades ;;
             6) check_unattended_status ;;
             7) run_unattended_upgrade_now ;;
-<<<<<<< HEAD
-<<<<<<< HEAD
             8) list_custom_sources ;;
             9) remove_custom_source ;;
-=======
->>>>>>> 8cd0d8a (Enhance usability and features in ntx Command Center (v0.3-dev))
-=======
-            8) list_custom_sources ;;
-            9) remove_custom_source ;;
->>>>>>> 28b13f9 (Enhance NTX Command Center with new features and safety modes)
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
@@ -1199,20 +888,10 @@ menu_dns() {
  3) Append Netcup DNS 46.38.225.230 + 1.1.1.1
  4) Overwrite Netcup DNS 46.38.225.230 + 1.1.1.1
  5) Overwrite DNS with 1.1.1.1 + 8.8.8.8
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> b5c2996 (Enhance CHANGELOG and README with new features; add DNS options, WireGuard config helper, and status dashboard improvements; update ntx-utility-menu.sh for unit name mapping and additional commands.)
  6) Append DNS with 1.1.1.1 + 8.8.8.8
  7) Overwrite DNS with IPv6 (2606:4700:4700::1111 + 2001:4860:4860::8888)
  8) Append DNS with IPv6 (2606:4700:4700::1111 + 2001:4860:4860::8888)
  9) Restore DNS from latest backup
-<<<<<<< HEAD
-=======
- 6) Restore DNS from latest backup
->>>>>>> 8cd0d8a (Enhance usability and features in ntx Command Center (v0.3-dev))
-=======
->>>>>>> b5c2996 (Enhance CHANGELOG and README with new features; add DNS options, WireGuard config helper, and status dashboard improvements; update ntx-utility-menu.sh for unit name mapping and additional commands.)
  0) Back
 EOF
         read -p "Select: " c
@@ -1222,20 +901,10 @@ EOF
             3) add_dns_netcup_append ;;
             4) set_dns_netcup_overwrite ;;
             5) set_dns_cloudflare_google ;;
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> b5c2996 (Enhance CHANGELOG and README with new features; add DNS options, WireGuard config helper, and status dashboard improvements; update ntx-utility-menu.sh for unit name mapping and additional commands.)
             6) add_dns_cloudflare_google_append ;;
             7) set_dns_cloudflare_google_ipv6 ;;
             8) add_dns_cloudflare_google_ipv6_append ;;
             9) restore_dns_backup ;;
-<<<<<<< HEAD
-=======
-            6) restore_dns_backup ;;
->>>>>>> 8cd0d8a (Enhance usability and features in ntx Command Center (v0.3-dev))
-=======
->>>>>>> b5c2996 (Enhance CHANGELOG and README with new features; add DNS options, WireGuard config helper, and status dashboard improvements; update ntx-utility-menu.sh for unit name mapping and additional commands.)
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
@@ -1250,16 +919,8 @@ menu_network() {
  2) Show ifconfig
  3) Show routing table
  4) Show active connections
-<<<<<<< HEAD
-<<<<<<< HEAD
  5) Ping common endpoints
  6) Traceroute to host
-=======
->>>>>>> 8cd0d8a (Enhance usability and features in ntx Command Center (v0.3-dev))
-=======
- 5) Ping common endpoints
- 6) Traceroute to host
->>>>>>> 28b13f9 (Enhance NTX Command Center with new features and safety modes)
  0) Back
 EOF
         read -p "Select: " c
@@ -1268,16 +929,8 @@ EOF
             2) show_ifconfig ;;
             3) show_routes ;;
             4) show_connections ;;
-<<<<<<< HEAD
-<<<<<<< HEAD
             5) ping_common ;;
             6) trace_route ;;
-=======
->>>>>>> 8cd0d8a (Enhance usability and features in ntx Command Center (v0.3-dev))
-=======
-            5) ping_common ;;
-            6) trace_route ;;
->>>>>>> 28b13f9 (Enhance NTX Command Center with new features and safety modes)
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
@@ -1325,30 +978,13 @@ menu_security() {
  9) Show firewall status
 10) Show SSH status
 11) Show recent failed logins
-<<<<<<< HEAD
-<<<<<<< HEAD
 12) Install CrowdSec
 13) Install CrowdSec firewall bouncer (iptables)
 14) Install WireGuard (client)
 15) Install WireGuard (server)
-<<<<<<< HEAD
-<<<<<<< HEAD
 16) Show WireGuard sample config
 17) Enable wg-quick@wg0
 18) Disable wg-quick@wg0
-=======
->>>>>>> 8cd0d8a (Enhance usability and features in ntx Command Center (v0.3-dev))
-=======
-12) Install CrowdSec
-13) Install CrowdSec firewall bouncer (iptables)
->>>>>>> 28b13f9 (Enhance NTX Command Center with new features and safety modes)
-=======
->>>>>>> c5aa4c3 (Enhance status dashboard with CPU/memory snapshot and IP listings; add WireGuard installation options; update README for clarity and new features.)
-=======
-16) Show WireGuard sample config
-17) Enable wg-quick@wg0
-18) Disable wg-quick@wg0
->>>>>>> b5c2996 (Enhance CHANGELOG and README with new features; add DNS options, WireGuard config helper, and status dashboard improvements; update ntx-utility-menu.sh for unit name mapping and additional commands.)
  0) Back
 EOF
         read -p "Select: " c
@@ -1364,30 +1000,13 @@ EOF
             9) show_firewall_status ;;
             10) show_ssh_status ;;
             11) show_failed_logins ;;
-<<<<<<< HEAD
-<<<<<<< HEAD
             12) install_crowdsec ;;
             13) install_crowdsec_firewall_bouncer ;;
             14) install_wireguard_client ;;
             15) install_wireguard_server ;;
-<<<<<<< HEAD
-<<<<<<< HEAD
             16) print_wireguard_sample ;;
             17) enable_wg_quick ;;
             18) disable_wg_quick ;;
-=======
->>>>>>> 8cd0d8a (Enhance usability and features in ntx Command Center (v0.3-dev))
-=======
-            12) install_crowdsec ;;
-            13) install_crowdsec_firewall_bouncer ;;
->>>>>>> 28b13f9 (Enhance NTX Command Center with new features and safety modes)
-=======
->>>>>>> c5aa4c3 (Enhance status dashboard with CPU/memory snapshot and IP listings; add WireGuard installation options; update README for clarity and new features.)
-=======
-            16) print_wireguard_sample ;;
-            17) enable_wg_quick ;;
-            18) disable_wg_quick ;;
->>>>>>> b5c2996 (Enhance CHANGELOG and README with new features; add DNS options, WireGuard config helper, and status dashboard improvements; update ntx-utility-menu.sh for unit name mapping and additional commands.)
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
@@ -1421,35 +1040,17 @@ menu_containers() {
         cat <<EOF
 [Containers / Docker]
  1) Install Docker & Docker Compose plugin
-<<<<<<< HEAD
-<<<<<<< HEAD
  2) Docker service status
  3) Docker info (short)
  4) Docker ps (running containers)
-=======
->>>>>>> 8cd0d8a (Enhance usability and features in ntx Command Center (v0.3-dev))
-=======
- 2) Docker service status
- 3) Docker info (short)
- 4) Docker ps (running containers)
->>>>>>> 28b13f9 (Enhance NTX Command Center with new features and safety modes)
  0) Back
 EOF
         read -p "Select: " c
         case "$c" in
             1) install_docker ;;
-<<<<<<< HEAD
-<<<<<<< HEAD
             2) docker_service_status ;;
             3) docker_info_short ;;
             4) docker_ps ;;
-=======
->>>>>>> 8cd0d8a (Enhance usability and features in ntx Command Center (v0.3-dev))
-=======
-            2) docker_service_status ;;
-            3) docker_info_short ;;
-            4) docker_ps ;;
->>>>>>> 28b13f9 (Enhance NTX Command Center with new features and safety modes)
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
@@ -1464,14 +1065,7 @@ menu_monitoring() {
  2) Show top CPU/mem processes
  3) Show IO stats (iostat)
  4) SMART health check (first disk)
-<<<<<<< HEAD
-<<<<<<< HEAD
  5) Status dashboard (services + IP)
-=======
->>>>>>> 8cd0d8a (Enhance usability and features in ntx Command Center (v0.3-dev))
-=======
- 5) Status dashboard (services + IP)
->>>>>>> 28b13f9 (Enhance NTX Command Center with new features and safety modes)
  0) Back
 EOF
         read -p "Select: " c
@@ -1480,14 +1074,7 @@ EOF
             2) show_top_processes ;;
             3) show_iostat_summary ;;
             4) smart_health_check ;;
-<<<<<<< HEAD
-<<<<<<< HEAD
             5) status_dashboard ;;
-=======
->>>>>>> 8cd0d8a (Enhance usability and features in ntx Command Center (v0.3-dev))
-=======
-            5) status_dashboard ;;
->>>>>>> 28b13f9 (Enhance NTX Command Center with new features and safety modes)
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
@@ -1574,89 +1161,6 @@ EOF
             *) echo "Invalid choice." ;;
         esac
     done
-<<<<<<< HEAD
-=======
-show_menu() {
-    echo "================= NTX COMMAND CENTER ================="
-    echo "================= SYSTEM UPDATE ======================="
-    echo " 1) Update all (apt-get update && upgrade)"
-    echo " 2) Update all with sudo and reboot"
-    echo " 3) Update all and reboot if required"
-    echo " 4) Enable unattended upgrades"
-    echo " 5) Check unattended upgrades status"
-    echo " 6) Run unattended upgrade now"
-    echo
-    echo "================= DNS MANAGEMENT ======================"
-    echo " 7) Show DNS (/etc/resolv.conf)"
-    echo " 8) Edit DNS (/etc/resolv.conf in nano)"
-    echo " 9) Append Netcup DNS 46.38.225.230 + 1.1.1.1"
-    echo "10) Overwrite Netcup DNS 46.38.225.230 + 1.1.1.1"
-    echo "11) Overwrite DNS with 1.1.1.1 + 8.8.8.8"
-    echo "12) Restore DNS from latest backup"
-    echo
-    echo "================ NETWORK / IP ========================="
-    echo "13) Show public IP (dig / OpenDNS)"
-    echo "14) Show ifconfig"
-    echo "15) Show routing table"
-    echo "16) Show active connections"
-    echo
-    echo "============= SPEEDTEST & BENCHMARKS =================="
-    echo "17) Install Speedtest (repo + package)"
-    echo "18) Update Speedtest repo list (jammy)"
-    echo "19) Install Speedtest after repo update"
-    echo "20) Run Speedtest"
-    echo "21) Run YABS (Yet-Another-Bench-Script)"
-    echo
-    echo "============= SECURITY / REMOTE ACCESS ================"
-    echo "22) Install UFW (allow SSH, enable)"
-    echo "23) Install Fail2ban"
-    echo "24) Update SSH config for Proxmox (remote script)"
-    echo "25) Install OpenSSH server"
-    echo "26) Install Tailscale"
-    echo "27) Tailscale up (QR mode)"
-    echo "28) Install Netmaker netclient"
-    echo
-    echo "========== TOOLS & ENVIRONMENT SETUP =================="
-    echo "29) Install essentials (sudo, nano, curl, net-tools)"
-    echo "30) Install extra tools (unzip, python, gdown, glances, tmux, zsh, mc)"
-    echo "31) Install ibramenu"
-    echo "32) Install QEMU guest agent"
-    echo
-    echo "============= CONTAINERS / DOCKER ====================="
-    echo "33) Install Docker & Docker Compose plugin"
-    echo
-    echo "================== MONITORING ========================="
-    echo "34) Install node exporter (prometheus-node-exporter)"
-    echo "35) Show top CPU/mem processes"
-    echo "36) Show IO stats (iostat)"
-    echo "37) SMART health check (first disk)"
-    echo
-    echo "============ SYSTEM INFORMATION ======================="
-    echo "38) Show /etc/os-release"
-    echo "39) General system info (neofetch)"
-    echo "40) Memory information"
-    echo "41) VM / virtualization check"
-    echo "42) Visit project GitHub"
-    echo
-    echo "================= MAINTENANCE ========================="
-    echo "43) System cleanup (APT autoremove/autoclean, logs 7d)"
-    echo "44) Show disks (lsblk + df -h)"
-    echo "45) Show biggest /var directories"
-    echo
-    echo "=============== USERS & TIME =========================="
-    echo "46) Create sudo user"
-    echo "47) Show time sync (timedatectl)"
-    echo "48) Install chrony (NTP) and show time status"
-    echo
-    echo "================ SYSTEM CONTROL ======================="
-    echo "49) Reboot"
-    echo "50) Power down"
-    echo
-    echo " 0) Exit"
-    echo "======================================================="
->>>>>>> 40eec2c (...)
-=======
->>>>>>> 8cd0d8a (Enhance usability and features in ntx Command Center (v0.3-dev))
 }
 
 ###############################################################################
@@ -1671,14 +1175,7 @@ fi
 
 check_environment
 ensure_dirs
-<<<<<<< HEAD
-<<<<<<< HEAD
 preflight_dependencies
-=======
->>>>>>> 40eec2c (...)
-=======
-preflight_dependencies
->>>>>>> 8cd0d8a (Enhance usability and features in ntx Command Center (v0.3-dev))
 log_line "Starting NTX Command Center..."
 
 echo "Starting NTX Command Center $VERSION..."
@@ -1686,10 +1183,6 @@ echo "Starting NTX Command Center $VERSION..."
 while true; do
     main_menu
     read -p "Select a section: " choice
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> b5c2996 (Enhance CHANGELOG and README with new features; add DNS options, WireGuard config helper, and status dashboard improvements; update ntx-utility-menu.sh for unit name mapping and additional commands.)
     if [[ "$choice" == /* ]]; then
         choice="${choice#/}"
         choice=$(echo "$choice" | tr '[:upper:]' '[:lower:]')
@@ -1702,10 +1195,6 @@ while true; do
         fi
     fi
     case "$choice" in
-<<<<<<< HEAD
-=======
-    case "$choice" in
->>>>>>> 8cd0d8a (Enhance usability and features in ntx Command Center (v0.3-dev))
         1) menu_update ;;
         2) menu_dns ;;
         3) menu_network ;;
@@ -1719,75 +1208,10 @@ while true; do
         11) menu_users_time ;;
         12) menu_control ;;
         h|H) show_help_about ;;
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
         c|C) show_config ;;
-=======
->>>>>>> 28b13f9 (Enhance NTX Command Center with new features and safety modes)
-=======
-        c|C) show_config ;;
->>>>>>> b5c2996 (Enhance CHANGELOG and README with new features; add DNS options, WireGuard config helper, and status dashboard improvements; update ntx-utility-menu.sh for unit name mapping and additional commands.)
         s|S) status_dashboard ;;
         l|L) tail_logs ;;
         q|Q|0) echo "Exiting NTX Command Center."; exit 0 ;;
-=======
-        1)  update_all ;;
-        2)  update_all_with_sudo_reboot ;;
-        3)  update_all_reboot_if_needed ;;
-        4)  enable_unattended_upgrades ;;
-        5)  check_unattended_status ;;
-        6)  run_unattended_upgrade_now ;;
-        7)  show_dns ;;
-        8)  edit_dns ;;
-        9)  add_dns_netcup_append ;;
-        10) set_dns_netcup_overwrite ;;
-        11) set_dns_cloudflare_google ;;
-        12) restore_dns_backup ;;
-        13) whats_my_ip ;;
-        14) show_ifconfig ;;
-        15) show_routes ;;
-        16) show_connections ;;
-        17) install_speedtest_full ;;
-        18) change_speedtest_apt_list ;;
-        19) install_speedtest_after_list ;;
-        20) run_speedtest ;;
-        21) run_yabs ;;
-        22) install_ufw_basic ;;
-        23) install_fail2ban ;;
-        24) change_ssh_proxmox ;;
-        25) install_openssh ;;
-        26) tailscale_install ;;
-        27) tailscale_up_qr ;;
-        28) install_netclient ;;
-        29) install_essentials ;;
-        30) install_tools ;;
-        31) install_ibramenu ;;
-        32) install_qemu_guest_agent ;;
-        33) install_docker ;;
-        34) install_node_exporter ;;
-        35) show_top_processes ;;
-        36) show_iostat_summary ;;
-        37) smart_health_check ;;
-        38) os_release_check ;;
-        39) general_information ;;
-        40) memory_information ;;
-        41) vm_check ;;
-        42) visit_project_github ;;
-        43) system_cleanup ;;
-        44) show_disks ;;
-        45) show_big_var_dirs ;;
-        46) create_sudo_user ;;
-        47) show_time_sync ;;
-        48) install_chrony ;;
-        49) system_reboot ;;
-        50) system_powerdown ;;
-        0)  echo "Exiting NTX Command Center."; exit 0 ;;
->>>>>>> 40eec2c (...)
-=======
-        l|L) tail_logs ;;
-        q|Q|0) echo "Exiting NTX Command Center."; exit 0 ;;
->>>>>>> 8cd0d8a (Enhance usability and features in ntx Command Center (v0.3-dev))
         *)  echo "Invalid choice." ;;
     esac
     echo

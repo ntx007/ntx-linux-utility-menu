@@ -2,38 +2,7 @@
 
 A portable, menu-driven Bash utility for common Linux admin tasks: `ntx-utility-menu.sh`. Built for Debian/Ubuntu (and derivatives), it centralizes updates, diagnostics, networking tools, security hardening, and maintenance in a single interactive script.
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-This repository provides a menu-driven shell script you can run on Debian/Ubuntu and many other Linux distributions to perform system updates, quick diagnostics, networking helpers, install common tools, and more.
-
-## Features
-
-<<<<<<< HEAD
-<<<<<<< HEAD
-- Interactive, text-based menu (Bash/sh)
-- Common sysadmin helpers (updates, package installs, networking tools)
-- Quick system information and maintenance actions (reboot, shutdown)
-=======
-- Interactive, text-based menu (Bash/sh), versioned (v0.3-dev)
-- Common sysadmin helpers (updates, unattended-upgrades, networking tools, DNS backups/restore)
-- Security/remote helpers (UFW, Fail2ban, OpenSSH, Tailscale, Netmaker netclient)
-- Quick system information, monitoring (top processes, iostat, SMART), and maintenance actions
-- Logging to `/var/log/ntx-menu.log` and backups for `/etc/resolv.conf` in `/var/backups/ntx-menu`
->>>>>>> b3bc974 (Update version to v0.3-dev in README, CHANGELOG, and script file)
-=======
-- Interactive, text-based menu (Bash/sh), versioned (v0.3-dev) with nested sections
-- Common sysadmin helpers (updates, unattended-upgrades enable/disable/status/run, networking tools, DNS backups/restore)
-- Security/remote helpers (UFW, Fail2ban, OpenSSH, Tailscale, Netmaker netclient + repo removal)
-- Quick system information, monitoring (top processes, iostat, SMART), and maintenance actions
-- Logging to `/var/log/ntx-menu.log` with rotation and backups for `/etc/resolv.conf` in `/var/backups/ntx-menu`
-- DRY_RUN support (`DRY_RUN=true ./ntx-utility-menu.sh`) to preview commands
->>>>>>> 8cd0d8a (Enhance usability and features in ntx Command Center (v0.3-dev))
-- Easy to customize — edit the script to add or remove menu items
-=======
-## Highlights (v0.3-dev)
-=======
 ## Highlights (v0.3)
->>>>>>> 0087f83 (Update version to v0.3 in CHANGELOG, README, and script; prepare for release.)
 
 - Interactive, nested menu (Bash) with shortcuts for Help, Status dashboard, and Logs
 - Updates: unattended-upgrades enable/disable/status/run; reboot-if-needed flow; apt source hygiene (list/remove)
@@ -44,11 +13,7 @@ This repository provides a menu-driven shell script you can run on Debian/Ubuntu
 - Maintenance/info: cleanup, disk usage, largest `/var` dirs, system info (os-release, neofetch, VM check), GitHub link
 - Logging/backups: `/var/log/ntx-menu.log` with rotation; `/etc/resolv.conf` backups to `/var/backups/ntx-menu`
 - Modes: `DRY_RUN=true` to preview commands; `SAFE_MODE=true` to skip destructive actions
-<<<<<<< HEAD
->>>>>>> 28b13f9 (Enhance NTX Command Center with new features and safety modes)
-=======
 - Search: type `/keyword` (e.g., `/docker`, `/dns`) in the main menu to jump to a section
->>>>>>> b5c2996 (Enhance CHANGELOG and README with new features; add DNS options, WireGuard config helper, and status dashboard improvements; update ntx-utility-menu.sh for unit name mapping and additional commands.)
 
 ## Requirements
 
@@ -93,19 +58,7 @@ sudo ntx-utility-menu
 
 The script shows a numbered interactive menu. Enter the number of the action you want to run and press Enter.
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
 ### Download & run (one-liner)
-=======
-### Command-line (tested on Debian / Ubuntu)
->>>>>>> aea6eb4 (Add command-line usage instructions for downloading and running the script)
-=======
-### Run from the command line (download & run)
->>>>>>> ba07bf3 (Add instructions for downloading and running the script directly from the command line)
-=======
-### Download & run (one-liner)
->>>>>>> 35aa4af (Refactor command-line usage instructions in README for clarity and conciseness. Check out CHANGELOG)
 
 You can quickly download the script and run it directly on a server using curl and bash. Always review scripts downloaded from the internet before running them.
 
