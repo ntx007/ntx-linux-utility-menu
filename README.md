@@ -2,7 +2,7 @@
 
 A portable, menu-driven Bash utility for common Linux admin tasks: `ntx-utility-menu.sh`. Built for Debian/Ubuntu (and derivatives), it centralizes updates, diagnostics, networking tools, security hardening, and maintenance in a single interactive script.
 
-## Highlights (v0.3-dev)
+## Highlights (v0.3)
 
 - Interactive, nested menu (Bash) with shortcuts for Help, Status dashboard, and Logs
 - Updates: unattended-upgrades enable/disable/status/run; reboot-if-needed flow; apt source hygiene (list/remove)
@@ -74,7 +74,7 @@ chmod +x ntx-utility-menu.sh
 ./ntx-utility-menu.sh
 ```
 
-## Menu map (v0.3-dev)
+## Menu map (v0.3)
 
 - **System update**: standard upgrade, reboot-if-needed, unattended-upgrades (enable/disable/status/run), list/remove custom apt sources
 - **DNS**: view/edit with backups, preset DNS choices, restore last backup, append/overwrite IPv4 Cloudflare/Google and IPv6 Cloudflare/Google

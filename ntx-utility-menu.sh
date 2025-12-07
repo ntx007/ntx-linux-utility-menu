@@ -10,7 +10,7 @@ BACKUP_DIR="/var/backups/ntx-menu"
 MAX_LOG_SIZE=$((1024 * 1024)) # 1 MiB
 DRY_RUN=${DRY_RUN:-false}
 SAFE_MODE=${SAFE_MODE:-false}
-VERSION="v0.3-dev"
+VERSION="v0.3"
 # Service unit map (adjust if your distro uses different names)
 SSH_UNIT="${SSH_UNIT:-ssh}"
 UFW_UNIT="${UFW_UNIT:-ufw}"
