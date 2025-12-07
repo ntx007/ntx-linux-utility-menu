@@ -3,6 +3,7 @@
 A portable, menu-driven Bash utility for common Linux admin tasks: `ntx-utility-menu.sh`. Built for Debian/Ubuntu (and derivatives), it centralizes updates, diagnostics, networking tools, security hardening, and maintenance in a single interactive script.
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 This repository provides a menu-driven shell script you can run on Debian/Ubuntu and many other Linux distributions to perform system updates, quick diagnostics, networking helpers, install common tools, and more.
 
 ## Features
@@ -30,6 +31,9 @@ This repository provides a menu-driven shell script you can run on Debian/Ubuntu
 - Easy to customize — edit the script to add or remove menu items
 =======
 ## Highlights (v0.3-dev)
+=======
+## Highlights (v0.3)
+>>>>>>> 0087f83 (Update version to v0.3 in CHANGELOG, README, and script; prepare for release.)
 
 - Interactive, nested menu (Bash) with shortcuts for Help, Status dashboard, and Logs
 - Updates: unattended-upgrades enable/disable/status/run; reboot-if-needed flow; apt source hygiene (list/remove)
@@ -117,7 +121,7 @@ chmod +x ntx-utility-menu.sh
 ./ntx-utility-menu.sh
 ```
 
-## Menu map (v0.3-dev)
+## Menu map (v0.3)
 
 - **System update**: standard upgrade, reboot-if-needed, unattended-upgrades (enable/disable/status/run), list/remove custom apt sources
 - **DNS**: view/edit with backups, preset DNS choices, restore last backup, append/overwrite IPv4 Cloudflare/Google and IPv6 Cloudflare/Google

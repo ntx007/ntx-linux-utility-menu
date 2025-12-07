@@ -22,6 +22,9 @@ MAX_LOG_SIZE=$((1024 * 1024)) # 1 MiB
 DRY_RUN=${DRY_RUN:-false}
 SAFE_MODE=${SAFE_MODE:-false}
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 0087f83 (Update version to v0.3 in CHANGELOG, README, and script; prepare for release.)
 VERSION="v0.3"
 # Service unit map (adjust if your distro uses different names)
 SSH_UNIT="${SSH_UNIT:-ssh}"
