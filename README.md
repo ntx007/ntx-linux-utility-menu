@@ -13,6 +13,7 @@ A portable, menu-driven Bash utility for common Linux admin tasks: `ntx-utility-
 - Maintenance/info: cleanup, disk usage, largest `/var` dirs, system info (os-release, neofetch, VM check), GitHub link
 - Logging/backups: `/var/log/ntx-menu.log` with rotation; `/etc/resolv.conf` backups to `/var/backups/ntx-menu`
 - Modes: `DRY_RUN=true` to preview commands; `SAFE_MODE=true` to skip destructive actions
+- Search: type `/keyword` (e.g., `/docker`, `/dns`) in the main menu to jump to a section
 
 ## Requirements
 
@@ -76,7 +77,7 @@ chmod +x ntx-utility-menu.sh
 ## Menu map (v0.3-dev)
 
 - **System update**: standard upgrade, reboot-if-needed, unattended-upgrades (enable/disable/status/run), list/remove custom apt sources
-- **DNS**: view/edit with backups, preset DNS choices, restore last backup
+- **DNS**: view/edit with backups, preset DNS choices, restore last backup, append/overwrite IPv4 Cloudflare/Google and IPv6 Cloudflare/Google
 - **Network/IP**: public IP (fallback), interfaces, routes, connections, ping common endpoints, traceroute
 - **Speedtest/benchmarks**: Speedtest install/update/run, repo/key removal, YABS
 - **Security/remote**: UFW, Fail2ban, OpenSSH, Tailscale, Netmaker netclient (install/remove repo), CrowdSec + firewall bouncer, WireGuard (client/server), firewall/SSH status, failed logins
@@ -93,15 +94,18 @@ chmod +x ntx-utility-menu.sh
 
 - `DRY_RUN=true ./ntx-utility-menu.sh`: print commands instead of executing them.
 - `SAFE_MODE=true ./ntx-utility-menu.sh`: skip destructive actions (cleanup, reboot, powerdown, apt source removal).
-- Shortcuts in the main menu: `h` Help/About, `s` Status dashboard, `l` Tail log, `q` Quit.
+- Shortcuts in the main menu: `h` Help/About, `s` Status dashboard, `l` Tail log, `c` Config/env, `q` Quit.
 
 Note on service status: the dashboard queries systemd unit names like `ssh`, `docker`, etc. If a service uses a non-standard unit name, it may show as “not installed.” Adjust the unit names in `show_service_status` if your distro uses different service names.
+
+Search tip: in the main menu, type `/keyword` (e.g., `/docker`, `/dns`) to jump directly to a matching section.
 
 ## Quick start (best practice)
 
 - Run as root on Debian/Ubuntu (or derivatives). If testing, start with `DRY_RUN=true` or `SAFE_MODE=true`.
+- Before first use, skim the config section in the script for paths (log/backup), DNS presets, and service unit names.
 - Open `Help/About` (`h`) to see paths, modes, and shortcuts; tail the log (`l`) if something looks off.
-- Use the status dashboard (`s`) to check key services (SSH, UFW, Fail2ban, Tailscale, Netmaker, CrowdSec, Docker) plus public/private IPs and CPU/mem snapshot.
+- Use the status dashboard (`s`) to check key services (SSH, UFW, Fail2ban, Tailscale, Netmaker, CrowdSec, Docker), pending upgrades, kernel vs. running versions, public/private IPs, and CPU/mem/disk/inode snapshot.
 - Before adding repos, review custom sources in **System update → list/remove apt sources**.
 - For VPN/remote, use the Security menu: Tailscale, Netmaker netclient, CrowdSec + bouncer, and WireGuard (client/server installs).
 
@@ -112,7 +116,7 @@ Note on service status: the dashboard queries systemd unit names like `ssh`, `do
 
 Suggested quick edits:
 
-- At the top of the script add a section for configurable variables (default packages, log path, dry-run flag).
+- Adjust the config section to your defaults (log path, backup dir, DNS presets, service units).
 - Factor repeated code into functions and call them from the menu dispatcher.
 
 ## Contributing

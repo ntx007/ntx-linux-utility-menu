@@ -11,6 +11,15 @@ MAX_LOG_SIZE=$((1024 * 1024)) # 1 MiB
 DRY_RUN=${DRY_RUN:-false}
 SAFE_MODE=${SAFE_MODE:-false}
 VERSION="v0.3-dev"
+# Service unit map (adjust if your distro uses different names)
+SSH_UNIT="${SSH_UNIT:-ssh}"
+UFW_UNIT="${UFW_UNIT:-ufw}"
+FAIL2BAN_UNIT="${FAIL2BAN_UNIT:-fail2ban}"
+TAILSCALE_UNIT="${TAILSCALE_UNIT:-tailscaled}"
+DOCKER_UNIT="${DOCKER_UNIT:-docker}"
+NETMAKER_UNIT="${NETMAKER_UNIT:-netclient}"
+CROWDSEC_UNIT="${CROWDSEC_UNIT:-crowdsec}"
+CROWDSEC_BOUNCER_UNIT="${CROWDSEC_BOUNCER_UNIT:-crowdsec-firewall-bouncer}"
 
 # Colors (fall back to plain if not a TTY)
 if [[ -t 1 ]]; then
@@ -50,12 +59,15 @@ run_cmd() {
     if [[ "$DRY_RUN" == "true" ]]; then
         echo "[DRY RUN] $*"
         log_line "OK : $description (dry run)"
+        echo "Result: OK (dry run)"
         return 0
     fi
     if "$@"; then
         log_line "OK : $description"
+        echo "Result: OK"
     else
         log_line "FAIL: $description"
+        echo "Result: FAIL"
         return 1
     fi
 }
@@ -127,11 +139,13 @@ preflight_dependencies() {
 
 show_service_status() {
     local service="$1"
-    if ! systemctl list-unit-files "$service" --no-legend 2>/dev/null | grep -q "$service"; then
+    local unit="$2"
+    unit="${unit:-$service}"
+    if ! systemctl list-unit-files "$unit" --no-legend 2>/dev/null | grep -q "$unit"; then
         echo -e "${C_YLW}$service: not installed${C_RST}"
         return 0
     fi
-    if systemctl is-active --quiet "$service"; then
+    if systemctl is-active --quiet "$unit"; then
         echo -e "${C_GRN}$service: active${C_RST}"
     else
         echo -e "${C_RED}$service: inactive${C_RST}"
@@ -151,6 +165,28 @@ cpu_mem_snapshot() {
 list_private_ips() {
     echo "IPs (IPv4) per interface:"
     ip -brief -family inet address 2>/dev/null || ip addr show
+}
+
+pending_updates_count() {
+    local count
+    count=$(apt-get -s upgrade 2>/dev/null | grep -c '^Inst ' || echo 0)
+    echo "Pending upgrades: ${count}"
+}
+
+kernel_version_summary() {
+    local running latest
+    running=$(uname -r)
+    latest=$(dpkg -l 'linux-image-*' 2>/dev/null | awk '/^ii/{print $2,$3}' | sort | tail -1)
+    echo "Kernel running: $running"
+    echo "Kernel latest (installed): ${latest:-unknown}"
+}
+
+disk_inode_summary() {
+    echo "Disk usage:"
+    df -h --output=source,pcent,avail,target | sed '1d' | head -5
+    echo
+    echo "Inode usage:"
+    df -ih --output=source,ipcent,iavail,target | sed '1d' | head -5
 }
 
 skip_if_safe() {
@@ -290,6 +326,24 @@ nameserver 8.8.8.8
 EOF
 }
 
+add_dns_cloudflare_google_append() {
+    backup_file /etc/resolv.conf
+    echo -e "nameserver 1.1.1.1\nnameserver 8.8.8.8" | tee -a /etc/resolv.conf > /dev/null
+}
+
+set_dns_cloudflare_google_ipv6() {
+    backup_file /etc/resolv.conf
+    cat <<EOF > /etc/resolv.conf
+nameserver 2606:4700:4700::1111
+nameserver 2001:4860:4860::8888
+EOF
+}
+
+add_dns_cloudflare_google_ipv6_append() {
+    backup_file /etc/resolv.conf
+    echo -e "nameserver 2606:4700:4700::1111\nnameserver 2001:4860:4860::8888" | tee -a /etc/resolv.conf > /dev/null
+}
+
 restore_dns_backup() {
     restore_backup /etc/resolv.conf
 }
@@ -425,6 +479,28 @@ install_wireguard_client() {
 install_wireguard_server() {
     run_cmd "Install WireGuard (server)" apt-get install -y wireguard wireguard-tools
     echo "Remember to configure /etc/wireguard/wg0.conf and enable via: systemctl enable --now wg-quick@wg0"
+}
+
+print_wireguard_sample() {
+    cat <<'EOF'
+[Interface]
+PrivateKey = <server-private-key>
+Address = 10.0.0.1/24
+ListenPort = 51820
+
+[Peer]
+PublicKey = <client-public-key>
+AllowedIPs = 10.0.0.2/32
+EOF
+    echo "Sample only. Replace keys/addresses and save as /etc/wireguard/wg0.conf, then run: systemctl enable --now wg-quick@wg0"
+}
+
+enable_wg_quick() {
+    run_cmd "Enable and start wg-quick@wg0" systemctl enable --now wg-quick@wg0
+}
+
+disable_wg_quick() {
+    run_cmd "Disable wg-quick@wg0" systemctl disable --now wg-quick@wg0
 }
 
 install_crowdsec() {
@@ -677,6 +753,18 @@ tail_logs() {
     tail -n 40 "$LOG_FILE" 2>/dev/null || echo "Log file not found."
 }
 
+show_config() {
+    heading "Config / Environment"
+    cat <<EOF
+Version:        $VERSION
+Log file:       $LOG_FILE
+Backup dir:     $BACKUP_DIR
+DRY_RUN:        $DRY_RUN
+SAFE_MODE:      $SAFE_MODE
+Units:          SSH=$SSH_UNIT, UFW=$UFW_UNIT, Fail2ban=$FAIL2BAN_UNIT, Tailscale=$TAILSCALE_UNIT, Docker=$DOCKER_UNIT, Netmaker=$NETMAKER_UNIT, CrowdSec=$CROWDSEC_UNIT, Bouncer=$CROWDSEC_BOUNCER_UNIT
+EOF
+}
+
 show_help_about() {
     heading "NTX Command Center ($VERSION)"
     cat <<EOF
@@ -688,25 +776,29 @@ Repo:     https://github.com/ntx007/ntx-linux-utility-menu
 
 Use the main menu to choose a section, then pick an action.
 Shortcuts: h/help, l/log tail, q/quit.
+Config:   see 'Show config/env' option.
 EOF
 }
 
 status_dashboard() {
     heading "Status dashboard"
-    show_service_status ssh
-    show_service_status ufw
-    show_service_status fail2ban
-    show_service_status tailscaled
-    show_service_status docker
-    show_service_status netclient
-    show_service_status crowdsec
-    show_service_status crowdsec-firewall-bouncer
+    show_service_status ssh "$SSH_UNIT"
+    show_service_status ufw "$UFW_UNIT"
+    show_service_status fail2ban "$FAIL2BAN_UNIT"
+    show_service_status tailscale "$TAILSCALE_UNIT"
+    show_service_status docker "$DOCKER_UNIT"
+    show_service_status netmaker "$NETMAKER_UNIT"
+    show_service_status crowdsec "$CROWDSEC_UNIT"
+    show_service_status crowdsec-firewall-bouncer "$CROWDSEC_BOUNCER_UNIT"
     if [[ -f /var/run/reboot-required ]]; then
         echo -e "${C_YLW}Reboot required.${C_RST}"
     fi
     echo "Public IP:"
     whats_my_ip
     list_private_ips
+    pending_updates_count
+    kernel_version_summary
+    disk_inode_summary
     cpu_mem_snapshot
 }
 
@@ -732,9 +824,27 @@ main_menu() {
 h) Help / About
 s) Status dashboard
 l) Tail logs
+c) Show config/env
 q) Quit
 ================================================================
 EOF
+}
+
+search_section() {
+    local query="$1"
+    local -a names=("system update" "dns" "network" "speedtest" "security" "tools" "containers" "monitoring" "system information" "maintenance" "users" "control" "status" "help" "logs" "config")
+    local -a targets=(1 2 3 4 5 6 7 8 9 10 11 12 s h l c)
+    local matches=()
+    for i in "${!names[@]}"; do
+        if [[ "${names[$i]}" == *"$query"* ]]; then
+            matches+=("${targets[$i]}")
+        fi
+    done
+    if [[ ${#matches[@]} -eq 1 ]]; then
+        echo "${matches[0]}"
+    else
+        echo ""
+    fi
 }
 
 menu_update() {
@@ -778,7 +888,10 @@ menu_dns() {
  3) Append Netcup DNS 46.38.225.230 + 1.1.1.1
  4) Overwrite Netcup DNS 46.38.225.230 + 1.1.1.1
  5) Overwrite DNS with 1.1.1.1 + 8.8.8.8
- 6) Restore DNS from latest backup
+ 6) Append DNS with 1.1.1.1 + 8.8.8.8
+ 7) Overwrite DNS with IPv6 (2606:4700:4700::1111 + 2001:4860:4860::8888)
+ 8) Append DNS with IPv6 (2606:4700:4700::1111 + 2001:4860:4860::8888)
+ 9) Restore DNS from latest backup
  0) Back
 EOF
         read -p "Select: " c
@@ -788,7 +901,10 @@ EOF
             3) add_dns_netcup_append ;;
             4) set_dns_netcup_overwrite ;;
             5) set_dns_cloudflare_google ;;
-            6) restore_dns_backup ;;
+            6) add_dns_cloudflare_google_append ;;
+            7) set_dns_cloudflare_google_ipv6 ;;
+            8) add_dns_cloudflare_google_ipv6_append ;;
+            9) restore_dns_backup ;;
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
@@ -866,6 +982,9 @@ menu_security() {
 13) Install CrowdSec firewall bouncer (iptables)
 14) Install WireGuard (client)
 15) Install WireGuard (server)
+16) Show WireGuard sample config
+17) Enable wg-quick@wg0
+18) Disable wg-quick@wg0
  0) Back
 EOF
         read -p "Select: " c
@@ -885,6 +1004,9 @@ EOF
             13) install_crowdsec_firewall_bouncer ;;
             14) install_wireguard_client ;;
             15) install_wireguard_server ;;
+            16) print_wireguard_sample ;;
+            17) enable_wg_quick ;;
+            18) disable_wg_quick ;;
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
@@ -1061,6 +1183,17 @@ echo "Starting NTX Command Center $VERSION..."
 while true; do
     main_menu
     read -p "Select a section: " choice
+    if [[ "$choice" == /* ]]; then
+        choice="${choice#/}"
+        choice=$(echo "$choice" | tr '[:upper:]' '[:lower:]')
+        resolved=$(search_section "$choice")
+        if [[ -n "$resolved" ]]; then
+            choice="$resolved"
+        else
+            echo "No match for \"$choice\""
+            continue
+        fi
+    fi
     case "$choice" in
         1) menu_update ;;
         2) menu_dns ;;
@@ -1075,6 +1208,7 @@ while true; do
         11) menu_users_time ;;
         12) menu_control ;;
         h|H) show_help_about ;;
+        c|C) show_config ;;
         s|S) status_dashboard ;;
         l|L) tail_logs ;;
         q|Q|0) echo "Exiting NTX Command Center."; exit 0 ;;
