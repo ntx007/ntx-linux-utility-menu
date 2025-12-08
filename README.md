@@ -96,13 +96,13 @@ Run `./ntx-utility-menu.sh --help` for the full list.
 - **System update**: standard upgrade, reboot-if-needed, unattended-upgrades (enable/disable/status/run), list/remove custom apt sources
 - **DNS**: view/edit with backups, preset DNS choices, restore last backup, append/overwrite IPv4 Cloudflare/Google and IPv6 Cloudflare/Google
 - **Network/IP**: public IP (fallback), interfaces, routes, connections, ping common endpoints, traceroute
-- **Speedtest/benchmarks**: Speedtest install/update/run, repo/key removal, YABS
-- **Security/remote**: UFW, Fail2ban, OpenSSH, Tailscale, Netmaker netclient (install/remove repo), CrowdSec + firewall bouncer, WireGuard (client/server), WireGuard QR helper, firewall/SSH status, SSH hardening check, failed logins, rootkit check
-- **Tools/env**: essentials, extra tools, ibramenu, QEMU guest agent
-- **Containers**: Docker + Compose plugin, service status, short info, running containers, list all containers, Docker Compose health
+- **Speedtest/benchmarks**: Speedtest install/update/run, repo/key removal, YABS, YABS preset submenu (all/disk/network/system), external ibramenu benchmarks
+- **Security/remote**: UFW, Fail2ban, OpenSSH, Tailscale, Netmaker netclient (install/remove repo), CrowdSec + firewall bouncer, WireGuard (client/server), WireGuard QR helper, firewall/SSH status, SSH hardening check, failed logins, rootkit check, ClamAV install + quick scan, Fail2ban summary/reload, UFW presets, Google Authenticator install, config backup, WireGuard validate/start/stop/restart
+- **Tools/env**: essentials (sudo, nano, curl, net-tools, unzip, python3-pip, gcc/python3-dev, psutil via pip, gdown, dos2unix, glances, tmux, zsh, mc), ibramenu, QEMU guest agent
+- **Containers**: Docker + Compose plugin, service status, short info, running containers, list all containers, Docker Compose health, Docker rootless check, list privileged containers
 - **Monitoring**: node exporter, top CPU/mem processes, iostat summary, SMART health check, status dashboard (services, IPs, CPU/mem snapshot), export status report to file
 - **System info**: `/etc/os-release`, neofetch, memory info, VM check, display adapters, GitHub link
-- **Maintenance/disks**: cleanup, disks usage, largest `/var` dirs, maintenance bundle (update + cleanup + log rotate + status report)
+- **Maintenance/disks**: cleanup, disks usage, largest `/var` dirs, maintenance bundle (update + cleanup + log rotate + status report), log integrity check
 - **Users/time**: create sudo user, time sync info, chrony install
 - **System control**: reboot, power down (SAFE_MODE-aware)
 - **Help/logs**: Help/About (config, modes, repo), tail log; **Self-update** shortcut `u` to pull the latest NTX Command Center
@@ -124,6 +124,7 @@ Search tip: in the main menu, type `/keyword` (e.g., `/docker`, `/dns`) to jump 
 - Pending updates: uses `apt-get -s upgrade | grep '^Inst'` and can undercount on localized systems.
 - WireGuard: enable/disable assumes `/etc/wireguard/wg0.conf` exists.
 - WireGuard QR: requires `qrencode`; Docker Compose health assumes the Docker Compose plugin is available.
+- ClamAV: `freshclam` may fail if the daemon holds the DB lock; stop/reload `clamav-freshclam` before updating if needed.
 
 ## Quick start (best practice)
 
