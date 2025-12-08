@@ -31,6 +31,7 @@ FAIL2BAN_UNIT="${FAIL2BAN_UNIT:-fail2ban}"
 TAILSCALE_UNIT="${TAILSCALE_UNIT:-tailscaled}"
 DOCKER_UNIT="${DOCKER_UNIT:-docker}"
 NETMAKER_UNIT="${NETMAKER_UNIT:-netclient}"
+SCHROOT_UNIT="${SCHROOT_UNIT:-schroot}"
 CROWDSEC_UNIT="${CROWDSEC_UNIT:-crowdsec}"
 CROWDSEC_BOUNCER_UNIT="${CROWDSEC_BOUNCER_UNIT:-crowdsec-firewall-bouncer}"
 
@@ -468,6 +469,34 @@ remove_custom_source() {
     fi
 }
 
+apt_health_check() {
+    msgbox "APT health check"
+    echo "[Held packages]"
+    apt-mark showhold || true
+    echo
+    echo "[Broken deps check]"
+    apt-get check || true
+    echo
+    echo "[Security updates (simulated)]"
+    apt-get -s upgrade 2>/dev/null | grep -i security || echo "None detected (simulated)."
+}
+
+update_health_check() {
+    echo "[Reboot required]"
+    if [[ -f /var/run/reboot-required ]]; then
+        echo "Yes"
+    else
+        echo "No"
+    fi
+    echo
+    echo "[Last apt update timestamp]"
+    if [[ -f /var/lib/apt/periodic/update-success-stamp ]]; then
+        stat -c '%y' /var/lib/apt/periodic/update-success-stamp 2>/dev/null || stat -f '%Sm' /var/lib/apt/periodic/update-success-stamp 2>/dev/null
+    else
+        echo "No record found; run apt-get update."
+    fi
+}
+
 # --- DNS management ---
 
 show_dns() {
@@ -626,175 +655,20 @@ run_yabs_system() {
     curl -sL https://yabs.sh | bash -s -- -fi
 }
 
-install_and_scan_clamav() {
-    msgbox "Installing ClamAV"
-    apt update
-    apt install clamav clamav-daemon -y
-    msgbox "Updating virus definitions"
-    # Note: freshclam may fail if the daemon holds the DB lock; consider stopping/reloading clamav-freshclam before updating.
-    systemctl stop clamav-freshclam 2>/dev/null || true
-    freshclam || echo "freshclam failed (may require service stop); continuing..."
-    systemctl start clamav-freshclam 2>/dev/null || true
-    read -p "Path to scan (default: /home): " CLAM_PATH
-    CLAM_PATH=${CLAM_PATH:-/home}
-    msgbox "Running ClamAV quick scan on $CLAM_PATH (ctrl+c to stop)"
-    clamscan -r "$CLAM_PATH"
-}
-
-apt_health_check() {
-    msgbox "APT health check"
-    echo "[Held packages]"
-    apt-mark showhold || true
-    echo
-    echo "[Broken deps check]"
-    apt-get check || true
-    echo
-    echo "[Security updates (simulated)]"
-    apt-get -s upgrade 2>/dev/null | grep -i security || echo "None detected (simulated)."
-}
-
-firewall_preset_ssh_only() {
-    install_ufw_basic
-    ufw --force reset
-    ufw default deny incoming
-    ufw default allow outgoing
-    ufw allow ssh
-    ufw --force enable
-    msgbox "UFW preset applied: SSH only"
-}
-
-firewall_preset_web() {
-    install_ufw_basic
-    ufw default deny incoming
-    ufw default allow outgoing
-    ufw allow ssh
-    ufw allow 80/tcp
-    ufw allow 443/tcp
-    ufw --force enable
-    msgbox "UFW preset applied: SSH + HTTP/HTTPS"
-}
-
-firewall_preset_deny_all_except_ssh() {
-    install_ufw_basic
-    ufw default deny incoming
-    ufw default allow outgoing
-    ufw allow ssh
-    ufw --force enable
-    msgbox "UFW preset applied: deny all except SSH"
-}
-
-install_google_authenticator() {
-    msgbox "Installing Google Authenticator PAM"
-    apt update
-    apt install libpam-google-authenticator -y
-    echo "Run 'google-authenticator' as the target user to configure; update /etc/pam.d/sshd and /etc/ssh/sshd_config per your policy."
-}
-
-backup_config_bundle() {
-    local ts
-    ts=$(date '+%Y%m%d-%H%M%S')
-    local dest="$BACKUP_DIR/config-backup-$ts.tar.gz"
-    tar -czf "$dest" /etc/ssh/sshd_config /etc/wireguard 2>/dev/null /etc/fail2ban /etc/ufw/applications.d 2>/dev/null || true
-    log_line "Config backup created: $dest"
-    echo "Config backup saved to $dest"
-}
-
-fail2ban_summary() {
-    if ! command -v fail2ban-client >/dev/null 2>&1; then
-        echo "Fail2ban not installed."
-        return 1
+run_ibramenu_benchmarks() {
+    msgbox "Ibramenu Benchmarks (external script)"
+    local url="https://raw.githubusercontent.com/ibracorp/ibramenu/main/MenuOptions/Submenu%20Basic%20Functions/Submenu%20System%20Information/Submenu%20Benchmarks/submenu.sh"
+    local tmp="/tmp/ibramenu-benchmarks.sh"
+    if [[ "$DRY_RUN" == "true" ]]; then
+        echo "[DRY RUN] curl -fsSL \"$url\" -o \"$tmp\" && bash \"$tmp\""
+        return 0
     fi
-    fail2ban-client status
-    echo
-    echo "Reloading jails..."
-    fail2ban-client reload || true
-    echo
-    echo "Top offenders (auth.log):"
-    if [[ -f /var/log/auth.log ]]; then
-        grep 'Ban ' /var/log/auth.log | awk '{print $NF}' | sort | uniq -c | sort -nr | head
+    if curl -fsSL "$url" -o "$tmp"; then
+        chmod +x "$tmp" || true
+        bash "$tmp"
     else
-        echo "auth.log not found."
-    fi
-}
-
-docker_rootless_check() {
-    if ! command -v docker >/dev/null 2>&1; then
-        echo "Docker not installed."
+        echo "Failed to download ibramenu benchmarks from $url"
         return 1
-    fi
-    echo "Docker rootless info:"
-    docker info --format 'Rootless: {{.SecurityOptions}}' 2>/dev/null || echo "Could not determine rootless status."
-    loginctl show-user "$(whoami)" | grep Linger || true
-    echo "Note: enable rootless per Docker docs if needed."
-}
-
-docker_privileged_containers() {
-    if ! command -v docker >/dev/null 2>&1; then
-        echo "Docker not installed."
-        return 1
-    fi
-    echo "Privileged containers:"
-    docker ps --filter "status=running" --filter "status=exited" --format '{{.Names}} {{.ID}} {{.Status}}' | while read -r name id status; do
-        if docker inspect --format '{{.HostConfig.Privileged}}' "$id" 2>/dev/null | grep -qi true; then
-            echo "$name ($id) - $status"
-        fi
-    done
-}
-
-update_health_check() {
-    echo "[Reboot required]"
-    if [[ -f /var/run/reboot-required ]]; then
-        echo "Yes"
-    else
-        echo "No"
-    fi
-    echo
-    echo "[Last apt update timestamp]"
-    if [[ -f /var/lib/apt/periodic/update-success-stamp ]]; then
-        stat -c '%y' /var/lib/apt/periodic/update-success-stamp 2>/dev/null || stat -f '%Sm' /var/lib/apt/periodic/update-success-stamp 2>/dev/null
-    else
-        echo "No record found; run apt-get update."
-    fi
-}
-
-wireguard_validate_config() {
-    local cfg="/etc/wireguard/wg0.conf"
-    if [[ ! -f "$cfg" ]]; then
-        echo "WireGuard config not found at $cfg"
-        return 1
-    fi
-    if wg-quick strip "$cfg" >/dev/null 2>&1; then
-        echo "Config syntax looks OK ($cfg)"
-    else
-        echo "Config validation failed for $cfg"
-        return 1
-    fi
-}
-
-wireguard_start_wgquick() {
-    systemctl start wg-quick@wg0
-}
-
-wireguard_stop_wgquick() {
-    systemctl stop wg-quick@wg0
-}
-
-wireguard_reload_wgquick() {
-    systemctl restart wg-quick@wg0
-}
-
-log_integrity_report() {
-    local size sha
-    if [[ -f "$LOG_FILE" ]]; then
-        size=$(stat -f%z "$LOG_FILE" 2>/dev/null || stat -c%s "$LOG_FILE" 2>/dev/null || echo 0)
-        sha=$(sha256sum "$LOG_FILE" 2>/dev/null | awk '{print $1}')
-        echo "Log size: $size bytes"
-        echo "SHA256 : ${sha:-unavailable}"
-    else
-        echo "Log file not found: $LOG_FILE"
-    fi
-    if compgen -G "${LOG_FILE}.1*" > /dev/null; then
-        echo "Rotated logs present: $(ls -1 ${LOG_FILE}.1* | wc -l)"
     fi
 }
 
@@ -808,7 +682,7 @@ remove_speedtest_repo() {
     run_cmd "apt-get update after Speedtest repo removal" apt-get update
 }
 
-# --- SSH / remote access / security ---
+# --- Security / remote access ---
 
 change_ssh_proxmox() {
     curl -fsSL "https://cloud.io.anatolium.eu/s/jR9crxfoLHz5474/download" | bash
@@ -918,108 +792,176 @@ show_ssh_status() {
     fi
 }
 
-# --- Tools & environment ---
-
-install_essentials() {
+install_and_scan_clamav() {
+    msgbox "Installing ClamAV"
     apt update
-    apt-get install sudo -y
-    apt-get install nano -y
-    apt-get install curl -y
-    apt-get install net-tools -y
-    apt install unzip -y
-    apt install python3-pip -y
-    apt-get install gcc python3-dev -y
-    pip install --no-binary :all: psutil
-    pip3 install gdown
-    apt install dos2unix -y
-    apt install glances -y
-    apt install tmux -y
-    apt install zsh -y
-    apt install mc -y
+    apt install clamav clamav-daemon -y
+    msgbox "Updating virus definitions"
+    # Note: freshclam may fail if the daemon holds the DB lock; consider stopping/reloading clamav-freshclam before updating.
+    systemctl stop clamav-freshclam 2>/dev/null || true
+    freshclam || echo "freshclam failed (may require service stop); continuing..."
+    systemctl start clamav-freshclam 2>/dev/null || true
+    read -p "Path to scan (default: /home): " CLAM_PATH
+    CLAM_PATH=${CLAM_PATH:-/home}
+    msgbox "Running ClamAV quick scan on $CLAM_PATH (ctrl+c to stop)"
+    clamscan -r "$CLAM_PATH"
 }
 
-install_ibramenu() {
-    wget -qO ./i https://raw.githubusercontent.com/ibracorp/ibramenu/main/ibrainit.sh
-    chmod +x i
-    ./i
+apt_health_check() {
+    msgbox "APT health check"
+    echo "[Held packages]"
+    apt-mark showhold || true
+    echo
+    echo "[Broken deps check]"
+    apt-get check || true
+    echo
+    echo "[Security updates (simulated)]"
+    apt-get -s upgrade 2>/dev/null | grep -i security || echo "None detected (simulated)."
 }
 
-install_qemu_guest_agent() {
+firewall_preset_ssh_only() {
+    install_ufw_basic
+    ufw --force reset
+    ufw default deny incoming
+    ufw default allow outgoing
+    ufw allow ssh
+    ufw --force enable
+    msgbox "UFW preset applied: SSH only"
+}
+
+firewall_preset_web() {
+    install_ufw_basic
+    ufw default deny incoming
+    ufw default allow outgoing
+    ufw allow ssh
+    ufw allow 80/tcp
+    ufw allow 443/tcp
+    ufw --force enable
+    msgbox "UFW preset applied: SSH + HTTP/HTTPS"
+}
+
+firewall_preset_deny_all_except_ssh() {
+    install_ufw_basic
+    ufw default deny incoming
+    ufw default allow outgoing
+    ufw allow ssh
+    ufw --force enable
+    msgbox "UFW preset applied: deny all except SSH"
+}
+
+install_google_authenticator() {
+    msgbox "Installing Google Authenticator PAM"
     apt update
-    apt install qemu-guest-agent -y
-    systemctl enable --now qemu-guest-agent
+    apt install libpam-google-authenticator -y
+    echo "Run 'google-authenticator' as the target user to configure; update /etc/pam.d/sshd and /etc/ssh/sshd_config per your policy."
 }
 
-# --- Containers / Docker ---
-
-install_docker() {
-    apt update
-    apt install ca-certificates curl gnupg -y
-    install -m 0755 -d /etc/apt/keyrings
-    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-    echo \
-"deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
-$(. /etc/os-release && echo \$VERSION_CODENAME) stable" > /etc/apt/sources.list.d/docker.list
-    apt update
-    apt install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin -y
-    systemctl enable --now docker
+backup_config_bundle() {
+    local ts
+    ts=$(date '+%Y%m%d-%H%M%S')
+    local dest="$BACKUP_DIR/config-backup-$ts.tar.gz"
+    tar -czf "$dest" /etc/ssh/sshd_config /etc/wireguard 2>/dev/null /etc/fail2ban /etc/ufw/applications.d 2>/dev/null || true
+    log_line "Config backup created: $dest"
+    echo "Config backup saved to $dest"
 }
 
-docker_service_status() {
-    show_service_status docker
+fail2ban_summary() {
+    if ! command -v fail2ban-client >/dev/null 2>&1; then
+        echo "Fail2ban not installed."
+        return 1
+    fi
+    fail2ban-client status
+    echo
+    echo "Reloading jails..."
+    fail2ban-client reload || true
+    echo
+    echo "Top offenders (auth.log):"
+    if [[ -f /var/log/auth.log ]]; then
+        grep 'Ban ' /var/log/auth.log | awk '{print $NF}' | sort | uniq -c | sort -nr | head
+    else
+        echo "auth.log not found."
+    fi
 }
 
-docker_ps() {
+wireguard_validate_config() {
+    local cfg="/etc/wireguard/wg0.conf"
+    if [[ ! -f "$cfg" ]]; then
+        echo "WireGuard config not found at $cfg"
+        return 1
+    fi
+    if wg-quick strip "$cfg" >/dev/null 2>&1; then
+        echo "Config syntax looks OK ($cfg)"
+    else
+        echo "Config validation failed for $cfg"
+        return 1
+    fi
+}
+
+wireguard_start_wgquick() {
+    systemctl start wg-quick@wg0
+}
+
+wireguard_stop_wgquick() {
+    systemctl stop wg-quick@wg0
+}
+
+wireguard_reload_wgquick() {
+    systemctl restart wg-quick@wg0
+}
+
+log_integrity_report() {
+    local size sha
+    if [[ -f "$LOG_FILE" ]]; then
+        size=$(stat -f%z "$LOG_FILE" 2>/dev/null || stat -c%s "$LOG_FILE" 2>/dev/null || echo 0)
+        sha=$(sha256sum "$LOG_FILE" 2>/dev/null | awk '{print $1}')
+        echo "Log size: $size bytes"
+        echo "SHA256 : ${sha:-unavailable}"
+    else
+        echo "Log file not found: $LOG_FILE"
+    fi
+    if compgen -G "${LOG_FILE}.1*" > /dev/null; then
+        echo "Rotated logs present: $(ls -1 ${LOG_FILE}.1* | wc -l)"
+    fi
+}
+
+docker_rootless_check() {
     if ! command -v docker >/dev/null 2>&1; then
         echo "Docker not installed."
         return 1
     fi
-    docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Image}}"
+    echo "Docker rootless info:"
+    docker info --format 'Rootless: {{.SecurityOptions}}' 2>/dev/null || echo "Could not determine rootless status."
+    loginctl show-user "$(whoami)" | grep Linger || true
+    echo "Note: enable rootless per Docker docs if needed."
 }
 
-docker_list_all() {
+docker_privileged_containers() {
     if ! command -v docker >/dev/null 2>&1; then
         echo "Docker not installed."
         return 1
     fi
-    msgbox "List of all Docker Containers"
-    docker container ls -a --format "table {{.Names}}\t{{.Image}}\t{{.ID}}\t{{.Size}}\t{{.Networks}}"
+    echo "Privileged containers:"
+    docker ps --filter "status=running" --filter "status=exited" --format '{{.Names}} {{.ID}} {{.Status}}' | while read -r name id status; do
+        if docker inspect --format '{{.HostConfig.Privileged}}' "$id" 2>/dev/null | grep -qi true; then
+            echo "$name ($id) - $status"
+        fi
+    done
 }
 
-docker_info_short() {
-    if ! command -v docker >/dev/null 2>&1; then
-        echo "Docker not installed."
-        return 1
+update_health_check() {
+    echo "[Reboot required]"
+    if [[ -f /var/run/reboot-required ]]; then
+        echo "Yes"
+    else
+        echo "No"
     fi
-    docker info --format 'Server Version: {{.ServerVersion}}\nStorage Driver: {{.Driver}}\nCgroup Driver: {{.CgroupDriver}}'
-}
-
-# --- Monitoring ---
-
-install_node_exporter() {
-    apt update
-    apt install prometheus-node-exporter -y
-    systemctl enable --now prometheus-node-exporter
-}
-
-show_top_processes() {
-    ps -eo pid,cmd,%cpu,%mem --sort=-%cpu | head
-}
-
-show_iostat_summary() {
-    ensure_cmd iostat sysstat
-    iostat -x 5 3
-}
-
-smart_health_check() {
-    ensure_cmd smartctl smartmontools
-    local disk
-    disk=$(lsblk -ndo NAME,TYPE | awk '$2=="disk"{print "/dev/"$1; exit}')
-    if [[ -z "$disk" ]]; then
-        echo "No disk found for SMART check."
-        return 1
+    echo
+    echo "[Last apt update timestamp]"
+    if [[ -f /var/lib/apt/periodic/update-success-stamp ]]; then
+        stat -c '%y' /var/lib/apt/periodic/update-success-stamp 2>/dev/null || stat -f '%Sm' /var/lib/apt/periodic/update-success-stamp 2>/dev/null
+    else
+        echo "No record found; run apt-get update."
     fi
-    smartctl -H "$disk"
 }
 
 rootkit_check() {
@@ -1207,7 +1149,7 @@ main_menu() {
  6) Tools & environment
  7) Containers / Docker
  8) Monitoring
-9) System information
+ 9) System information
 10) Maintenance / disks
 11) Users & time
 12) System control
