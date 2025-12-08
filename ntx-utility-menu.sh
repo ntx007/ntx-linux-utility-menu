@@ -41,6 +41,10 @@ else
     C_RED=""; C_GRN=""; C_YLW=""; C_CYN=""; C_RST=""
 fi
 
+ibralogo() {
+    echo "=== NTX Command Center ==="
+}
+
 msgbox() {
     echo
     echo "=============================="
@@ -69,6 +73,9 @@ rotate_log() {
         size=$(stat -f%z "$LOG_FILE" 2>/dev/null || stat -c%s "$LOG_FILE" 2>/dev/null || echo 0)
         if [[ "$size" -gt "$MAX_LOG_SIZE" ]]; then
             mv "$LOG_FILE" "${LOG_FILE}.1" 2>/dev/null || true
+            if command -v gzip >/dev/null 2>&1; then
+                gzip -f "${LOG_FILE}.1" 2>/dev/null || true
+            fi
             touch "$LOG_FILE"
             log_line "Log rotated (previous -> ${LOG_FILE}.1)"
         fi
@@ -594,6 +601,203 @@ run_yabs() {
     curl -sL https://yabs.sh | bash
 }
 
+run_yabs_all() {
+    msgbox "Benchmark - All Tests"
+    curl -sL https://yabs.sh | bash
+}
+
+run_yabs_disk() {
+    msgbox "Benchmark - Disk Performance"
+    curl -sL https://yabs.sh | bash -s -- -ig
+}
+
+run_yabs_network() {
+    msgbox "Benchmark - Network Performance"
+    curl -sL https://yabs.sh | bash -s -- -fg
+}
+
+run_yabs_system_old() {
+    msgbox "Benchmark - System Performance (older version)"
+    curl -sL https://yabs.sh | bash -s -- -fi4
+}
+
+run_yabs_system() {
+    msgbox "Benchmark - System Performance"
+    curl -sL https://yabs.sh | bash -s -- -fi
+}
+
+install_and_scan_clamav() {
+    msgbox "Installing ClamAV"
+    apt update
+    apt install clamav clamav-daemon -y
+    msgbox "Updating virus definitions"
+    # Note: freshclam may fail if the daemon holds the DB lock; consider stopping/reloading clamav-freshclam before updating.
+    systemctl stop clamav-freshclam 2>/dev/null || true
+    freshclam || echo "freshclam failed (may require service stop); continuing..."
+    systemctl start clamav-freshclam 2>/dev/null || true
+    read -p "Path to scan (default: /home): " CLAM_PATH
+    CLAM_PATH=${CLAM_PATH:-/home}
+    msgbox "Running ClamAV quick scan on $CLAM_PATH (ctrl+c to stop)"
+    clamscan -r "$CLAM_PATH"
+}
+
+apt_health_check() {
+    msgbox "APT health check"
+    echo "[Held packages]"
+    apt-mark showhold || true
+    echo
+    echo "[Broken deps check]"
+    apt-get check || true
+    echo
+    echo "[Security updates (simulated)]"
+    apt-get -s upgrade 2>/dev/null | grep -i security || echo "None detected (simulated)."
+}
+
+firewall_preset_ssh_only() {
+    install_ufw_basic
+    ufw --force reset
+    ufw default deny incoming
+    ufw default allow outgoing
+    ufw allow ssh
+    ufw --force enable
+    msgbox "UFW preset applied: SSH only"
+}
+
+firewall_preset_web() {
+    install_ufw_basic
+    ufw default deny incoming
+    ufw default allow outgoing
+    ufw allow ssh
+    ufw allow 80/tcp
+    ufw allow 443/tcp
+    ufw --force enable
+    msgbox "UFW preset applied: SSH + HTTP/HTTPS"
+}
+
+firewall_preset_deny_all_except_ssh() {
+    install_ufw_basic
+    ufw default deny incoming
+    ufw default allow outgoing
+    ufw allow ssh
+    ufw --force enable
+    msgbox "UFW preset applied: deny all except SSH"
+}
+
+install_google_authenticator() {
+    msgbox "Installing Google Authenticator PAM"
+    apt update
+    apt install libpam-google-authenticator -y
+    echo "Run 'google-authenticator' as the target user to configure; update /etc/pam.d/sshd and /etc/ssh/sshd_config per your policy."
+}
+
+backup_config_bundle() {
+    local ts
+    ts=$(date '+%Y%m%d-%H%M%S')
+    local dest="$BACKUP_DIR/config-backup-$ts.tar.gz"
+    tar -czf "$dest" /etc/ssh/sshd_config /etc/wireguard 2>/dev/null /etc/fail2ban /etc/ufw/applications.d 2>/dev/null || true
+    log_line "Config backup created: $dest"
+    echo "Config backup saved to $dest"
+}
+
+fail2ban_summary() {
+    if ! command -v fail2ban-client >/dev/null 2>&1; then
+        echo "Fail2ban not installed."
+        return 1
+    fi
+    fail2ban-client status
+    echo
+    echo "Reloading jails..."
+    fail2ban-client reload || true
+    echo
+    echo "Top offenders (auth.log):"
+    if [[ -f /var/log/auth.log ]]; then
+        grep 'Ban ' /var/log/auth.log | awk '{print $NF}' | sort | uniq -c | sort -nr | head
+    else
+        echo "auth.log not found."
+    fi
+}
+
+docker_rootless_check() {
+    if ! command -v docker >/dev/null 2>&1; then
+        echo "Docker not installed."
+        return 1
+    fi
+    echo "Docker rootless info:"
+    docker info --format 'Rootless: {{.SecurityOptions}}' 2>/dev/null || echo "Could not determine rootless status."
+    loginctl show-user "$(whoami)" | grep Linger || true
+    echo "Note: enable rootless per Docker docs if needed."
+}
+
+docker_privileged_containers() {
+    if ! command -v docker >/dev/null 2>&1; then
+        echo "Docker not installed."
+        return 1
+    fi
+    echo "Privileged containers:"
+    docker ps --filter "status=running" --filter "status=exited" --format '{{.Names}} {{.ID}} {{.Status}}' | while read -r name id status; do
+        if docker inspect --format '{{.HostConfig.Privileged}}' "$id" 2>/dev/null | grep -qi true; then
+            echo "$name ($id) - $status"
+        fi
+    done
+}
+
+update_health_check() {
+    echo "[Reboot required]"
+    if [[ -f /var/run/reboot-required ]]; then
+        echo "Yes"
+    else
+        echo "No"
+    fi
+    echo
+    echo "[Last apt update timestamp]"
+    if [[ -f /var/lib/apt/periodic/update-success-stamp ]]; then
+        stat -c '%y' /var/lib/apt/periodic/update-success-stamp 2>/dev/null || stat -f '%Sm' /var/lib/apt/periodic/update-success-stamp 2>/dev/null
+    else
+        echo "No record found; run apt-get update."
+    fi
+}
+
+wireguard_validate_config() {
+    local cfg="/etc/wireguard/wg0.conf"
+    if [[ ! -f "$cfg" ]]; then
+        echo "WireGuard config not found at $cfg"
+        return 1
+    fi
+    if wg-quick strip "$cfg" >/dev/null 2>&1; then
+        echo "Config syntax looks OK ($cfg)"
+    else
+        echo "Config validation failed for $cfg"
+        return 1
+    fi
+}
+
+wireguard_start_wgquick() {
+    systemctl start wg-quick@wg0
+}
+
+wireguard_stop_wgquick() {
+    systemctl stop wg-quick@wg0
+}
+
+wireguard_reload_wgquick() {
+    systemctl restart wg-quick@wg0
+}
+
+log_integrity_report() {
+    local size sha
+    if [[ -f "$LOG_FILE" ]]; then
+        size=$(stat -f%z "$LOG_FILE" 2>/dev/null || stat -c%s "$LOG_FILE" 2>/dev/null || echo 0)
+        sha=$(sha256sum "$LOG_FILE" 2>/dev/null | awk '{print $1}')
+        echo "Log size: $size bytes"
+        echo "SHA256 : ${sha:-unavailable}"
+    else
+        echo "Log file not found: $LOG_FILE"
+    fi
+    if compgen -G "${LOG_FILE}.1*" > /dev/null; then
+        echo "Rotated logs present: $(ls -1 ${LOG_FILE}.1* | wc -l)"
+    fi
+}
+
 remove_speedtest_repo() {
     if [[ -f /etc/apt/sources.list.d/ookla_speedtest-cli.list ]]; then
         run_cmd "Remove Speedtest repo list" rm -f /etc/apt/sources.list.d/ookla_speedtest-cli.list
@@ -722,11 +926,6 @@ install_essentials() {
     apt-get install nano -y
     apt-get install curl -y
     apt-get install net-tools -y
-}
-
-install_tools() {
-    apt update
-    apt-get install sudo curl net-tools -y
     apt install unzip -y
     apt install python3-pip -y
     apt-get install gcc python3-dev -y
@@ -778,6 +977,15 @@ docker_ps() {
     docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Image}}"
 }
 
+docker_list_all() {
+    if ! command -v docker >/dev/null 2>&1; then
+        echo "Docker not installed."
+        return 1
+    fi
+    msgbox "List of all Docker Containers"
+    docker container ls -a --format "table {{.Names}}\t{{.Image}}\t{{.ID}}\t{{.Size}}\t{{.Networks}}"
+}
+
 docker_info_short() {
     if ! command -v docker >/dev/null 2>&1; then
         echo "Docker not installed."
@@ -814,6 +1022,14 @@ smart_health_check() {
     smartctl -H "$disk"
 }
 
+rootkit_check() {
+    msgbox "Installing/Preparing Rootkit Check"
+    run_cmd "Install chkrootkit" apt install chkrootkit -y
+    ibralogo
+    msgbox "Rootkit Check"
+    chkrootkit
+}
+
 # --- System information ---
 
 os_release_check() {
@@ -840,6 +1056,10 @@ memory_information() {
 
 vm_check() {
     systemd-detect-virt
+}
+
+check_display() {
+    sudo lshw -c display
 }
 
 # --- Maintenance / disks ---
@@ -987,7 +1207,7 @@ main_menu() {
  6) Tools & environment
  7) Containers / Docker
  8) Monitoring
- 9) System information
+9) System information
 10) Maintenance / disks
 11) Users & time
 12) System control
@@ -995,6 +1215,7 @@ h) Help / About
 s) Status dashboard
 l) Tail logs
 c) Show config/env
+u) Update NTX Command Center
 q) Quit
 ================================================================
 EOF
@@ -1002,8 +1223,8 @@ EOF
 
 search_section() {
     local query="$1"
-    local -a names=("system update" "dns" "network" "speedtest" "security" "tools" "containers" "monitoring" "system information" "maintenance" "users" "control" "status" "help" "logs" "config")
-    local -a targets=(1 2 3 4 5 6 7 8 9 10 11 12 s h l c)
+    local -a names=("system update" "dns" "network" "speedtest" "security" "tools" "containers" "monitoring" "system information" "maintenance" "users" "control" "help" "status" "logs" "config" "update")
+    local -a targets=(1 2 3 4 5 6 7 8 9 10 11 12 h s l c u)
     local matches=()
     for i in "${!names[@]}"; do
         if [[ "${names[$i]}" == *"$query"* ]]; then
@@ -1065,7 +1286,8 @@ menu_update() {
  7) Run unattended upgrade now
  8) List custom apt sources
  9) Remove custom apt source (.list)
-10) Update NTX Command Center (download latest script)
+10) APT health check (held/broken/security)
+11) Update health (reboot + last update)
  0) Back
 EOF
         read -p "Select: " c
@@ -1079,7 +1301,8 @@ EOF
             7) run_unattended_upgrade_now ;;
             8) list_custom_sources ;;
             9) remove_custom_source ;;
-            10) self_update_script ;;
+            10) apt_health_check ;;
+            11) update_health_check ;;
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
@@ -1154,6 +1377,8 @@ menu_bench() {
  4) Run Speedtest
  5) Run YABS
  6) Remove Speedtest repo/key
+ 7) Benchmark presets (YABS submenu)
+ 8) Run ibramenu benchmarks (external)
  0) Back
 EOF
         read -p "Select: " c
@@ -1164,6 +1389,32 @@ EOF
             4) run_speedtest ;;
             5) run_yabs ;;
             6) remove_speedtest_repo ;;
+            7) menu_yabs_presets ;;
+            8) run_ibramenu_benchmarks ;;
+            0) break ;;
+            *) echo "Invalid choice." ;;
+        esac
+    done
+}
+
+menu_yabs_presets() {
+    while true; do
+        cat <<EOF
+[YABS benchmark presets]
+ 1) Benchmark - All Tests
+ 2) Benchmark - Disk Performance
+ 3) Benchmark - Network Performance
+ 4) Benchmark - System Performance (older version)
+ 5) Benchmark - System Performance
+ 0) Back
+EOF
+        read -p "Select: " c
+        case "$c" in
+            1) run_yabs_all ;;
+            2) run_yabs_disk ;;
+            3) run_yabs_network ;;
+            4) run_yabs_system_old ;;
+            5) run_yabs_system ;;
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
@@ -1194,6 +1445,18 @@ menu_security() {
 18) Disable wg-quick@wg0
 19) SSH hardening check
 20) Show WireGuard config as QR (wg0.conf)
+21) Rootkit check (installs chkrootkit)
+22) Install ClamAV + run quick scan
+23) Fail2ban summary + reload
+24) UFW preset: SSH only
+25) UFW preset: SSH + HTTP/HTTPS
+26) UFW preset: deny all except SSH
+27) Install Google Authenticator (PAM)
+28) Backup config bundle (SSH/WireGuard/Fail2ban/UFW)
+29) WireGuard: validate config
+30) WireGuard: start wg-quick@wg0
+31) WireGuard: stop wg-quick@wg0
+32) WireGuard: restart wg-quick@wg0
  0) Back
 EOF
         read -p "Select: " c
@@ -1218,6 +1481,18 @@ EOF
             18) disable_wg_quick ;;
             19) ssh_hardening_audit ;;
             20) wireguard_show_qr ;;
+            21) rootkit_check ;;
+            22) install_and_scan_clamav ;;
+            23) fail2ban_summary ;;
+            24) firewall_preset_ssh_only ;;
+            25) firewall_preset_web ;;
+            26) firewall_preset_deny_all_except_ssh ;;
+            27) install_google_authenticator ;;
+            28) backup_config_bundle ;;
+            29) wireguard_validate_config ;;
+            30) wireguard_start_wgquick ;;
+            31) wireguard_stop_wgquick ;;
+            32) wireguard_reload_wgquick ;;
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
@@ -1255,6 +1530,9 @@ menu_containers() {
  3) Docker info (short)
  4) Docker ps (running containers)
  5) Docker Compose health (ls/ps)
+ 6) List all Docker containers
+ 7) Docker rootless check
+ 8) List privileged containers
  0) Back
 EOF
         read -p "Select: " c
@@ -1264,6 +1542,9 @@ EOF
             3) docker_info_short ;;
             4) docker_ps ;;
             5) docker_compose_health ;;
+            6) docker_list_all ;;
+            7) docker_rootless_check ;;
+            8) docker_privileged_containers ;;
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
@@ -1305,6 +1586,7 @@ menu_sysinfo() {
  3) Memory information
  4) VM / virtualization check
  5) Visit project GitHub
+ 6) Show video adapters (lshw display)
  0) Back
 EOF
         read -p "Select: " c
@@ -1314,6 +1596,7 @@ EOF
             3) memory_information ;;
             4) vm_check ;;
             5) visit_project_github ;;
+            6) check_display ;;
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
@@ -1328,6 +1611,7 @@ menu_maintenance() {
  2) Show disks (lsblk + df -h)
  3) Show biggest /var directories
  4) Run maintenance bundle (update + cleanup + log rotate + status report)
+ 5) Log integrity (size + SHA256)
  0) Back
 EOF
         read -p "Select: " c
@@ -1336,6 +1620,7 @@ EOF
             2) show_disks ;;
             3) show_big_var_dirs ;;
             4) maintenance_bundle ;;
+            5) log_integrity_report ;;
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
@@ -1450,6 +1735,7 @@ while true; do
         10) menu_maintenance ;;
         11) menu_users_time ;;
         12) menu_control ;;
+        u|U) self_update_script ;;
         h|H) show_help_about ;;
         c|C) show_config ;;
         s|S) status_dashboard ;;

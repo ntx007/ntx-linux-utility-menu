@@ -3,12 +3,18 @@
 ## Unreleased (v0.4-dev)
 - Planned: capture upcoming changes for the next development cycle after v0.3 release.
 - Placeholder: add concrete entries here as features/fixes are scoped and delivered.
-- Added in-menu self-update to download the latest NTX Command Center script from https://ntx-menu.re-vent.de (System update → option 10). The link serves the script from the GitHub main branch.
+- Added in-menu self-update (main menu shortcut `u`) to download the latest NTX Command Center script from https://ntx-menu.re-vent.de. The link serves the script from the GitHub main branch.
 - New non-interactive mode via `--run` (e.g., update_all, maintenance_bundle, status_report, ssh_audit, docker_compose_health, wireguard_qr).
 - Added maintenance bundle (update + cleanup + log rotate + status report) and exportable status reports to `/var/log/ntx-menu-reports`.
 - Introduced SSH hardening check and WireGuard QR helper; Docker Compose health view (ls/ps) added to containers menu.
 - Enhanced menu search feedback for `/keyword` queries.
 - Config overrides supported via `/etc/ntx-menu.conf` or `./ntx-menu.conf` for paths and unit names.
+- Added rootkit check (chkrootkit installer/runner), video adapter info (lshw display), and all-containers listing in the Docker menu.
+- Expanded essentials install to include unzip, python3-pip, gcc/python3-dev, psutil (pip), gdown, dos2unix, glances, tmux, zsh, and mc.
+- Added YABS benchmark presets submenu and external benchmarks option under Speedtest/benchmarks.
+- Added ClamAV install + quick scan option to Security/remote.
+- Added APT health/update health checks; security enhancements (Fail2ban summary/reload, UFW presets, Google Authenticator install, config backup bundle, WireGuard validate/start/stop/restart, ClamAV improvements); container hardening checks (rootless, privileged containers); log integrity report in maintenance.
+- ClamAV: `freshclam` may fail if the daemon holds the DB lock; stop/reload `clamav-freshclam` before updating if needed.
 
 ### Known behaviors (v0.4-dev)
 - When realpath/readlink -f are unavailable and the script is invoked via $PATH, self-update may write to the current directory instead of the installed path; run with the full path to update in place.

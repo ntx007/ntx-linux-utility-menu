@@ -11,9 +11,9 @@ A portable, menu-driven Bash utility for common Linux admin tasks. Built for Deb
 - Updates: unattended-upgrades enable/disable/status/run; reboot-if-needed flow; apt source hygiene (list/remove); self-update to latest script; non-interactive `--run` actions
 - Networking: public IP with fallback, interfaces/routes/connections, DNS backups/restore, ping common endpoints, traceroute
 - Security/remote: UFW, Fail2ban, OpenSSH, Tailscale, Netmaker netclient (install/remove repo), CrowdSec + firewall bouncer, WireGuard (client/server), firewall/SSH status, SSH hardening check, WireGuard QR view, failed logins
-- Tools/monitoring: essentials/extra tools, node exporter, top CPU/mem, iostat summary, SMART checks, status dashboard, exportable status report
-- Containers: Docker + Compose plugin install, service status/info, running containers, Docker Compose health (ls/ps)
-- Maintenance/info: cleanup, daily maintenance bundle (update + cleanup + rotate log + status report), disk usage, largest `/var` dirs, system info (os-release, neofetch, VM check), GitHub link
+- Tools/monitoring: essentials/extra tools, node exporter, top CPU/mem, iostat summary, SMART checks, status dashboard, exportable status report, rootkit check
+- Containers: Docker + Compose plugin install, service status/info, running containers, list all containers, Docker Compose health (ls/ps)
+- Maintenance/info: cleanup, daily maintenance bundle (update + cleanup + rotate log + status report), disk usage, largest `/var` dirs, system info (os-release, neofetch, VM check, display adapters), GitHub link
 - Logging/backups: `/var/log/ntx-menu.log` with rotation; `/etc/resolv.conf` backups to `/var/backups/ntx-menu`
 - Modes: `DRY_RUN=true` to preview commands; `SAFE_MODE=true` to skip destructive actions
 
@@ -93,19 +93,19 @@ Run `./ntx-utility-menu.sh --help` for the full list.
 
 ## Menu map (v0.4-dev)
 
-- **System update**: standard upgrade, reboot-if-needed, unattended-upgrades (enable/disable/status/run), list/remove custom apt sources, update NTX Command Center script from the official link
+- **System update**: standard upgrade, reboot-if-needed, unattended-upgrades (enable/disable/status/run), list/remove custom apt sources
 - **DNS**: view/edit with backups, preset DNS choices, restore last backup, append/overwrite IPv4 Cloudflare/Google and IPv6 Cloudflare/Google
 - **Network/IP**: public IP (fallback), interfaces, routes, connections, ping common endpoints, traceroute
 - **Speedtest/benchmarks**: Speedtest install/update/run, repo/key removal, YABS
-- **Security/remote**: UFW, Fail2ban, OpenSSH, Tailscale, Netmaker netclient (install/remove repo), CrowdSec + firewall bouncer, WireGuard (client/server), WireGuard QR helper, firewall/SSH status, SSH hardening check, failed logins
+- **Security/remote**: UFW, Fail2ban, OpenSSH, Tailscale, Netmaker netclient (install/remove repo), CrowdSec + firewall bouncer, WireGuard (client/server), WireGuard QR helper, firewall/SSH status, SSH hardening check, failed logins, rootkit check
 - **Tools/env**: essentials, extra tools, ibramenu, QEMU guest agent
-- **Containers**: Docker + Compose plugin, service status, short info, running containers, Docker Compose health
+- **Containers**: Docker + Compose plugin, service status, short info, running containers, list all containers, Docker Compose health
 - **Monitoring**: node exporter, top CPU/mem processes, iostat summary, SMART health check, status dashboard (services, IPs, CPU/mem snapshot), export status report to file
-- **System info**: `/etc/os-release`, neofetch, memory info, VM check, GitHub link
+- **System info**: `/etc/os-release`, neofetch, memory info, VM check, display adapters, GitHub link
 - **Maintenance/disks**: cleanup, disks usage, largest `/var` dirs, maintenance bundle (update + cleanup + log rotate + status report)
 - **Users/time**: create sudo user, time sync info, chrony install
 - **System control**: reboot, power down (SAFE_MODE-aware)
-- **Help/logs**: Help/About (config, modes, repo), tail log
+- **Help/logs**: Help/About (config, modes, repo), tail log; **Self-update** shortcut `u` to pull the latest NTX Command Center
 
 ## Modes and shortcuts
 
