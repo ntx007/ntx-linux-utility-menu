@@ -2,15 +2,28 @@
 
 ###############################################################################
 # NTX Command Center - Simple server helper menu
-# Version: v0.3
+# Version: v0.4-dev
 ###############################################################################
 
 LOG_FILE="/var/log/ntx-menu.log"
 BACKUP_DIR="/var/backups/ntx-menu"
+REPORT_DIR="/var/log/ntx-menu-reports"
 MAX_LOG_SIZE=$((1024 * 1024)) # 1 MiB
 DRY_RUN=${DRY_RUN:-false}
 SAFE_MODE=${SAFE_MODE:-false}
-VERSION="v0.3"
+VERSION="v0.4-dev"
+SCRIPT_PATH="$(command -v realpath >/dev/null 2>&1 && realpath "$0")"
+if [[ -z "$SCRIPT_PATH" ]]; then
+    SCRIPT_PATH="$(command -v readlink >/dev/null 2>&1 && readlink -f "$0")"
+fi
+# If neither realpath nor readlink -f is present and the script was invoked via $PATH,
+# self-update will write to the current directory instead of the installed location.
+SCRIPT_PATH="${SCRIPT_PATH:-$0}"
+
+# Known behaviors:
+# - Systemd unit names are assumed to be standard (ssh, docker, etc.); adjust variables if your distro differs.
+# - Pending update count uses `apt-get -s upgrade | grep '^Inst'` and can undercount on localized systems.
+# - WireGuard enable/disable assumes /etc/wireguard/wg0.conf exists.
 # Service unit map (adjust if your distro uses different names)
 SSH_UNIT="${SSH_UNIT:-ssh}"
 UFW_UNIT="${UFW_UNIT:-ufw}"
@@ -39,6 +52,15 @@ msgbox() {
 log_line() {
     local message="$1"
     echo "$(date '+%Y-%m-%d %H:%M:%S') | $message" | tee -a "$LOG_FILE"
+}
+
+load_config() {
+    for cfg in /etc/ntx-menu.conf "./ntx-menu.conf"; do
+        if [[ -f "$cfg" ]]; then
+            # shellcheck disable=SC1090
+            . "$cfg"
+        fi
+    done
 }
 
 rotate_log() {
@@ -75,7 +97,41 @@ run_cmd() {
 ensure_dirs() {
     mkdir -p "$BACKUP_DIR"
     touch "$LOG_FILE"
+    mkdir -p "$REPORT_DIR"
     rotate_log
+}
+
+self_update_script() {
+    # Download URL points to the latest main branch script on GitHub
+    local url="https://ntx-menu.re-vent.de"
+    local target="$SCRIPT_PATH"
+    local tmp="${target}.tmp"
+
+    if [[ "$DRY_RUN" == "true" ]]; then
+        echo "[DRY RUN] curl -fsSL \"$url\" -o \"$tmp\" && chmod +x \"$tmp\" && cp \"$target\" \"${target}.bak\" && mv \"$tmp\" \"$target\""
+        log_line "OK : download latest NTX Command Center (dry run)"
+        return 0
+    fi
+
+    log_line "RUN: download latest NTX Command Center from $url"
+    if curl -fsSL "$url" -o "$tmp"; then
+        chmod +x "$tmp" || true
+        cp "$target" "${target}.bak" 2>/dev/null || true
+        if mv "$tmp" "$target"; then
+            log_line "OK : updated script from $url (backup: ${target}.bak)"
+            echo "Updated script from $url (backup: ${target}.bak)"
+        else
+            log_line "FAIL: replace script with downloaded version"
+            echo "Failed to replace existing script."
+            rm -f "$tmp"
+            return 1
+        fi
+    else
+        log_line "FAIL: download latest NTX Command Center from $url"
+        echo "Failed to download latest script from $url"
+        rm -f "$tmp"
+        return 1
+    fi
 }
 
 ensure_cmd() {
@@ -187,6 +243,120 @@ disk_inode_summary() {
     echo
     echo "Inode usage:"
     df -ih --output=source,ipcent,iavail,target | sed '1d' | head -5
+}
+
+status_report_export() {
+    mkdir -p "$REPORT_DIR"
+    local ts
+    ts=$(date '+%Y%m%d-%H%M%S')
+    local report="$REPORT_DIR/status-$ts.txt"
+
+    # Disable colors for report output
+    local SAVED_RED="$C_RED" SAVED_GRN="$C_GRN" SAVED_YLW="$C_YLW" SAVED_CYN="$C_CYN" SAVED_RST="$C_RST"
+    C_RED=""; C_GRN=""; C_YLW=""; C_CYN=""; C_RST=""
+
+    {
+        echo "NTX Command Center status report"
+        echo "Version: $VERSION"
+        echo "Timestamp: $ts"
+        echo "Host: $(hostname)"
+        echo "Uptime: $(uptime -p 2>/dev/null || uptime)"
+        echo
+        echo "[Services]"
+        show_service_status ssh "$SSH_UNIT"
+        show_service_status ufw "$UFW_UNIT"
+        show_service_status fail2ban "$FAIL2BAN_UNIT"
+        show_service_status tailscale "$TAILSCALE_UNIT"
+        show_service_status docker "$DOCKER_UNIT"
+        show_service_status netmaker "$NETMAKER_UNIT"
+        show_service_status crowdsec "$CROWDSEC_UNIT"
+        show_service_status crowdsec-firewall-bouncer "$CROWDSEC_BOUNCER_UNIT"
+        echo
+        echo "[Network]"
+        whats_my_ip
+        list_private_ips
+        echo
+        echo "[Updates]"
+        pending_updates_count
+        kernel_version_summary
+        echo
+        echo "[CPU/Memory]"
+        cpu_mem_snapshot
+        echo
+        echo "[Disk/Inodes]"
+        disk_inode_summary
+    } > "$report"
+
+    # Restore colors
+    C_RED="$SAVED_RED"; C_GRN="$SAVED_GRN"; C_YLW="$SAVED_YLW"; C_CYN="$SAVED_CYN"; C_RST="$SAVED_RST"
+
+    log_line "Status report saved to $report"
+    echo "Status report saved to $report"
+}
+
+maintenance_bundle() {
+    echo "Running maintenance bundle (updates, cleanup, log rotate, status report)..."
+    update_all
+    system_cleanup
+    rotate_log
+    status_report_export
+}
+
+ssh_hardening_audit() {
+    local cfg="/etc/ssh/sshd_config"
+    if [[ ! -f "$cfg" ]]; then
+        echo "sshd_config not found at $cfg"
+        return 1
+    fi
+    echo "SSH hardening check ($cfg)"
+    local pri par pwa
+    pri=$(grep -Ei '^\s*PermitRootLogin' "$cfg" | tail -1 | awk '{print $2}')
+    par=$(grep -Ei '^\s*PasswordAuthentication' "$cfg" | tail -1 | awk '{print $2}')
+    pwa=$(grep -Ei '^\s*PubkeyAuthentication' "$cfg" | tail -1 | awk '{print $2}')
+    echo "PermitRootLogin: ${pri:-default (yes on many distros)}"
+    echo "PasswordAuthentication: ${par:-default (yes on many distros)}"
+    echo "PubkeyAuthentication: ${pwa:-default (yes)}"
+    if [[ "${pri,,}" != "no" ]]; then
+        echo "Recommendation: set PermitRootLogin no"
+    fi
+    if [[ "${par,,}" != "no" ]]; then
+        echo "Recommendation: set PasswordAuthentication no (if keys are configured)"
+    fi
+    if [[ -z "$pwa" || "${pwa,,}" == "yes" ]]; then
+        echo "PubkeyAuthentication enabled (recommended)."
+    else
+        echo "Recommendation: enable PubkeyAuthentication yes"
+    fi
+}
+
+docker_compose_health() {
+    if ! command -v docker >/dev/null 2>&1; then
+        echo "Docker is not installed."
+        return 1
+    fi
+    echo "Docker info (compose plugin and services)"
+    docker --version
+    docker compose version 2>/dev/null || echo "docker compose plugin not found."
+    echo
+    echo "[Compose projects]"
+    docker compose ls 2>/dev/null || echo "No compose projects or compose plugin unavailable."
+    echo
+    echo "[Compose services (ps --all)]"
+    docker compose ps --all 2>/dev/null || echo "Compose ps not available."
+}
+
+wireguard_show_qr() {
+    local cfg="${1:-/etc/wireguard/wg0.conf}"
+    if [[ ! -f "$cfg" ]]; then
+        echo "WireGuard config not found at $cfg"
+        return 1
+    fi
+    if ! command -v qrencode >/dev/null 2>&1; then
+        echo "qrencode not installed. Install it to render QR codes."
+        return 1
+    fi
+    echo "Rendering QR for $cfg"
+    qrencode -t ANSIUTF8 < "$cfg"
 }
 
 skip_if_safe() {
@@ -842,9 +1012,44 @@ search_section() {
     done
     if [[ ${#matches[@]} -eq 1 ]]; then
         echo "${matches[0]}"
+    elif [[ ${#matches[@]} -gt 1 ]]; then
+        echo "Matches: ${matches[*]}"
     else
         echo ""
     fi
+}
+
+run_action_by_name() {
+    local action="$1"
+    case "$action" in
+        update_all) update_all ;;
+        maintenance_bundle) maintenance_bundle ;;
+        status_report|status_report_export) status_report_export ;;
+        status_dashboard) status_dashboard ;;
+        ssh_audit|ssh_hardening) ssh_hardening_audit ;;
+        docker_compose_health) docker_compose_health ;;
+        wireguard_qr|wg_qr) wireguard_show_qr ;;
+        *)
+            echo "Unknown action: $action"
+            echo "Supported: update_all, maintenance_bundle, status_report, status_dashboard, ssh_audit, docker_compose_health, wireguard_qr"
+            return 1
+            ;;
+    esac
+}
+
+print_usage() {
+    cat <<EOF
+Usage: $0 [--run ACTION]
+
+Actions (non-interactive):
+  update_all            Run apt-get update && upgrade
+  maintenance_bundle    Update, cleanup, rotate log, export status report
+  status_report         Export status report to file
+  status_dashboard      Print status dashboard
+  ssh_audit             Run SSH hardening check
+  docker_compose_health Show Docker Compose health (ls/ps)
+  wireguard_qr          Render /etc/wireguard/wg0.conf as QR (requires qrencode)
+EOF
 }
 
 menu_update() {
@@ -860,6 +1065,7 @@ menu_update() {
  7) Run unattended upgrade now
  8) List custom apt sources
  9) Remove custom apt source (.list)
+10) Update NTX Command Center (download latest script)
  0) Back
 EOF
         read -p "Select: " c
@@ -873,6 +1079,7 @@ EOF
             7) run_unattended_upgrade_now ;;
             8) list_custom_sources ;;
             9) remove_custom_source ;;
+            10) self_update_script ;;
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
@@ -985,6 +1192,8 @@ menu_security() {
 16) Show WireGuard sample config
 17) Enable wg-quick@wg0
 18) Disable wg-quick@wg0
+19) SSH hardening check
+20) Show WireGuard config as QR (wg0.conf)
  0) Back
 EOF
         read -p "Select: " c
@@ -1007,6 +1216,8 @@ EOF
             16) print_wireguard_sample ;;
             17) enable_wg_quick ;;
             18) disable_wg_quick ;;
+            19) ssh_hardening_audit ;;
+            20) wireguard_show_qr ;;
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
@@ -1043,6 +1254,7 @@ menu_containers() {
  2) Docker service status
  3) Docker info (short)
  4) Docker ps (running containers)
+ 5) Docker Compose health (ls/ps)
  0) Back
 EOF
         read -p "Select: " c
@@ -1051,6 +1263,7 @@ EOF
             2) docker_service_status ;;
             3) docker_info_short ;;
             4) docker_ps ;;
+            5) docker_compose_health ;;
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
@@ -1066,6 +1279,7 @@ menu_monitoring() {
  3) Show IO stats (iostat)
  4) SMART health check (first disk)
  5) Status dashboard (services + IP)
+ 6) Export status report to file
  0) Back
 EOF
         read -p "Select: " c
@@ -1075,6 +1289,7 @@ EOF
             3) show_iostat_summary ;;
             4) smart_health_check ;;
             5) status_dashboard ;;
+            6) status_report_export ;;
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
@@ -1112,6 +1327,7 @@ menu_maintenance() {
  1) System cleanup (APT autoremove/autoclean, logs 7d)
  2) Show disks (lsblk + df -h)
  3) Show biggest /var directories
+ 4) Run maintenance bundle (update + cleanup + log rotate + status report)
  0) Back
 EOF
         read -p "Select: " c
@@ -1119,6 +1335,7 @@ EOF
             1) system_cleanup ;;
             2) show_disks ;;
             3) show_big_var_dirs ;;
+            4) maintenance_bundle ;;
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
@@ -1167,11 +1384,29 @@ EOF
 # Main
 ###############################################################################
 
+RUN_ACTION=""
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --run)
+            RUN_ACTION="$2"
+            shift 2
+            ;;
+        -h|--help)
+            print_usage
+            exit 0
+            ;;
+        *)
+            break
+            ;;
+    esac
+done
+
 # Root check
 if [[ $EUID -ne 0 ]]; then
    echo "Please run as root (e.g. sudo bash $0)."
    exit 1
 fi
+load_config
 
 check_environment
 ensure_dirs
@@ -1180,6 +1415,11 @@ log_line "Starting NTX Command Center..."
 
 echo "Starting NTX Command Center $VERSION..."
 
+if [[ -n "$RUN_ACTION" ]]; then
+    run_action_by_name "$RUN_ACTION"
+    exit $?
+fi
+
 while true; do
     main_menu
     read -p "Select a section: " choice
@@ -1187,7 +1427,10 @@ while true; do
         choice="${choice#/}"
         choice=$(echo "$choice" | tr '[:upper:]' '[:lower:]')
         resolved=$(search_section "$choice")
-        if [[ -n "$resolved" ]]; then
+        if [[ "$resolved" == Matches:* ]]; then
+            echo "$resolved"
+            continue
+        elif [[ -n "$resolved" ]]; then
             choice="$resolved"
         else
             echo "No match for \"$choice\""

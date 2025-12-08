@@ -1,19 +1,21 @@
 # NTX Command Center
 
-A portable, menu-driven Bash utility for common Linux admin tasks: `ntx-utility-menu.sh`. Built for Debian/Ubuntu (and derivatives), it centralizes updates, diagnostics, networking tools, security hardening, and maintenance in a single interactive script.
+A portable, menu-driven Bash utility for common Linux admin tasks. Built for Debian/Ubuntu (and derivatives), it centralizes updates, diagnostics, networking tools, security hardening, and maintenance in a single interactive script.
 
-## Highlights (v0.3)
+- Current development version: **v0.4-dev** (main branch).
+- Self-update URL: `https://ntx-menu.re-vent.de` serves the latest script from GitHub main. If `realpath`/`readlink -f` are unavailable and you launch via `$PATH`, run the script with its full path (e.g., `/usr/local/bin/ntx-utility-menu`) so the updater replaces the installed file instead of writing into the current directory.
 
-- Interactive, nested menu (Bash) with shortcuts for Help, Status dashboard, and Logs
-- Updates: unattended-upgrades enable/disable/status/run; reboot-if-needed flow; apt source hygiene (list/remove)
+## Highlights (v0.4-dev)
+
+- Interactive, nested menu with shortcuts for Help, Status dashboard, and Logs; search via `/keyword`
+- Updates: unattended-upgrades enable/disable/status/run; reboot-if-needed flow; apt source hygiene (list/remove); self-update to latest script; non-interactive `--run` actions
 - Networking: public IP with fallback, interfaces/routes/connections, DNS backups/restore, ping common endpoints, traceroute
-- Security/remote: UFW, Fail2ban, OpenSSH, Tailscale, Netmaker netclient (install/remove repo), CrowdSec + firewall bouncer, WireGuard (client/server), firewall/SSH status, failed logins
-- Tools/monitoring: essentials/extra tools, node exporter, top CPU/mem, iostat summary, SMART checks, status dashboard
-- Containers: Docker + Compose plugin install, service status/info, running containers
-- Maintenance/info: cleanup, disk usage, largest `/var` dirs, system info (os-release, neofetch, VM check), GitHub link
+- Security/remote: UFW, Fail2ban, OpenSSH, Tailscale, Netmaker netclient (install/remove repo), CrowdSec + firewall bouncer, WireGuard (client/server), firewall/SSH status, SSH hardening check, WireGuard QR view, failed logins
+- Tools/monitoring: essentials/extra tools, node exporter, top CPU/mem, iostat summary, SMART checks, status dashboard, exportable status report
+- Containers: Docker + Compose plugin install, service status/info, running containers, Docker Compose health (ls/ps)
+- Maintenance/info: cleanup, daily maintenance bundle (update + cleanup + rotate log + status report), disk usage, largest `/var` dirs, system info (os-release, neofetch, VM check), GitHub link
 - Logging/backups: `/var/log/ntx-menu.log` with rotation; `/etc/resolv.conf` backups to `/var/backups/ntx-menu`
 - Modes: `DRY_RUN=true` to preview commands; `SAFE_MODE=true` to skip destructive actions
-- Search: type `/keyword` (e.g., `/docker`, `/dns`) in the main menu to jump to a section
 
 ## Requirements
 
@@ -74,18 +76,33 @@ chmod +x ntx-utility-menu.sh
 ./ntx-utility-menu.sh
 ```
 
-## Menu map (v0.3)
+## Non-interactive usage
 
-- **System update**: standard upgrade, reboot-if-needed, unattended-upgrades (enable/disable/status/run), list/remove custom apt sources
+You can run common actions without the menu:
+
+```bash
+sudo ./ntx-utility-menu.sh --run update_all
+sudo ./ntx-utility-menu.sh --run maintenance_bundle
+sudo ./ntx-utility-menu.sh --run status_report
+sudo ./ntx-utility-menu.sh --run ssh_audit
+sudo ./ntx-utility-menu.sh --run docker_compose_health
+sudo ./ntx-utility-menu.sh --run wireguard_qr
+```
+
+Run `./ntx-utility-menu.sh --help` for the full list.
+
+## Menu map (v0.4-dev)
+
+- **System update**: standard upgrade, reboot-if-needed, unattended-upgrades (enable/disable/status/run), list/remove custom apt sources, update NTX Command Center script from the official link
 - **DNS**: view/edit with backups, preset DNS choices, restore last backup, append/overwrite IPv4 Cloudflare/Google and IPv6 Cloudflare/Google
 - **Network/IP**: public IP (fallback), interfaces, routes, connections, ping common endpoints, traceroute
 - **Speedtest/benchmarks**: Speedtest install/update/run, repo/key removal, YABS
-- **Security/remote**: UFW, Fail2ban, OpenSSH, Tailscale, Netmaker netclient (install/remove repo), CrowdSec + firewall bouncer, WireGuard (client/server), firewall/SSH status, failed logins
+- **Security/remote**: UFW, Fail2ban, OpenSSH, Tailscale, Netmaker netclient (install/remove repo), CrowdSec + firewall bouncer, WireGuard (client/server), WireGuard QR helper, firewall/SSH status, SSH hardening check, failed logins
 - **Tools/env**: essentials, extra tools, ibramenu, QEMU guest agent
-- **Containers**: Docker + Compose plugin, service status, short info, running containers
-- **Monitoring**: node exporter, top CPU/mem processes, iostat summary, SMART health check, status dashboard (services, IPs, CPU/mem snapshot)
+- **Containers**: Docker + Compose plugin, service status, short info, running containers, Docker Compose health
+- **Monitoring**: node exporter, top CPU/mem processes, iostat summary, SMART health check, status dashboard (services, IPs, CPU/mem snapshot), export status report to file
 - **System info**: `/etc/os-release`, neofetch, memory info, VM check, GitHub link
-- **Maintenance/disks**: cleanup, disks usage, largest `/var` dirs
+- **Maintenance/disks**: cleanup, disks usage, largest `/var` dirs, maintenance bundle (update + cleanup + log rotate + status report)
 - **Users/time**: create sudo user, time sync info, chrony install
 - **System control**: reboot, power down (SAFE_MODE-aware)
 - **Help/logs**: Help/About (config, modes, repo), tail log
@@ -99,6 +116,14 @@ chmod +x ntx-utility-menu.sh
 Note on service status: the dashboard queries systemd unit names like `ssh`, `docker`, etc. If a service uses a non-standard unit name, it may show as “not installed.” Adjust the unit names in `show_service_status` if your distro uses different service names.
 
 Search tip: in the main menu, type `/keyword` (e.g., `/docker`, `/dns`) to jump directly to a matching section.
+
+## Known behaviors
+
+- Self-update: if `realpath`/`readlink -f` are unavailable and you launch via `$PATH`, run the script with its full path so the updater replaces the installed file instead of writing into the current directory.
+- Service status: uses standard systemd unit names (e.g., `ssh`, `docker`); non-standard names may show as “not installed.”
+- Pending updates: uses `apt-get -s upgrade | grep '^Inst'` and can undercount on localized systems.
+- WireGuard: enable/disable assumes `/etc/wireguard/wg0.conf` exists.
+- WireGuard QR: requires `qrencode`; Docker Compose health assumes the Docker Compose plugin is available.
 
 ## Quick start (best practice)
 
@@ -118,6 +143,7 @@ Suggested quick edits:
 
 - Adjust the config section to your defaults (log path, backup dir, DNS presets, service units).
 - Factor repeated code into functions and call them from the menu dispatcher.
+- Optional config override: create `/etc/ntx-menu.conf` (or `./ntx-menu.conf`) to set variables like `LOG_FILE`, `BACKUP_DIR`, `REPORT_DIR`, and service unit names without editing the script.
 
 ## Contributing
 
