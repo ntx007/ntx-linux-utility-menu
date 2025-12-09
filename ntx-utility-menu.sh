@@ -655,23 +655,6 @@ run_yabs_system() {
     curl -sL https://yabs.sh | bash -s -- -fi
 }
 
-run_ibramenu_benchmarks() {
-    msgbox "Ibramenu Benchmarks (external script)"
-    local url="https://raw.githubusercontent.com/ibracorp/ibramenu/main/MenuOptions/Submenu%20Basic%20Functions/Submenu%20System%20Information/Submenu%20Benchmarks/submenu.sh"
-    local tmp="/tmp/ibramenu-benchmarks.sh"
-    if [[ "$DRY_RUN" == "true" ]]; then
-        echo "[DRY RUN] curl -fsSL \"$url\" -o \"$tmp\" && bash \"$tmp\""
-        return 0
-    fi
-    if curl -fsSL "$url" -o "$tmp"; then
-        chmod +x "$tmp" || true
-        bash "$tmp"
-    else
-        echo "Failed to download ibramenu benchmarks from $url"
-        return 1
-    fi
-}
-
 remove_speedtest_repo() {
     if [[ -f /etc/apt/sources.list.d/ookla_speedtest-cli.list ]]; then
         run_cmd "Remove Speedtest repo list" rm -f /etc/apt/sources.list.d/ookla_speedtest-cli.list
@@ -1320,7 +1303,6 @@ menu_bench() {
  5) Run YABS
  6) Remove Speedtest repo/key
  7) Benchmark presets (YABS submenu)
- 8) Run ibramenu benchmarks (external)
  0) Back
 EOF
         read -p "Select: " c
@@ -1332,7 +1314,6 @@ EOF
             5) run_yabs ;;
             6) remove_speedtest_repo ;;
             7) menu_yabs_presets ;;
-            8) run_ibramenu_benchmarks ;;
             0) break ;;
             *) echo "Invalid choice." ;;
         esac

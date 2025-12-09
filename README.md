@@ -93,10 +93,10 @@ Run `./ntx-utility-menu.sh --help` for the full list.
 
 ## Menu map (v0.4-dev)
 
-- **System update**: standard upgrade, reboot-if-needed, unattended-upgrades (enable/disable/status/run), list/remove custom apt sources
+- **System update**: standard upgrade, reboot-if-needed, unattended-upgrades (enable/disable/status/run), list/remove custom apt sources, APT health/update health checks
 - **DNS**: view/edit with backups, preset DNS choices, restore last backup, append/overwrite IPv4 Cloudflare/Google and IPv6 Cloudflare/Google
 - **Network/IP**: public IP (fallback), interfaces, routes, connections, ping common endpoints, traceroute
-- **Speedtest/benchmarks**: Speedtest install/update/run, repo/key removal, YABS, YABS preset submenu (all/disk/network/system), external ibramenu benchmarks
+- **Speedtest/benchmarks**: Speedtest install/update/run, repo/key removal, YABS, YABS preset submenu (all/disk/network/system)
 - **Security/remote**: UFW, Fail2ban, OpenSSH, Tailscale, Netmaker netclient (install/remove repo), CrowdSec + firewall bouncer, WireGuard (client/server), WireGuard QR helper, firewall/SSH status, SSH hardening check, failed logins, rootkit check, ClamAV install + quick scan, Fail2ban summary/reload, UFW presets, Google Authenticator install, config backup, WireGuard validate/start/stop/restart
 - **Tools/env**: essentials (sudo, nano, curl, net-tools, unzip, python3-pip, gcc/python3-dev, psutil via pip, gdown, dos2unix, glances, tmux, zsh, mc), ibramenu, QEMU guest agent
 - **Containers**: Docker + Compose plugin, service status, short info, running containers, list all containers, Docker Compose health, Docker rootless check, list privileged containers

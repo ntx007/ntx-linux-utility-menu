@@ -11,7 +11,7 @@
 - Config overrides supported via `/etc/ntx-menu.conf` or `./ntx-menu.conf` for paths and unit names.
 - Added rootkit check (chkrootkit installer/runner), video adapter info (lshw display), and all-containers listing in the Docker menu.
 - Expanded essentials install to include unzip, python3-pip, gcc/python3-dev, psutil (pip), gdown, dos2unix, glances, tmux, zsh, and mc.
-- Added YABS benchmark presets submenu and external benchmarks option under Speedtest/benchmarks.
+- Added YABS benchmark presets submenu under Speedtest/benchmarks.
 - Added ClamAV install + quick scan option to Security/remote.
 - Added APT health/update health checks; security enhancements (Fail2ban summary/reload, UFW presets, Google Authenticator install, config backup bundle, WireGuard validate/start/stop/restart, ClamAV improvements); container hardening checks (rootless, privileged containers); log integrity report in maintenance.
 - ClamAV: `freshclam` may fail if the daemon holds the DB lock; stop/reload `clamav-freshclam` before updating if needed.
