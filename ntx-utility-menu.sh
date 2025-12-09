@@ -2,7 +2,7 @@
 
 ###############################################################################
 # NTX Command Center - Simple server helper menu
-# Version: v0.4-dev
+# Version: v0.4
 ###############################################################################
 
 LOG_FILE="/var/log/ntx-menu.log"
@@ -11,7 +11,7 @@ REPORT_DIR="/var/log/ntx-menu-reports"
 MAX_LOG_SIZE=$((1024 * 1024)) # 1 MiB
 DRY_RUN=${DRY_RUN:-false}
 SAFE_MODE=${SAFE_MODE:-false}
-VERSION="v0.4-dev"
+VERSION="v0.4"
 SCRIPT_PATH="$(command -v realpath >/dev/null 2>&1 && realpath "$0")"
 if [[ -z "$SCRIPT_PATH" ]]; then
     SCRIPT_PATH="$(command -v readlink >/dev/null 2>&1 && readlink -f "$0")"

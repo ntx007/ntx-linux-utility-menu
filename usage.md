@@ -26,7 +26,7 @@ Use `--help` for the supported list.
 - `SAFE_MODE=true ./ntx-utility-menu.sh` to skip destructive actions.
 - Shortcuts in the main menu: `h` Help/About, `s` Status dashboard, `l` Tail logs, `c` Config/env, `u` Self-update, `q` Quit.
 
-## Menu highlights (v0.4-dev)
+## Menu highlights (v0.4)
 - **System update**: updates, unattended-upgrades, apt source list/remove, APT health, update health.
 - **DNS**: view/edit with backups, IPv4/IPv6 presets, restore latest backup.
 - **Network**: public IP, interfaces/routes/connections, ping/traceroute.

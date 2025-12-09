@@ -1,8 +1,6 @@
 # Changelog
 
-## Unreleased (v0.4-dev)
-- Planned: capture upcoming changes for the next development cycle after v0.3 release.
-- Placeholder: add concrete entries here as features/fixes are scoped and delivered.
+## v0.4
 - Added in-menu self-update (main menu shortcut `u`) to download the latest NTX Command Center script from https://ntx-menu.re-vent.de. The link serves the script from the GitHub main branch.
 - New non-interactive mode via `--run` (e.g., update_all, maintenance_bundle, status_report, ssh_audit, docker_compose_health, wireguard_qr).
 - Added maintenance bundle (update + cleanup + log rotate + status report) and exportable status reports to `/var/log/ntx-menu-reports`.
@@ -16,7 +14,7 @@
 - Added APT health/update health checks; security enhancements (Fail2ban summary/reload, UFW presets, Google Authenticator install, config backup bundle, WireGuard validate/start/stop/restart, ClamAV improvements); container hardening checks (rootless, privileged containers); log integrity report in maintenance.
 - ClamAV: `freshclam` may fail if the daemon holds the DB lock; stop/reload `clamav-freshclam` before updating if needed.
 
-### Known behaviors (v0.4-dev)
+### Known behaviors
 - When realpath/readlink -f are unavailable and the script is invoked via $PATH, self-update may write to the current directory instead of the installed path; run with the full path to update in place.
 - Status dashboard uses standard systemd unit names (e.g., ssh, docker); if your distro uses different names they may show as “not installed.”
 - Pending update count uses `apt-get -s upgrade | grep '^Inst'` and may undercount on localized systems; WireGuard enable/disable assumes `/etc/wireguard/wg0.conf` exists; service status may show “not installed” if units use non-default names.
