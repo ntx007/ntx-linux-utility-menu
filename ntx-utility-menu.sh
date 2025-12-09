@@ -790,18 +790,6 @@ install_and_scan_clamav() {
     clamscan -r "$CLAM_PATH"
 }
 
-apt_health_check() {
-    msgbox "APT health check"
-    echo "[Held packages]"
-    apt-mark showhold || true
-    echo
-    echo "[Broken deps check]"
-    apt-get check || true
-    echo
-    echo "[Security updates (simulated)]"
-    apt-get -s upgrade 2>/dev/null | grep -i security || echo "None detected (simulated)."
-}
-
 firewall_preset_ssh_only() {
     install_ufw_basic
     ufw --force reset
@@ -929,22 +917,6 @@ docker_privileged_containers() {
             echo "$name ($id) - $status"
         fi
     done
-}
-
-update_health_check() {
-    echo "[Reboot required]"
-    if [[ -f /var/run/reboot-required ]]; then
-        echo "Yes"
-    else
-        echo "No"
-    fi
-    echo
-    echo "[Last apt update timestamp]"
-    if [[ -f /var/lib/apt/periodic/update-success-stamp ]]; then
-        stat -c '%y' /var/lib/apt/periodic/update-success-stamp 2>/dev/null || stat -f '%Sm' /var/lib/apt/periodic/update-success-stamp 2>/dev/null
-    else
-        echo "No record found; run apt-get update."
-    fi
 }
 
 rootkit_check() {
