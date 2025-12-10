@@ -631,7 +631,7 @@ edit_dns() {
 # Append Netcup DNS (46.38.225.230 + 1.1.1.1)
 add_dns_netcup_append() {
     backup_file /etc/resolv.conf
-    echo -e "nameserver 46.38.225.230\nnameserver 1.1.1.1" | tee -a /etc/resolv.conf > /dev/null
+    echo -e "nameserver 46.38.225.230\nnameserver 46.38.252.230\nnameserver 1.1.1.1" | tee -a /etc/resolv.conf > /dev/null
 }
 
 # Overwrite with Netcup DNS (46.38.225.230 + 1.1.1.1)
@@ -639,6 +639,7 @@ set_dns_netcup_overwrite() {
     backup_file /etc/resolv.conf
     cat <<EOF > /etc/resolv.conf
 nameserver 46.38.225.230
+nameserver 46.38.252.230
 nameserver 1.1.1.1
 EOF
 }
@@ -1565,8 +1566,8 @@ menu_dns() {
 [DNS management]
  1) Show DNS (/etc/resolv.conf)
  2) Edit DNS (nano)
- 3) Append Netcup DNS 46.38.225.230 + 1.1.1.1
- 4) Overwrite Netcup DNS 46.38.225.230 + 1.1.1.1
+ 3) Append Netcup DNS 46.38.225.230 + 46.38.252.230 + 1.1.1.1
+ 4) Overwrite Netcup DNS 46.38.225.230 + 46.38.252.230 + 1.1.1.1
  5) Overwrite DNS with 1.1.1.1 + 8.8.8.8
  6) Append DNS with 1.1.1.1 + 8.8.8.8
  7) Overwrite DNS with IPv6 (2606:4700:4700::1111 + 2001:4860:4860::8888)

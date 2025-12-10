@@ -4,6 +4,7 @@
 - Debian/Ubuntu-based system with `apt`
 - Root privileges (or `sudo`)
 - Basic utilities: `curl`, `wget`, `bash`
+- If you sit behind a proxy, export `http_proxy`/`https_proxy` so `apt-get update` can succeed.
 
 ## Install from source
 ```bash

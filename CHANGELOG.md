@@ -9,7 +9,8 @@
 - Monitoring: status report export supports JSON; language toggle `d` added.
 - Benchmarks: removed external option; YABS presets retained.
 - Self-update: after updating, prompt to restart so the new script loads.
- - Tools: essentials bundle now installs npm and iproute2 by default.
+- Tools: essentials bundle now installs npm and iproute2 by default.
+- DNS: Netcup presets now include 46.38.225.230 + 46.38.252.230 + 1.1.1.1 for append/overwrite options.
 
 ### Bug fixes
 - Restored missing monitoring functions (node exporter/top/iostat/SMART).
