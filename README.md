@@ -94,7 +94,7 @@ Run `./ntx-utility-menu.sh --help` for the full list.
 ## Menu map (v0.5-dev)
 
 - **System update**: standard upgrade, reboot-if-needed, unattended-upgrades (enable/disable/status/run), list/remove custom apt sources, APT health/update health checks
-- **DNS**: view/edit with backups, preset DNS choices, restore last backup, append/overwrite IPv4 Cloudflare/Google and IPv6 Cloudflare/Google
+- **DNS**: view/edit with backups, preset DNS choices (Netcup 46.38.225.230 + 46.38.252.230 + 1.1.1.1), restore last backup, append/overwrite IPv4 Cloudflare/Google and IPv6 Cloudflare/Google
 - **Network/IP**: public IP (fallback), interfaces, routes, connections, ping common endpoints, traceroute
 - **Speedtest/benchmarks**: Speedtest install/update/run, repo/key removal, YABS, YABS preset submenu (all/disk/network/system)
 - **Security/remote**: UFW, Fail2ban, OpenSSH, Tailscale, Netmaker netclient (install/remove repo), CrowdSec + firewall bouncer, WireGuard (client/server), WireGuard QR helper, firewall/SSH status, SSH hardening check, failed logins, rootkit check, ClamAV install + quick scan, Fail2ban summary/reload/list/unban, UFW presets, Google Authenticator install, config backup/restore, WireGuard validate/start/stop/restart

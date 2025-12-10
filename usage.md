@@ -28,7 +28,7 @@ Use `--help` for the supported list.
 - Language toggle: `d` switches between English and German labels (menus only).
 
 - **System update**: updates, unattended-upgrades, apt source list/remove, APT health, update health (with stale-update warning support).
-- **DNS**: view/edit with backups, IPv4/IPv6 presets, restore latest backup.
+- **DNS**: view/edit with backups, IPv4/IPv6 presets (includes Netcup 46.38.225.230 + 46.38.252.230 + 1.1.1.1), restore latest backup.
 - **Network**: public IP, interfaces/routes/connections, ping/traceroute.
 - **Benchmarks**: Speedtest install/run, YABS, YABS preset submenu.
 - **System update**: updates, unattended-upgrades, apt source list/remove, APT health, update health (with stale-update warning support).
