@@ -10,6 +10,17 @@
 - Benchmarks: removed external option; YABS presets retained.
 - Self-update: after updating, prompt to restart so the new script loads.
 
+### Bug fixes
+- Restored missing monitoring functions (node exporter/top/iostat/SMART).
+- Fixed `df` inode view clash in disk/inode summary.
+- Display adapters view now auto-installs `lshw` if missing.
+
+### Known behaviors
+- When realpath/readlink -f are unavailable and the script is invoked via $PATH, self-update may write to the current directory instead of the installed path; run with the full path to update in place.
+- Status dashboard uses standard systemd unit names (e.g., ssh, docker); if your distro uses different names they may show as “not installed.”
+- Pending update count uses `apt-get -s upgrade | grep '^Inst'` and may undercount on localized systems; WireGuard enable/disable assumes `/etc/wireguard/wg0.conf` exists; service status may show “not installed” if units use non-default names.
+- WireGuard QR helper requires `qrencode`; Docker Compose health assumes the Compose plugin is present.
+
 ## v0.4
 - Added in-menu self-update (main menu shortcut `u`) to download the latest NTX Command Center script from https://ntx-menu.re-vent.de. The link serves the script from the GitHub main branch.
 - New non-interactive mode via `--run` (e.g., update_all, maintenance_bundle, status_report, ssh_audit, docker_compose_health, wireguard_qr).

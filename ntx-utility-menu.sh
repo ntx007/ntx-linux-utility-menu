@@ -1209,41 +1209,32 @@ log_integrity_report() {
     fi
 }
 
-docker_rootless_check() {
-    if ! command -v docker >/dev/null 2>&1; then
-        echo "Docker not installed."
-        return 1
-    fi
-    echo "Docker rootless info:"
-    docker info --format 'Rootless: {{.SecurityOptions}}' 2>/dev/null || echo "Could not determine rootless status."
-    loginctl show-user "$(whoami)" | grep Linger || true
-    echo "Note: enable rootless per Docker docs if needed."
+# --- Monitoring ---
+
+install_node_exporter() {
+    apt update
+    apt install prometheus-node-exporter -y
+    systemctl enable --now prometheus-node-exporter
 }
 
-docker_privileged_containers() {
-    if ! command -v docker >/dev/null 2>&1; then
-        echo "Docker not installed."
-        return 1
-    fi
-    echo "Privileged containers:"
-    docker ps --filter "status=running" --filter "status=exited" --format '{{.Names}} {{.ID}} {{.Status}}' | while read -r name id status; do
-        if docker inspect --format '{{.HostConfig.Privileged}}' "$id" 2>/dev/null | grep -qi true; then
-            echo "$name ($id) - $status"
-        fi
-    done
+show_top_processes() {
+    ps -eo pid,cmd,%cpu,%mem --sort=-%cpu | head
 }
 
-docker_sensitive_mounts() {
-    if ! command -v docker >/dev/null 2>&1; then
-        echo "Docker not installed."
+show_iostat_summary() {
+    ensure_cmd iostat sysstat
+    iostat -x 5 3
+}
+
+smart_health_check() {
+    ensure_cmd smartctl smartmontools
+    local disk
+    disk=$(lsblk -ndo NAME,TYPE | awk '$2=="disk"{print "/dev/"$1; exit}')
+    if [[ -z "$disk" ]]; then
+        echo "No disk found for SMART check."
         return 1
     fi
-    echo "Containers with sensitive mounts (/var/run/docker.sock or /etc):"
-    docker ps --filter "status=running" --format '{{.Names}} {{.ID}}' | while read -r name id; do
-        if docker inspect --format '{{json .Mounts}}' "$id" 2>/dev/null | grep -E 'docker\.sock|/etc' >/dev/null; then
-            echo "$name ($id)"
-        fi
-    done
+    smartctl -H "$disk"
 }
 
 rootkit_check() {
@@ -1283,6 +1274,7 @@ vm_check() {
 }
 
 check_display() {
+    ensure_cmd lshw lshw
     sudo lshw -c display
 }
 

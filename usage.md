@@ -45,3 +45,4 @@ Use `--help` for the supported list.
 - Pending updates count may undercount on localized systems.
 - WireGuard enable/disable assumes `/etc/wireguard/wg0.conf` exists; QR requires `qrencode`.
 - ClamAV `freshclam` can fail if the daemon holds the DB lock; stop/reload `clamav-freshclam` before updating if needed.
+- Display adapters view now auto-installs `lshw` if missing; monitoring functions (node exporter/top/iostat/SMART) are bundled in the current release.

@@ -7,14 +7,14 @@ A portable, menu-driven Bash utility for common Linux admin tasks. Built for Deb
 
 ## Highlights (v0.5-dev)
 
-- Interactive, nested menu with shortcuts for Help, Status dashboard, and Logs; search via `/keyword`
-- Updates: unattended-upgrades enable/disable/status/run; reboot-if-needed flow; apt source hygiene (list/remove); self-update to latest script; non-interactive `--run` actions
+- Interactive nested menu with shortcuts (Help, Status, Logs) and search via `/keyword`; language toggle `d` (en/de)
+- Updates: unattended-upgrades enable/disable/status/run; reboot-if-needed flow; apt source hygiene (list/remove); self-update to latest script; non-interactive `--run` actions; cadence warning and health checks
 - Networking: public IP with fallback, interfaces/routes/connections, DNS backups/restore, ping common endpoints, traceroute
-- Security/remote: UFW, Fail2ban, OpenSSH, Tailscale, Netmaker netclient (install/remove repo), CrowdSec + firewall bouncer, WireGuard (client/server), firewall/SSH status, SSH hardening check, WireGuard QR view, failed logins
-- Tools/monitoring: essentials/extra tools, node exporter, top CPU/mem, iostat summary, SMART checks, status dashboard, exportable status report, rootkit check
-- Containers: Docker + Compose plugin install, service status/info, running containers, list all containers, Docker Compose health (ls/ps)
-- Maintenance/info: cleanup, daily maintenance bundle (update + cleanup + rotate log + status report), disk usage, largest `/var` dirs, system info (os-release, neofetch, VM check, display adapters), GitHub link
-- Logging/backups: `/var/log/ntx-menu.log` with rotation; `/etc/resolv.conf` backups to `/var/backups/ntx-menu`
+- Security/remote: UFW with snapshots/revert, Fail2ban (summary/list/unban), OpenSSH, Tailscale, Netmaker netclient, CrowdSec + firewall bouncer, WireGuard (client/server, QR, validate/diff, interface choice), SSH hardening, rootkit check, ClamAV improved workflow
+- Tools/monitoring: essentials bundle, node exporter, top CPU/mem, iostat summary, SMART checks, status dashboard, exportable status report (text/JSON with optional upload path)
+- Containers: Docker + Compose plugin install, service status/info, running/all containers, Compose health (ls/ps), hardening checks (privileged, root user, host network, sensitive mounts)
+- Maintenance/info: cleanup, daily maintenance bundle (optional pre-update + log rotate + status report), disk usage, largest `/var` dirs, system info (os-release, neofetch, VM check, display adapters), GitHub link
+- Logging/backups: `/var/log/ntx-menu.log` with rotation/history; `/etc/resolv.conf` backups; config backup/restore with optional Docker Compose includes
 - Modes: `DRY_RUN=true` to preview commands; `SAFE_MODE=true` to skip destructive actions
 
 ## Requirements
