@@ -2,16 +2,20 @@
 
 ###############################################################################
 # NTX Command Center - Simple server helper menu
-# Version: v0.4
+# Version: v0.5-dev
 ###############################################################################
 
 LOG_FILE="/var/log/ntx-menu.log"
 BACKUP_DIR="/var/backups/ntx-menu"
 REPORT_DIR="/var/log/ntx-menu-reports"
 MAX_LOG_SIZE=$((1024 * 1024)) # 1 MiB
+LOG_HISTORY=${LOG_HISTORY:-3}
 DRY_RUN=${DRY_RUN:-false}
 SAFE_MODE=${SAFE_MODE:-false}
-VERSION="v0.4"
+VERSION="v0.5-dev"
+LANGUAGE="${LANGUAGE:-en}"
+UPDATE_WARN_DAYS=${UPDATE_WARN_DAYS:-7}
+AUTO_UPDATE_BEFORE_MAINT=${AUTO_UPDATE_BEFORE_MAINT:-false}
 SCRIPT_PATH="$(command -v realpath >/dev/null 2>&1 && realpath "$0")"
 if [[ -z "$SCRIPT_PATH" ]]; then
     SCRIPT_PATH="$(command -v readlink >/dev/null 2>&1 && readlink -f "$0")"
@@ -59,6 +63,46 @@ log_line() {
     echo "$(date '+%Y-%m-%d %H:%M:%S') | $message" | tee -a "$LOG_FILE"
 }
 
+t() {
+    local key="$1"
+    case "$LANGUAGE:$key" in
+        de:main.title) echo "================= NTX BEFEHLSZENTRALE ($VERSION) =================" ;;
+        de:main.opts) cat <<'EOF'
+ 1) Systemupdate
+ 2) DNS Verwaltung
+ 3) Netzwerk / IP
+ 4) Speedtest & Benchmarks
+ 5) Sicherheit / Remote
+ 6) Tools & Umgebung
+ 7) Container / Docker
+ 8) Monitoring
+ 9) Systeminfo
+10) Wartung / Disks
+11) Benutzer & Zeit
+12) Systemsteuerung
+h) Hilfe / Info
+s) Status-Dashboard
+l) Logs ansehen
+c) Konfig/Umgebung anzeigen
+u) NTX Command Center aktualisieren
+q) Beenden
+EOF
+        ;;
+        de:status.reboot) echo "Neustart erforderlich." ;;
+        *) echo "================= NTX COMMAND CENTER ($VERSION) =================" ;;
+    esac
+}
+
+toggle_language() {
+    if [[ "$LANGUAGE" == "en" ]]; then
+        LANGUAGE="de"
+        echo "Sprache umgestellt auf Deutsch."
+    else
+        LANGUAGE="en"
+        echo "Language switched to English."
+    fi
+}
+
 load_config() {
     for cfg in /etc/ntx-menu.conf "./ntx-menu.conf"; do
         if [[ -f "$cfg" ]]; then
@@ -79,6 +123,11 @@ rotate_log() {
             fi
             touch "$LOG_FILE"
             log_line "Log rotated (previous -> ${LOG_FILE}.1)"
+            # Cleanup old rotations beyond LOG_HISTORY
+            local keep=$LOG_HISTORY
+            if [[ "$keep" -gt 0 ]]; then
+                ls -1t ${LOG_FILE}.1* 2>/dev/null | tail -n +$((keep+1)) | xargs -r rm -f
+            fi
         fi
     fi
 }
@@ -128,6 +177,14 @@ self_update_script() {
         if mv "$tmp" "$target"; then
             log_line "OK : updated script from $url (backup: ${target}.bak)"
             echo "Updated script from $url (backup: ${target}.bak)"
+            read -p "Restart NTX Command Center now to use the update? (y/N): " -n 1 -r
+            echo
+            if [[ $REPLY =~ ^[Yy]$ ]]; then
+                echo "Exiting so you can restart the updated script."
+                exit 0
+            else
+                echo "Update applied. Restart manually to load the new version."
+            fi
         else
             log_line "FAIL: replace script with downloaded version"
             echo "Failed to replace existing script."
@@ -231,6 +288,24 @@ list_private_ips() {
     ip -brief -family inet address 2>/dev/null || ip addr show
 }
 
+update_cadence_warn() {
+    local mode="${1:-prompt}"
+    if [[ -f /var/lib/apt/periodic/update-success-stamp ]]; then
+        local last
+        last=$(stat -c '%Y' /var/lib/apt/periodic/update-success-stamp 2>/dev/null || stat -f '%m' /var/lib/apt/periodic/update-success-stamp 2>/dev/null)
+        local now
+        now=$(date +%s)
+        local days=$(( (now - last) / 86400 ))
+        if (( days > UPDATE_WARN_DAYS )); then
+            if [[ "$mode" == "prompt" ]]; then
+                echo "Warning: last apt-get update is ${days} days ago (threshold: ${UPDATE_WARN_DAYS}d)."
+            fi
+            return 0
+        fi
+    fi
+    return 1
+}
+
 pending_updates_count() {
     local count
     count=$(apt-get -s upgrade 2>/dev/null | grep -c '^Inst ' || echo 0)
@@ -302,8 +377,45 @@ status_report_export() {
     echo "Status report saved to $report"
 }
 
+status_report_json() {
+    mkdir -p "$REPORT_DIR"
+    local ts
+    ts=$(date '+%Y%m%d-%H%M%S')
+    local report="$REPORT_DIR/status-$ts.json"
+    {
+        echo "{"
+        echo "  \"version\": \"$VERSION\","
+        echo "  \"timestamp\": \"$ts\","
+        echo "  \"host\": \"$(hostname)\","
+        echo "  \"uptime\": \"$(uptime -p 2>/dev/null || uptime)\","
+        echo "  \"reboot_required\": \"$( [[ -f /var/run/reboot-required ]] && echo yes || echo no )\","
+        echo "  \"pending_updates\": \"$(apt-get -s upgrade 2>/dev/null | grep -c '^Inst ' || echo 0)\","
+        echo "  \"kernel_running\": \"$(uname -r)\","
+        echo "  \"services\": {"
+        echo "    \"ssh\": \"$(systemctl is-active ssh >/dev/null 2>&1 && echo active || echo inactive)\","
+        echo "    \"ufw\": \"$(systemctl is-active ufw >/dev/null 2>&1 && echo active || echo inactive)\","
+        echo "    \"fail2ban\": \"$(systemctl is-active fail2ban >/dev/null 2>&1 && echo active || echo inactive)\","
+        echo "    \"tailscale\": \"$(systemctl is-active tailscaled >/dev/null 2>&1 && echo active || echo inactive)\","
+        echo "    \"docker\": \"$(systemctl is-active docker >/dev/null 2>&1 && echo active || echo inactive)\""
+        echo "  }"
+        echo "}"
+    } > "$report"
+    log_line "Status report (json) saved to $report"
+    echo "Status report (json) saved to $report"
+    if [[ -n "$STATUS_UPLOAD_PATH" ]]; then
+        mkdir -p "$STATUS_UPLOAD_PATH"
+        cp "$report" "$STATUS_UPLOAD_PATH"/ 2>/dev/null || true
+    fi
+}
+
 maintenance_bundle() {
     echo "Running maintenance bundle (updates, cleanup, log rotate, status report)..."
+    if update_cadence_warn "silent"; then
+        if [[ "$AUTO_UPDATE_BEFORE_MAINT" == "true" ]]; then
+            echo "AUTO_UPDATE_BEFORE_MAINT=true, running apt-get update..."
+            run_cmd "apt-get update (maintenance bundle)" apt-get update
+        fi
+    fi
     update_all
     system_cleanup
     rotate_log
@@ -745,6 +857,28 @@ install_crowdsec_firewall_bouncer() {
     show_service_status crowdsec-firewall-bouncer
 }
 
+install_essentials() {
+    apt update
+    apt install unzip -y
+    apt install python3-pip -y
+    apt-get install gcc python3-dev -y
+    pip install --no-binary :all: psutil
+    pip3 install gdown
+    apt install dos2unix -y
+    apt install glances -y
+    apt install tmux -y
+    apt install zsh -y
+    apt install mc -y
+    apt-get install sudo -y
+    apt-get install nano -y
+    apt-get install curl -y
+    apt-get install net-tools -y
+}
+
+install_tools() {
+    install_essentials
+}
+
 install_ufw_basic() {
     apt update
     apt install ufw -y
@@ -779,18 +913,37 @@ install_and_scan_clamav() {
     msgbox "Installing ClamAV"
     apt update
     apt install clamav clamav-daemon -y
-    msgbox "Updating virus definitions"
-    # Note: freshclam may fail if the daemon holds the DB lock; consider stopping/reloading clamav-freshclam before updating.
-    systemctl stop clamav-freshclam 2>/dev/null || true
-    freshclam || echo "freshclam failed (may require service stop); continuing..."
-    systemctl start clamav-freshclam 2>/dev/null || true
-    read -p "Path to scan (default: /home): " CLAM_PATH
-    CLAM_PATH=${CLAM_PATH:-/home}
+    msgbox "Virus definitions"
+    echo "1) Stop freshclam, update, restart"
+    echo "2) Update without touching daemon"
+    read -p "Choice [1/2]: " CHOICE
+    if [[ "$CHOICE" == "1" ]]; then
+        systemctl stop clamav-freshclam 2>/dev/null || true
+        freshclam || echo "freshclam failed"
+        systemctl start clamav-freshclam 2>/dev/null || true
+    else
+        freshclam || echo "freshclam failed (may require service stop); continuing..."
+    fi
+    echo "Scan target:"
+    echo "1) /home"
+    echo "2) Custom path"
+    echo "3) /media (removable)"
+    read -p "Select: " target_choice
+    case "$target_choice" in
+        1) CLAM_PATH="/home" ;;
+        2) read -p "Enter path: " CLAM_PATH ;;
+        3) CLAM_PATH="/media" ;;
+        *) CLAM_PATH="/home" ;;
+    esac
     msgbox "Running ClamAV quick scan on $CLAM_PATH (ctrl+c to stop)"
-    clamscan -r "$CLAM_PATH"
+    mkdir -p "$REPORT_DIR"
+    local report="$REPORT_DIR/clamav-$(date '+%Y%m%d-%H%M%S').log"
+    clamscan -r "$CLAM_PATH" | tee "$report"
+    echo "ClamAV report saved to $report"
 }
 
 firewall_preset_ssh_only() {
+    ufw_snapshot_rules
     install_ufw_basic
     ufw --force reset
     ufw default deny incoming
@@ -801,6 +954,7 @@ firewall_preset_ssh_only() {
 }
 
 firewall_preset_web() {
+    ufw_snapshot_rules
     install_ufw_basic
     ufw default deny incoming
     ufw default allow outgoing
@@ -812,6 +966,7 @@ firewall_preset_web() {
 }
 
 firewall_preset_deny_all_except_ssh() {
+    ufw_snapshot_rules
     install_ufw_basic
     ufw default deny incoming
     ufw default allow outgoing
@@ -827,13 +982,67 @@ install_google_authenticator() {
     echo "Run 'google-authenticator' as the target user to configure; update /etc/pam.d/sshd and /etc/ssh/sshd_config per your policy."
 }
 
+ufw_snapshot_rules() {
+    mkdir -p "$BACKUP_DIR"
+    local ts
+    ts=$(date '+%Y%m%d-%H%M%S')
+    local snap="$BACKUP_DIR/ufw-snapshot-$ts.rules"
+    if command -v iptables-save >/dev/null 2>&1; then
+        iptables-save > "$snap" 2>/dev/null || true
+    fi
+    echo "UFW snapshot saved to $snap"
+}
+
+ufw_revert_snapshot() {
+    local latest
+    latest=$(ls -1t "$BACKUP_DIR"/ufw-snapshot-*.rules 2>/dev/null | head -n 1)
+    if [[ -z "$latest" ]]; then
+        echo "No UFW snapshot found in $BACKUP_DIR"
+        return 1
+    fi
+    msgbox "Restoring UFW from snapshot $latest"
+    if command -v iptables-restore >/dev/null 2>&1; then
+        iptables-restore < "$latest" 2>/dev/null || echo "iptables-restore may have failed; check status."
+        ufw reload 2>/dev/null || true
+    else
+        echo "iptables-restore not available; cannot restore snapshot."
+        return 1
+    fi
+}
+
 backup_config_bundle() {
     local ts
     ts=$(date '+%Y%m%d-%H%M%S')
+    read -p "Optional: path to Docker Compose files to include (leave blank to skip): " COMPOSE_PATH
     local dest="$BACKUP_DIR/config-backup-$ts.tar.gz"
     tar -czf "$dest" /etc/ssh/sshd_config /etc/wireguard 2>/dev/null /etc/fail2ban /etc/ufw/applications.d 2>/dev/null || true
+    if [[ -n "$COMPOSE_PATH" && -d "$COMPOSE_PATH" ]]; then
+        tar -rf "$dest" -C "$COMPOSE_PATH" . 2>/dev/null || true
+    fi
     log_line "Config backup created: $dest"
     echo "Config backup saved to $dest"
+}
+
+restore_config_bundle() {
+    local latest
+    latest=$(ls -1t "$BACKUP_DIR"/config-backup-*.tar.gz 2>/dev/null | head -n 1)
+    if [[ -z "$latest" ]]; then
+        echo "No config backup found in $BACKUP_DIR"
+        return 1
+    fi
+    echo "Available backups:"
+    ls -1t "$BACKUP_DIR"/config-backup-*.tar.gz 2>/dev/null | nl
+    read -p "Select backup number (default 1): " sel
+    sel=${sel:-1}
+    local chosen
+    chosen=$(ls -1t "$BACKUP_DIR"/config-backup-*.tar.gz 2>/dev/null | sed -n "${sel}p")
+    if [[ -z "$chosen" ]]; then
+        echo "Invalid selection."
+        return 1
+    fi
+    msgbox "Restoring config backup: $chosen"
+    tar -xzf "$chosen" -C / || { echo "Restore failed"; return 1; }
+    echo "Restore completed from $chosen"
 }
 
 fail2ban_summary() {
@@ -854,11 +1063,45 @@ fail2ban_summary() {
     fi
 }
 
+fail2ban_list_bans() {
+    if ! command -v fail2ban-client >/dev/null 2>&1; then
+        echo "Fail2ban not installed."
+        return 1
+    fi
+    fail2ban-client status || true
+    fail2ban-client status | awk '/Jail list/{$1=$2=\"\"; gsub(/ /,\"\",$0); gsub(/,/,\" \",$0); print $0}' | while read -r jail; do
+        [[ -z "$jail" ]] && continue
+        echo "Banned IPs for $jail:"
+        fail2ban-client status "$jail" | awk '/Banned IP list/{print $NF}'
+    done
+}
+
+fail2ban_unban_ip() {
+    if ! command -v fail2ban-client >/dev/null 2>&1; then
+        echo "Fail2ban not installed."
+        return 1
+    fi
+    read -p "Enter jail name: " JAIL
+    read -p "Enter IP to unban: " IP
+    if [[ -z "$JAIL" || -z "$IP" ]]; then
+        echo "Jail or IP missing."
+        return 1
+    fi
+    fail2ban-client set "$JAIL" unbanip "$IP"
+}
+
 wireguard_validate_config() {
-    local cfg="/etc/wireguard/wg0.conf"
+    read -p "WireGuard interface (default wg0): " IFACE
+    IFACE=${IFACE:-wg0}
+    local cfg="/etc/wireguard/${IFACE}.conf"
     if [[ ! -f "$cfg" ]]; then
         echo "WireGuard config not found at $cfg"
         return 1
+    fi
+    read -p "Optional new config to diff/validate (leave blank to use current): " NEWCFG
+    if [[ -n "$NEWCFG" && -f "$NEWCFG" ]]; then
+        diff -u "$cfg" "$NEWCFG" || true
+        cfg="$NEWCFG"
     fi
     if wg-quick strip "$cfg" >/dev/null 2>&1; then
         echo "Config syntax looks OK ($cfg)"
@@ -869,15 +1112,86 @@ wireguard_validate_config() {
 }
 
 wireguard_start_wgquick() {
-    systemctl start wg-quick@wg0
+    read -p "WireGuard interface to start (default wg0): " IFACE
+    IFACE=${IFACE:-wg0}
+    systemctl start "wg-quick@${IFACE}"
 }
 
 wireguard_stop_wgquick() {
-    systemctl stop wg-quick@wg0
+    read -p "WireGuard interface to stop (default wg0): " IFACE
+    IFACE=${IFACE:-wg0}
+    systemctl stop "wg-quick@${IFACE}"
 }
 
 wireguard_reload_wgquick() {
-    systemctl restart wg-quick@wg0
+    read -p "WireGuard interface to restart (default wg0): " IFACE
+    IFACE=${IFACE:-wg0}
+    systemctl restart "wg-quick@${IFACE}"
+}
+
+docker_rootless_check() {
+    if ! command -v docker >/dev/null 2>&1; then
+        echo "Docker not installed."
+        return 1
+    fi
+    echo "Docker rootless info:"
+    docker info --format 'Rootless: {{.SecurityOptions}}' 2>/dev/null || echo "Could not determine rootless status."
+    loginctl show-user "$(whoami)" | grep Linger || true
+    echo "Note: enable rootless per Docker docs if needed."
+}
+
+docker_privileged_containers() {
+    if ! command -v docker >/dev/null 2>&1; then
+        echo "Docker not installed."
+        return 1
+    fi
+    echo "Privileged containers:"
+    docker ps --filter "status=running" --filter "status=exited" --format '{{.Names}} {{.ID}} {{.Status}}' | while read -r name id status; do
+        if docker inspect --format '{{.HostConfig.Privileged}}' "$id" 2>/dev/null | grep -qi true; then
+            echo "$name ($id) - $status"
+        fi
+    done
+}
+
+dockers_with_host_network() {
+    if ! command -v docker >/dev/null 2>&1; then
+        echo "Docker not installed."
+        return 1
+    fi
+    echo "Containers using host network:"
+    docker ps --format '{{.Names}} {{.ID}}' | while read -r name id; do
+        if docker inspect --format '{{.HostConfig.NetworkMode}}' "$id" 2>/dev/null | grep -q "^host"; then
+            echo "$name ($id)"
+        fi
+    done
+}
+
+docker_containers_running_as_root() {
+    if ! command -v docker >/dev/null 2>&1; then
+        echo "Docker not installed."
+        return 1
+    fi
+    echo "Containers running as root (User unset or 0):"
+    docker ps --format '{{.Names}} {{.ID}}' | while read -r name id; do
+        local user
+        user=$(docker inspect --format '{{.Config.User}}' "$id" 2>/dev/null)
+        if [[ -z "$user" || "$user" == "0" ]]; then
+            echo "$name ($id) user=${user:-root}"
+        fi
+    done
+}
+
+docker_sensitive_mounts() {
+    if ! command -v docker >/dev/null 2>&1; then
+        echo "Docker not installed."
+        return 1
+    fi
+    echo "Containers with sensitive mounts (/var/run/docker.sock or /etc):"
+    docker ps --filter "status=running" --format '{{.Names}} {{.ID}}' | while read -r name id; do
+        if docker inspect --format '{{json .Mounts}}' "$id" 2>/dev/null | grep -E 'docker\.sock|/etc' >/dev/null; then
+            echo "$name ($id)"
+        fi
+    done
 }
 
 log_integrity_report() {
@@ -915,6 +1229,19 @@ docker_privileged_containers() {
     docker ps --filter "status=running" --filter "status=exited" --format '{{.Names}} {{.ID}} {{.Status}}' | while read -r name id status; do
         if docker inspect --format '{{.HostConfig.Privileged}}' "$id" 2>/dev/null | grep -qi true; then
             echo "$name ($id) - $status"
+        fi
+    done
+}
+
+docker_sensitive_mounts() {
+    if ! command -v docker >/dev/null 2>&1; then
+        echo "Docker not installed."
+        return 1
+    fi
+    echo "Containers with sensitive mounts (/var/run/docker.sock or /etc):"
+    docker ps --filter "status=running" --format '{{.Names}} {{.ID}}' | while read -r name id; do
+        if docker inspect --format '{{json .Mounts}}' "$id" 2>/dev/null | grep -E 'docker\.sock|/etc' >/dev/null; then
+            echo "$name ($id)"
         fi
     done
 }
@@ -1078,7 +1405,7 @@ status_dashboard() {
     show_service_status crowdsec "$CROWDSEC_UNIT"
     show_service_status crowdsec-firewall-bouncer "$CROWDSEC_BOUNCER_UNIT"
     if [[ -f /var/run/reboot-required ]]; then
-        echo -e "${C_YLW}Reboot required.${C_RST}"
+        echo -e "${C_YLW}$( [[ "$LANGUAGE" == "de" ]] && echo "Neustart erforderlich." || echo "Reboot required.")${C_RST}"
     fi
     echo "Public IP:"
     whats_my_ip
@@ -1094,7 +1421,11 @@ status_dashboard() {
 ###############################################################################
 
 main_menu() {
-    cat <<EOF
+    if [[ "$LANGUAGE" == "de" ]]; then
+        t "main.title"
+        t "main.opts"
+    else
+        cat <<EOF
 ================= NTX COMMAND CENTER ($VERSION) =================
  1) System update
  2) DNS management
@@ -1113,15 +1444,17 @@ s) Status dashboard
 l) Tail logs
 c) Show config/env
 u) Update NTX Command Center
+d) Toggle language (en/de)
 q) Quit
 ================================================================
 EOF
+    fi
 }
 
 search_section() {
     local query="$1"
-    local -a names=("system update" "dns" "network" "speedtest" "security" "tools" "containers" "monitoring" "system information" "maintenance" "users" "control" "help" "status" "logs" "config" "update")
-    local -a targets=(1 2 3 4 5 6 7 8 9 10 11 12 h s l c u)
+    local -a names=("system update" "dns" "network" "speedtest" "security" "tools" "containers" "monitoring" "system information" "maintenance" "users" "control" "help" "status" "logs" "config" "update" "language")
+    local -a targets=(1 2 3 4 5 6 7 8 9 10 11 12 h s l c u d)
     local matches=()
     for i in "${!names[@]}"; do
         if [[ "${names[$i]}" == *"$query"* ]]; then
@@ -1143,13 +1476,17 @@ run_action_by_name() {
         update_all) update_all ;;
         maintenance_bundle) maintenance_bundle ;;
         status_report|status_report_export) status_report_export ;;
+        status_report_json) status_report_json ;;
         status_dashboard) status_dashboard ;;
         ssh_audit|ssh_hardening) ssh_hardening_audit ;;
         docker_compose_health) docker_compose_health ;;
         wireguard_qr|wg_qr) wireguard_show_qr ;;
+        apt_health) apt_health_check ;;
+        update_health) update_health_check ;;
+        clamav_scan) install_and_scan_clamav ;;
         *)
             echo "Unknown action: $action"
-            echo "Supported: update_all, maintenance_bundle, status_report, status_dashboard, ssh_audit, docker_compose_health, wireguard_qr"
+            echo "Supported: update_all, maintenance_bundle, status_report, status_report_json, status_dashboard, ssh_audit, docker_compose_health, wireguard_qr, apt_health, update_health, clamav_scan"
             return 1
             ;;
     esac
@@ -1336,22 +1673,26 @@ menu_security() {
 14) Install WireGuard (client)
 15) Install WireGuard (server)
 16) Show WireGuard sample config
-17) Enable wg-quick@wg0
-18) Disable wg-quick@wg0
+17) Enable wg-quick@wg0 (default; enable/start)
+18) Disable wg-quick@wg0 (default)
 19) SSH hardening check
 20) Show WireGuard config as QR (wg0.conf)
 21) Rootkit check (installs chkrootkit)
 22) Install ClamAV + run quick scan
 23) Fail2ban summary + reload
-24) UFW preset: SSH only
-25) UFW preset: SSH + HTTP/HTTPS
-26) UFW preset: deny all except SSH
-27) Install Google Authenticator (PAM)
-28) Backup config bundle (SSH/WireGuard/Fail2ban/UFW)
-29) WireGuard: validate config
-30) WireGuard: start wg-quick@wg0
-31) WireGuard: stop wg-quick@wg0
-32) WireGuard: restart wg-quick@wg0
+24) Fail2ban: list banned IPs
+25) Fail2ban: unban IP
+26) UFW preset: SSH only
+27) UFW preset: SSH + HTTP/HTTPS
+28) UFW preset: deny all except SSH
+29) Install Google Authenticator (PAM)
+30) Backup config bundle (SSH/WireGuard/Fail2ban/UFW)
+31) Restore config bundle (choose backup)
+32) WireGuard: validate config (choose interface, optional diff)
+33) WireGuard: start interface (prompt, default wg0)
+34) WireGuard: stop interface (prompt, default wg0)
+35) WireGuard: restart interface (prompt, default wg0)
+36) UFW: revert last snapshot
  0) Back
 EOF
         read -p "Select: " c
@@ -1379,15 +1720,19 @@ EOF
             21) rootkit_check ;;
             22) install_and_scan_clamav ;;
             23) fail2ban_summary ;;
-            24) firewall_preset_ssh_only ;;
-            25) firewall_preset_web ;;
-            26) firewall_preset_deny_all_except_ssh ;;
-            27) install_google_authenticator ;;
-            28) backup_config_bundle ;;
-            29) wireguard_validate_config ;;
-            30) wireguard_start_wgquick ;;
-            31) wireguard_stop_wgquick ;;
-            32) wireguard_reload_wgquick ;;
+            24) fail2ban_list_bans ;;
+            25) fail2ban_unban_ip ;;
+            26) firewall_preset_ssh_only ;;
+            27) firewall_preset_web ;;
+            28) firewall_preset_deny_all_except_ssh ;;
+            29) install_google_authenticator ;;
+            30) backup_config_bundle ;;
+            31) restore_config_bundle ;;
+            32) wireguard_validate_config ;;
+            33) wireguard_start_wgquick ;;
+            34) wireguard_stop_wgquick ;;
+            35) wireguard_reload_wgquick ;;
+            36) ufw_revert_snapshot ;;
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
@@ -1398,8 +1743,8 @@ menu_tools() {
     while true; do
         cat <<EOF
 [Tools & environment]
- 1) Install essentials (sudo, nano, curl, net-tools)
- 2) Install extra tools (unzip, python, gdown, glances, tmux, zsh, mc)
+ 1) Install essentials (full bundle: sudo, nano, curl, net-tools, unzip, python3-pip, gcc/python3-dev, psutil, gdown, dos2unix, glances, tmux, zsh, mc)
+ 2) Re-run essentials bundle
  3) Install ibramenu
  4) Install QEMU guest agent
  0) Back
@@ -1428,6 +1773,9 @@ menu_containers() {
  6) List all Docker containers
  7) Docker rootless check
  8) List privileged containers
+ 9) Containers with sensitive mounts
+10) Containers running as root
+11) Containers using host network
  0) Back
 EOF
         read -p "Select: " c
@@ -1440,6 +1788,9 @@ EOF
             6) docker_list_all ;;
             7) docker_rootless_check ;;
             8) docker_privileged_containers ;;
+            9) docker_sensitive_mounts ;;
+            10) docker_containers_running_as_root ;;
+            11) dockers_with_host_network ;;
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
@@ -1456,6 +1807,7 @@ menu_monitoring() {
  4) SMART health check (first disk)
  5) Status dashboard (services + IP)
  6) Export status report to file
+ 7) Export status report to JSON
  0) Back
 EOF
         read -p "Select: " c
@@ -1466,6 +1818,7 @@ EOF
             4) smart_health_check ;;
             5) status_dashboard ;;
             6) status_report_export ;;
+            7) status_report_json ;;
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
@@ -1631,6 +1984,7 @@ while true; do
         11) menu_users_time ;;
         12) menu_control ;;
         u|U) self_update_script ;;
+        d|D) toggle_language ;;
         h|H) show_help_about ;;
         c|C) show_config ;;
         s|S) status_dashboard ;;

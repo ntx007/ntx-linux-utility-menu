@@ -25,16 +25,16 @@ Use `--help` for the supported list.
 - `DRY_RUN=true ./ntx-utility-menu.sh` to preview commands.
 - `SAFE_MODE=true ./ntx-utility-menu.sh` to skip destructive actions.
 - Shortcuts in the main menu: `h` Help/About, `s` Status dashboard, `l` Tail logs, `c` Config/env, `u` Self-update, `q` Quit.
+- Language toggle: `d` switches between English and German labels (menus only).
 
-## Menu highlights (v0.4)
-- **System update**: updates, unattended-upgrades, apt source list/remove, APT health, update health.
+- **System update**: updates, unattended-upgrades, apt source list/remove, APT health, update health (with stale-update warning support).
 - **DNS**: view/edit with backups, IPv4/IPv6 presets, restore latest backup.
 - **Network**: public IP, interfaces/routes/connections, ping/traceroute.
 - **Benchmarks**: Speedtest install/run, YABS, YABS preset submenu.
-- **Security**: UFW presets, Fail2ban, SSH hardening, Tailscale, Netmaker, CrowdSec, WireGuard (install/QR/validate/start/stop/restart), rootkit check, ClamAV install/scan, Google Authenticator install, config backup, Fail2ban summary/reload.
-- **Containers**: Docker/Compose install, service/status/info, list running/all, Compose health, rootless check, list privileged containers.
-- **Monitoring**: node exporter, top CPU/mem, iostat, SMART, status dashboard, export status report.
-- **Maintenance**: cleanup, disks, largest `/var`, maintenance bundle, log integrity.
+- **Security**: UFW presets with snapshot/revert, Fail2ban (summary/reload/list/unban), SSH hardening, Tailscale, Netmaker, CrowdSec, WireGuard (install/QR/validate/start/stop/restart, interface choice), rootkit check, ClamAV install/scan, Google Authenticator install, config backup/restore (with optional Docker Compose include).
+- **Containers**: Docker/Compose install, service/status/info, list running/all, Compose health, rootless check, list privileged containers, list containers with sensitive mounts, containers running as root, containers using host network.
+- **Monitoring**: node exporter, top CPU/mem, iostat, SMART, status dashboard, export status report (text/JSON with optional upload path).
+- **Maintenance**: cleanup, disks, largest `/var`, maintenance bundle (can auto-update first), log integrity.
 - **System info**: `/etc/os-release`, neofetch, memory, VM check, display adapters.
 - **Users/time**: create sudo user, time sync info, chrony install.
 - **Control**: reboot, power down.

@@ -2,10 +2,10 @@
 
 A portable, menu-driven Bash utility for common Linux admin tasks. Built for Debian/Ubuntu (and derivatives), it centralizes updates, diagnostics, networking tools, security hardening, and maintenance in a single interactive script.
 
-- Current version: **v0.4** (main branch).
+- Current version: **v0.5-dev** (main branch).
 - Self-update URL: `https://ntx-menu.re-vent.de` serves the latest script from GitHub main. If `realpath`/`readlink -f` are unavailable and you launch via `$PATH`, run the script with its full path (e.g., `/usr/local/bin/ntx-utility-menu`) so the updater replaces the installed file instead of writing into the current directory.
 
-## Highlights (v0.4)
+## Highlights (v0.5-dev)
 
 - Interactive, nested menu with shortcuts for Help, Status dashboard, and Logs; search via `/keyword`
 - Updates: unattended-upgrades enable/disable/status/run; reboot-if-needed flow; apt source hygiene (list/remove); self-update to latest script; non-interactive `--run` actions
@@ -91,16 +91,16 @@ sudo ./ntx-utility-menu.sh --run wireguard_qr
 
 Run `./ntx-utility-menu.sh --help` for the full list.
 
-## Menu map (v0.4)
+## Menu map (v0.5-dev)
 
 - **System update**: standard upgrade, reboot-if-needed, unattended-upgrades (enable/disable/status/run), list/remove custom apt sources, APT health/update health checks
 - **DNS**: view/edit with backups, preset DNS choices, restore last backup, append/overwrite IPv4 Cloudflare/Google and IPv6 Cloudflare/Google
 - **Network/IP**: public IP (fallback), interfaces, routes, connections, ping common endpoints, traceroute
 - **Speedtest/benchmarks**: Speedtest install/update/run, repo/key removal, YABS, YABS preset submenu (all/disk/network/system)
-- **Security/remote**: UFW, Fail2ban, OpenSSH, Tailscale, Netmaker netclient (install/remove repo), CrowdSec + firewall bouncer, WireGuard (client/server), WireGuard QR helper, firewall/SSH status, SSH hardening check, failed logins, rootkit check, ClamAV install + quick scan, Fail2ban summary/reload, UFW presets, Google Authenticator install, config backup, WireGuard validate/start/stop/restart
+- **Security/remote**: UFW, Fail2ban, OpenSSH, Tailscale, Netmaker netclient (install/remove repo), CrowdSec + firewall bouncer, WireGuard (client/server), WireGuard QR helper, firewall/SSH status, SSH hardening check, failed logins, rootkit check, ClamAV install + quick scan, Fail2ban summary/reload/list/unban, UFW presets, Google Authenticator install, config backup/restore, WireGuard validate/start/stop/restart
 - **Tools/env**: essentials (sudo, nano, curl, net-tools, unzip, python3-pip, gcc/python3-dev, psutil via pip, gdown, dos2unix, glances, tmux, zsh, mc), ibramenu, QEMU guest agent
-- **Containers**: Docker + Compose plugin, service status, short info, running containers, list all containers, Docker Compose health, Docker rootless check, list privileged containers
-- **Monitoring**: node exporter, top CPU/mem processes, iostat summary, SMART health check, status dashboard (services, IPs, CPU/mem snapshot), export status report to file
+- **Containers**: Docker + Compose plugin, service status, short info, running containers, list all containers, Docker Compose health, Docker rootless check, list privileged containers, list containers with sensitive mounts, containers running as root, containers using host network
+- **Monitoring**: node exporter, top CPU/mem processes, iostat summary, SMART health check, status dashboard (services, IPs, CPU/mem snapshot), export status report to file/JSON (optional upload path)
 - **System info**: `/etc/os-release`, neofetch, memory info, VM check, display adapters, GitHub link
 - **Maintenance/disks**: cleanup, disks usage, largest `/var` dirs, maintenance bundle (update + cleanup + log rotate + status report), log integrity check
 - **Users/time**: create sudo user, time sync info, chrony install

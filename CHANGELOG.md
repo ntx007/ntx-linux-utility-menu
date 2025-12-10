@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased (v0.5-dev)
+- Added language toggle (en/de) in the main menu and more translated labels.
+- Status report export to JSON with optional copy to `STATUS_UPLOAD_PATH`; log rotation cleans old archives (`LOG_HISTORY`).
+- System update: APT health/update health checks in `--run`; update cadence warning (`UPDATE_WARN_DAYS`) with optional auto-update in maintenance bundle (`AUTO_UPDATE_BEFORE_MAINT`).
+- Security: ClamAV flow improved (daemon stop/start choice, target selection, report log); Fail2ban list/unban helpers; UFW presets snapshot current rules with revert; config backups can include Docker Compose path and restores allow selection; WireGuard actions accept interface choice and diff/validate new configs.
+- Containers: added hardening checks for sensitive mounts, privileged containers, root user, and host network; menu expanded.
+- Monitoring: status report export supports JSON; language toggle `d` added.
+- Benchmarks: removed external option; YABS presets retained.
+- Self-update: after updating, prompt to restart so the new script loads.
+
 ## v0.4
 - Added in-menu self-update (main menu shortcut `u`) to download the latest NTX Command Center script from https://ntx-menu.re-vent.de. The link serves the script from the GitHub main branch.
 - New non-interactive mode via `--run` (e.g., update_all, maintenance_bundle, status_report, ssh_audit, docker_compose_health, wireguard_qr).
