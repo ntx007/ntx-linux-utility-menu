@@ -1,6 +1,9 @@
 # Changelog
 
-## Unreleased (v0.5-dev)
+## Unreleased (v0.6-dev)
+- Placeholder: upcoming changes after v0.5 release.
+
+## v0.5
 - Added language toggle (en/de) in the main menu and more translated labels.
 - Status report export to JSON with optional copy to `STATUS_UPLOAD_PATH`; log rotation cleans old archives (`LOG_HISTORY`).
 - System update: APT health/update health checks in `--run`; update cadence warning (`UPDATE_WARN_DAYS`) with optional auto-update in maintenance bundle (`AUTO_UPDATE_BEFORE_MAINT`).
