@@ -31,6 +31,11 @@ Use `--help` for the supported list.
 - **DNS**: view/edit with backups, IPv4/IPv6 presets, restore latest backup.
 - **Network**: public IP, interfaces/routes/connections, ping/traceroute.
 - **Benchmarks**: Speedtest install/run, YABS, YABS preset submenu.
+- **System update**: updates, unattended-upgrades, apt source list/remove, APT health, update health (with stale-update warning support).
+- **DNS**: view/edit with backups, IPv4/IPv6 presets, restore latest backup.
+- **Network**: public IP, interfaces/routes/connections, ping/traceroute.
+- **Benchmarks**: Speedtest install/run, YABS, YABS preset submenu.
+- **Tools/env**: essentials (sudo, nano, curl, net-tools, iproute2, unzip, python3-pip, gcc/python3-dev, psutil via pip, gdown, dos2unix, glances, tmux, zsh, mc, npm), ibramenu, QEMU guest agent.
 - **Security**: UFW presets with snapshot/revert, Fail2ban (summary/reload/list/unban), SSH hardening, Tailscale, Netmaker, CrowdSec, WireGuard (install/QR/validate/start/stop/restart, interface choice), rootkit check, ClamAV install/scan, Google Authenticator install, config backup/restore (with optional Docker Compose include).
 - **Containers**: Docker/Compose install, service/status/info, list running/all, Compose health, rootless check, list privileged containers, list containers with sensitive mounts, containers running as root, containers using host network.
 - **Monitoring**: node exporter, top CPU/mem, iostat, SMART, status dashboard, export status report (text/JSON with optional upload path).
@@ -48,3 +53,5 @@ Use `--help` for the supported list.
 - Display adapters view now auto-installs `lshw` if missing; monitoring functions (node exporter/top/iostat/SMART) are bundled in the current release.
 - SMART checks: virtio disks may need `-d scsi`; the menu tries this fallback but unusual storage can require a manual `smartctl -a -d <type> /dev/<disk>`.
 - Rootkit check installs `binutils` so `strings` is available; install binutils manually if it’s still missing.
+- Offline/proxy: `apt-get update` must succeed for upgrades; if blocked, set `http_proxy/https_proxy` or skip update steps (they will stop early with a hint).
+- Minimal envs: Inode view may be skipped if `df -i` is unsupported; IP listing falls back to `ip addr` or `ifconfig` if `ip` is absent.

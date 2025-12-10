@@ -284,8 +284,11 @@ cpu_mem_snapshot() {
 }
 
 list_private_ips() {
+    ensure_cmd ip iproute2
     echo "IPs (IPv4) per interface:"
-    ip -brief -family inet address 2>/dev/null || ip addr show
+    if ! ip -brief -family inet address 2>/dev/null; then
+        ip addr show 2>/dev/null || ifconfig 2>/dev/null || echo "No IP utility available (ip/ifconfig missing)."
+    fi
 }
 
 update_cadence_warn() {
@@ -325,7 +328,9 @@ disk_inode_summary() {
     df -h | head -20
     echo
     echo "Inode usage:"
-    df -ih | head -20
+    if ! df -ih | head -20; then
+        echo "Inode view unavailable (df -i not supported in this environment)."
+    fi
 }
 
 status_report_export() {
@@ -425,8 +430,8 @@ maintenance_bundle() {
 ssh_hardening_audit() {
     local cfg="/etc/ssh/sshd_config"
     if [[ ! -f "$cfg" ]]; then
-        echo "sshd_config not found at $cfg"
-        return 1
+        echo "sshd_config not found at $cfg (SSH not installed? skipping audit)"
+        return 0
     fi
     echo "SSH hardening check ($cfg)"
     local pri par pwa
@@ -495,7 +500,10 @@ skip_if_safe() {
 # --- System update ---
 
 update_all() {
-    run_cmd "apt-get update" apt-get update
+    if ! run_cmd "apt-get update" apt-get update; then
+        echo "apt-get update failed (network/proxy?). Skipping upgrade."
+        return 1
+    fi
     run_cmd "apt-get upgrade" apt-get upgrade -y
 }
 
@@ -869,6 +877,8 @@ install_essentials() {
     apt install tmux -y
     apt install zsh -y
     apt install mc -y
+    apt install iproute2 -y
+    apt install npm -y
     apt-get install sudo -y
     apt-get install nano -y
     apt-get install curl -y

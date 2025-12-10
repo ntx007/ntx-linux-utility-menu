@@ -98,7 +98,7 @@ Run `./ntx-utility-menu.sh --help` for the full list.
 - **Network/IP**: public IP (fallback), interfaces, routes, connections, ping common endpoints, traceroute
 - **Speedtest/benchmarks**: Speedtest install/update/run, repo/key removal, YABS, YABS preset submenu (all/disk/network/system)
 - **Security/remote**: UFW, Fail2ban, OpenSSH, Tailscale, Netmaker netclient (install/remove repo), CrowdSec + firewall bouncer, WireGuard (client/server), WireGuard QR helper, firewall/SSH status, SSH hardening check, failed logins, rootkit check, ClamAV install + quick scan, Fail2ban summary/reload/list/unban, UFW presets, Google Authenticator install, config backup/restore, WireGuard validate/start/stop/restart
-- **Tools/env**: essentials (sudo, nano, curl, net-tools, unzip, python3-pip, gcc/python3-dev, psutil via pip, gdown, dos2unix, glances, tmux, zsh, mc), ibramenu, QEMU guest agent
+- **Tools/env**: essentials (sudo, nano, curl, net-tools, iproute2, unzip, python3-pip, gcc/python3-dev, psutil via pip, gdown, dos2unix, glances, tmux, zsh, mc, npm), ibramenu, QEMU guest agent
 - **Containers**: Docker + Compose plugin, service status, short info, running containers, list all containers, Docker Compose health, Docker rootless check, list privileged containers, list containers with sensitive mounts, containers running as root, containers using host network
 - **Monitoring**: node exporter, top CPU/mem processes, iostat summary, SMART health check, status dashboard (services, IPs, CPU/mem snapshot), export status report to file/JSON (optional upload path)
 - **System info**: `/etc/os-release`, neofetch, memory info, VM check, display adapters, GitHub link
@@ -127,6 +127,8 @@ Search tip: in the main menu, type `/keyword` (e.g., `/docker`, `/dns`) to jump 
 - ClamAV: `freshclam` may fail if the daemon holds the DB lock; stop/reload `clamav-freshclam` before updating if needed.
 - SMART: virtio disks may need `-d scsi`; the menu tries this fallback but atypical storage may require manual `smartctl -a -d <type> /dev/<disk>`.
 - Rootkit check: installs `binutils` to provide `strings`; if `strings` is still missing, install binutils manually.
+- Offline/proxy: `apt-get update` must succeed for upgrades; if blocked, set `http_proxy/https_proxy` or skip update steps (they will now stop early with a hint).
+- Minimal envs: Inode view may be skipped if `df -i` is unsupported; IP listing falls back to `ip addr` or `ifconfig` if `ip` is absent.
 
 ## Quick start (best practice)
 
