@@ -1234,15 +1234,29 @@ smart_health_check() {
         echo "No disk found for SMART check."
         return 1
     fi
-    smartctl -H "$disk"
+    # Virtio disks often need -d scsi; fall back if plain check fails.
+    if [[ "$disk" == /dev/vd* ]]; then
+        smartctl -H -d scsi "$disk" || {
+            echo "SMART check failed for $disk. Try: smartctl -a -d scsi $disk"
+            return 1
+        }
+    else
+        smartctl -H "$disk" || {
+            echo "SMART check failed for $disk. Try: smartctl -a -d sat $disk"
+            return 1
+        }
+    fi
 }
 
 rootkit_check() {
     msgbox "Installing/Preparing Rootkit Check"
-    run_cmd "Install chkrootkit" apt install chkrootkit -y
+    run_cmd "Install chkrootkit" apt install chkrootkit binutils -y
     ibralogo
     msgbox "Rootkit Check"
-    chkrootkit
+    if ! command -v strings >/dev/null 2>&1; then
+        echo "'strings' not found; install binutils and re-run if this check fails."
+    fi
+    chkrootkit || echo "chkrootkit reported an issue (see above)."
 }
 
 # --- System information ---
@@ -1649,82 +1663,82 @@ menu_security() {
     while true; do
         cat <<EOF
 [Security / remote access]
- 1) Install UFW (allow SSH, enable)
- 2) Install Fail2ban
- 3) Update SSH config for Proxmox (remote script)
- 4) Install OpenSSH server
- 5) Install Tailscale
- 6) Tailscale up (QR mode)
- 7) Install Netmaker netclient
- 8) Remove Netmaker repo/key
- 9) Show firewall status
-10) Show SSH status
-11) Show recent failed logins
-12) Install CrowdSec
-13) Install CrowdSec firewall bouncer (iptables)
-14) Install WireGuard (client)
-15) Install WireGuard (server)
-16) Show WireGuard sample config
-17) Enable wg-quick@wg0 (default; enable/start)
-18) Disable wg-quick@wg0 (default)
-19) SSH hardening check
-20) Show WireGuard config as QR (wg0.conf)
-21) Rootkit check (installs chkrootkit)
-22) Install ClamAV + run quick scan
-23) Fail2ban summary + reload
-24) Fail2ban: list banned IPs
-25) Fail2ban: unban IP
-26) UFW preset: SSH only
-27) UFW preset: SSH + HTTP/HTTPS
-28) UFW preset: deny all except SSH
-29) Install Google Authenticator (PAM)
-30) Backup config bundle (SSH/WireGuard/Fail2ban/UFW)
-31) Restore config bundle (choose backup)
-32) WireGuard: validate config (choose interface, optional diff)
-33) WireGuard: start interface (prompt, default wg0)
-34) WireGuard: stop interface (prompt, default wg0)
-35) WireGuard: restart interface (prompt, default wg0)
-36) UFW: revert last snapshot
+ 1) Show firewall status
+ 2) Show SSH status
+ 3) Show recent failed logins
+ 4) SSH hardening check
+ 5) Update SSH config for Proxmox (remote script)
+ 6) Install OpenSSH server
+ 7) Install UFW (allow SSH, enable)
+ 8) UFW preset: SSH only
+ 9) UFW preset: SSH + HTTP/HTTPS
+10) UFW preset: deny all except SSH
+11) UFW: revert last snapshot
+12) Install Fail2ban
+13) Fail2ban summary + reload
+14) Fail2ban: list banned IPs
+15) Fail2ban: unban IP
+16) Install Google Authenticator (PAM)
+17) Rootkit check (installs chkrootkit)
+18) Install ClamAV + run quick scan
+19) Install Tailscale
+20) Tailscale up (QR mode)
+21) Install Netmaker netclient
+22) Remove Netmaker repo/key
+23) Install CrowdSec
+24) Install CrowdSec firewall bouncer (iptables)
+25) Install WireGuard (client)
+26) Install WireGuard (server)
+27) Show WireGuard sample config
+28) WireGuard: validate config (choose interface, optional diff)
+29) WireGuard: start interface (prompt, default wg0)
+30) WireGuard: stop interface (prompt, default wg0)
+31) WireGuard: restart interface (prompt, default wg0)
+32) Show WireGuard config as QR (wg0.conf)
+33) Enable wg-quick@wg0 (default; enable/start)
+34) Disable wg-quick@wg0 (default)
+35) Backup config bundle (SSH/WireGuard/Fail2ban/UFW)
+36) Restore config bundle (choose backup)
  0) Back
 EOF
         read -p "Select: " c
         case "$c" in
-            1) install_ufw_basic ;;
-            2) install_fail2ban ;;
-            3) change_ssh_proxmox ;;
-            4) install_openssh ;;
-            5) tailscale_install ;;
-            6) tailscale_up_qr ;;
-            7) install_netclient ;;
-            8) remove_netclient_repo ;;
-            9) show_firewall_status ;;
-            10) show_ssh_status ;;
-            11) show_failed_logins ;;
-            12) install_crowdsec ;;
-            13) install_crowdsec_firewall_bouncer ;;
-            14) install_wireguard_client ;;
-            15) install_wireguard_server ;;
-            16) print_wireguard_sample ;;
-            17) enable_wg_quick ;;
-            18) disable_wg_quick ;;
-            19) ssh_hardening_audit ;;
-            20) wireguard_show_qr ;;
-            21) rootkit_check ;;
-            22) install_and_scan_clamav ;;
-            23) fail2ban_summary ;;
-            24) fail2ban_list_bans ;;
-            25) fail2ban_unban_ip ;;
-            26) firewall_preset_ssh_only ;;
-            27) firewall_preset_web ;;
-            28) firewall_preset_deny_all_except_ssh ;;
-            29) install_google_authenticator ;;
-            30) backup_config_bundle ;;
-            31) restore_config_bundle ;;
-            32) wireguard_validate_config ;;
-            33) wireguard_start_wgquick ;;
-            34) wireguard_stop_wgquick ;;
-            35) wireguard_reload_wgquick ;;
-            36) ufw_revert_snapshot ;;
+            1) show_firewall_status ;;
+            2) show_ssh_status ;;
+            3) show_failed_logins ;;
+            4) ssh_hardening_audit ;;
+            5) change_ssh_proxmox ;;
+            6) install_openssh ;;
+            7) install_ufw_basic ;;
+            8) firewall_preset_ssh_only ;;
+            9) firewall_preset_web ;;
+            10) firewall_preset_deny_all_except_ssh ;;
+            11) ufw_revert_snapshot ;;
+            12) install_fail2ban ;;
+            13) fail2ban_summary ;;
+            14) fail2ban_list_bans ;;
+            15) fail2ban_unban_ip ;;
+            16) install_google_authenticator ;;
+            17) rootkit_check ;;
+            18) install_and_scan_clamav ;;
+            19) tailscale_install ;;
+            20) tailscale_up_qr ;;
+            21) install_netclient ;;
+            22) remove_netclient_repo ;;
+            23) install_crowdsec ;;
+            24) install_crowdsec_firewall_bouncer ;;
+            25) install_wireguard_client ;;
+            26) install_wireguard_server ;;
+            27) print_wireguard_sample ;;
+            28) wireguard_validate_config ;;
+            29) wireguard_start_wgquick ;;
+            30) wireguard_stop_wgquick ;;
+            31) wireguard_reload_wgquick ;;
+            32) wireguard_show_qr ;;
+            33) enable_wg_quick ;;
+            34) disable_wg_quick ;;
+            35) backup_config_bundle ;;
+            36) restore_config_bundle ;;
             0) break ;;
             *) echo "Invalid choice." ;;
         esac

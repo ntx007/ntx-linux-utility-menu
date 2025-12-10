@@ -14,6 +14,8 @@
 - Restored missing monitoring functions (node exporter/top/iostat/SMART).
 - Fixed `df` inode view clash in disk/inode summary.
 - Display adapters view now auto-installs `lshw` if missing.
+- SMART check now handles virtio disks by using `-d scsi` fallback and clearer guidance when detection fails.
+- Rootkit check now installs `binutils` so `strings` is available, and surfaces a clearer note if it’s missing.
 
 ### Known behaviors
 - When realpath/readlink -f are unavailable and the script is invoked via $PATH, self-update may write to the current directory instead of the installed path; run with the full path to update in place.

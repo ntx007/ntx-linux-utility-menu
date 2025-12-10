@@ -125,6 +125,8 @@ Search tip: in the main menu, type `/keyword` (e.g., `/docker`, `/dns`) to jump 
 - WireGuard: enable/disable assumes `/etc/wireguard/wg0.conf` exists.
 - WireGuard QR: requires `qrencode`; Docker Compose health assumes the Docker Compose plugin is available.
 - ClamAV: `freshclam` may fail if the daemon holds the DB lock; stop/reload `clamav-freshclam` before updating if needed.
+- SMART: virtio disks may need `-d scsi`; the menu tries this fallback but atypical storage may require manual `smartctl -a -d <type> /dev/<disk>`.
+- Rootkit check: installs `binutils` to provide `strings`; if `strings` is still missing, install binutils manually.
 
 ## Quick start (best practice)
 
