@@ -322,10 +322,10 @@ kernel_version_summary() {
 
 disk_inode_summary() {
     echo "Disk usage:"
-    df -h --output=source,pcent,avail,target | sed '1d' | head -5
+    df -h | head -20
     echo
     echo "Inode usage:"
-    df -ih --output=source,ipcent,iavail,target | sed '1d' | head -5
+    df -ih | head -20
 }
 
 status_report_export() {
