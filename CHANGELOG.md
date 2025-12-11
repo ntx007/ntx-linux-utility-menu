@@ -1,7 +1,15 @@
 # Changelog
 
 ## Unreleased (v1.1.0-dev)
-- Placeholder for upcoming changes.
+- System update: added Ubuntu do-release-upgrade option (installs update-manager-core, shows held packages, and runs do-release-upgrade per Ubuntu wiki guidance).
+- Containers: added basic Docker controls (stop all containers, start via compose up -d, run custom docker command).
+- Containers: added Portainer (CE) installer (pull image, create volume, run on 9443).
+- Containers: added Nginx Proxy Manager installer (compose stack with ports 80/81/443, external network support).
+- Containers: added Pi-hole + Unbound installer (compose stack with defaults and optional custom network/password).
+- Containers: added Nextcloud All-in-One installer (compose stack using nextcloud/all-in-one).
+- Containers: added Tactical RMM installer (docker install script from upstream; requires DNS/FQDN prep).
+- Containers: added Hemmelig.app installer (compose stack on port 3000).
+- UI: header now shows host, CPU threads, RAM, IP, and a GitHub link; update notice shown if a newer release is detected.
 
 ## v1.0.0
 - Semantic versioning adopted; canonical version string: v1.0.0.
@@ -18,6 +26,7 @@
 - Wrapper: `ntxmenu` now resolves to `/usr/local/bin/ntx-utility-menu` (or local copies) so it works even when symlinked from `/usr/bin`.
 - Installer now creates a `/usr/local/bin/ntx-utility-menu.sh` symlink pointing to the installed script for older wrappers.
 - Wrapper expanded to look for `/usr/local/bin` and `/usr/bin` variants of the script before falling back to its own directory, fixing missing-script errors when symlinked.
+- Tools: added nvm installer to the Tools & environment menu.
 - Installer now warns when `/usr/local/bin` is not in PATH after install.
 
 ### Known behaviors

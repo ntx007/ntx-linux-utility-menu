@@ -41,9 +41,9 @@ Use `--help` for the supported list.
 - **DNS**: view/edit with backups, IPv4/IPv6 presets (includes Netcup 46.38.225.230 + 46.38.252.230 + 1.1.1.1), restore latest backup.
 - **Network**: public IP, interfaces/routes/connections, ping/traceroute.
 - **Benchmarks**: Speedtest install/run, YABS, YABS preset submenu.
-- **Tools/env**: essentials (sudo, nano, curl, net-tools, iproute2, unzip, python3-pip, gcc/python3-dev, psutil via pip, gdown, dos2unix, glances, tmux, zsh, mc, npm), ibramenu, QEMU guest agent.
+- **Tools/env**: essentials (sudo, nano, curl, net-tools, iproute2, unzip, python3-pip, gcc/python3-dev, psutil via pip, gdown, dos2unix, glances, tmux, zsh, mc, npm), ibramenu, QEMU guest agent, nvm installer.
 - **Security**: UFW presets with snapshot/revert, Fail2ban (summary/reload/list/unban), SSH hardening, Tailscale, Netmaker, CrowdSec, WireGuard (install/QR/validate/start/stop/restart, interface choice), rootkit check, ClamAV install/scan, Google Authenticator install, config backup/restore (with optional Docker Compose include), Proxmox SSH config updater (PermitRootLogin yes).
-- **Containers**: Docker/Compose install, service/status/info, list running/all, Compose health, rootless check, list privileged containers, list containers with sensitive mounts, containers running as root, containers using host network.
+- **Containers**: Docker/Compose install, service/status/info, list running/all, Compose health, rootless check, list privileged containers, list containers with sensitive mounts, containers running as root, containers using host network, installers for Portainer, Nginx Proxy Manager, Pi-hole+Unbound, Nextcloud AIO, Tactical RMM, and Hemmelig.app.
 - **Proxmox**: list LXC containers (`pct list`), enter with `pct enter <vmid>`, and run the Proxmox SSH config updater (PermitRootLogin yes) via a dedicated submenu.
 - **Monitoring**: node exporter, top CPU/mem, iostat, SMART, status dashboard, export status report (text/JSON with optional upload path).
 - **Maintenance**: cleanup, disks, largest `/var`, maintenance bundle (can auto-update first), log integrity.

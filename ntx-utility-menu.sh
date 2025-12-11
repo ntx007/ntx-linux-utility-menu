@@ -13,6 +13,11 @@ LOG_HISTORY=${LOG_HISTORY:-3}
 DRY_RUN=${DRY_RUN:-false}
 SAFE_MODE=${SAFE_MODE:-false}
 VERSION="v1.1.0-dev"
+UPDATE_NOTICE=""
+HEADER_CPU=""
+HEADER_RAM=""
+HEADER_HOST=""
+HEADER_IP=""
 LANGUAGE="${LANGUAGE:-en}"
 UPDATE_WARN_DAYS=${UPDATE_WARN_DAYS:-7}
 AUTO_UPDATE_BEFORE_MAINT=${AUTO_UPDATE_BEFORE_MAINT:-false}
@@ -66,7 +71,7 @@ log_line() {
 t() {
     local key="$1"
     case "$LANGUAGE:$key" in
-        de:main.title) echo "================= NTX BEFEHLSZENTRALE ($VERSION) =================" ;;
+        de:main.title) echo "=========================== NTX BEFEHLSZENTRALE ($VERSION) ===========================" ;;
         de:main.opts) cat <<'EOF'
  1) Systemupdate
  2) DNS Verwaltung
@@ -86,12 +91,12 @@ s) Status-Dashboard
 l) Logs ansehen
 c) Konfig/Umgebung anzeigen
 u) NTX Command Center aktualisieren
-d) Sprache umschalten (en/de)
+        d) Sprache umschalten (en/de)
 q) Beenden
 EOF
         ;;
         de:status.reboot) echo "Neustart erforderlich." ;;
-        *) echo "================= NTX COMMAND CENTER ($VERSION) =================" ;;
+        *) echo "=========================== NTX COMMAND CENTER ($VERSION) ===========================" ;;
     esac
 }
 
@@ -158,6 +163,22 @@ ensure_dirs() {
     touch "$LOG_FILE"
     mkdir -p "$REPORT_DIR"
     rotate_log
+}
+
+check_updates() {
+    local latest
+    latest=$(curl -fsSL "https://api.github.com/repos/ntx007/ntx-linux-utility-menu/releases?per_page=1" 2>/dev/null | grep -o '"tag_name": *"[^"]*"' | head -n1 | cut -d'"' -f4)
+    if [[ -n "$latest" && "$latest" != "$VERSION" ]]; then
+        UPDATE_NOTICE="Update available: ${latest} (current ${VERSION})"
+    fi
+}
+
+gather_header_info() {
+    HEADER_CPU=$(nproc 2>/dev/null || echo "unknown")
+    HEADER_RAM=$(awk '/MemTotal/ {printf \"%.0f\", $2/1024/1024}' /proc/meminfo 2>/dev/null || echo "unknown")
+    HEADER_HOST=$(hostname 2>/dev/null || echo "unknown")
+    HEADER_IP=$(hostname -I 2>/dev/null | awk '{print $1}' | sed 's/[[:space:]]//g')
+    HEADER_IP=${HEADER_IP:-unknown}
 }
 
 self_update_script() {
@@ -594,6 +615,14 @@ update_all_reboot_if_needed() {
     fi
 }
 
+do_release_upgrade() {
+    echo "Ubuntu release upgrade: checks performed per https://wiki.ubuntuusers.de/Upgrade/"
+    run_cmd "Install update-manager-core" apt-get install -y update-manager-core
+    run_cmd "List held packages" apt-mark showhold
+    echo "Recommended: ensure backups and remove EOL third-party repositories before upgrading."
+    run_cmd "Run do-release-upgrade (non-interactive prompt will follow)" do-release-upgrade
+}
+
 enable_unattended_upgrades() {
     run_cmd "Install unattended-upgrades" apt-get install unattended-upgrades -y
     run_cmd "Enable unattended-upgrades service" systemctl enable --now unattended-upgrades
@@ -971,6 +1000,19 @@ install_qemu_guest_agent() {
     apt update
     apt install qemu-guest-agent -y
     systemctl enable --now qemu-guest-agent
+}
+
+install_nvm() {
+    echo "Installing nvm (Node Version Manager)..."
+    if command -v curl >/dev/null 2>&1; then
+        bash -c "curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash"
+    elif command -v wget >/dev/null 2>&1; then
+        bash -c "wget -qO- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash"
+    else
+        echo "Neither curl nor wget is available; cannot install nvm."
+        return 1
+    fi
+    echo "nvm install script executed. Open a new shell or source ~/.nvm/nvm.sh to use nvm."
 }
 
 install_ntxmenu_path() {
@@ -1603,10 +1645,16 @@ status_dashboard() {
 main_menu() {
     if [[ "$LANGUAGE" == "de" ]]; then
         t "main.title"
+        echo "Host: ${HEADER_HOST:-unknown} | Threads: ${HEADER_CPU:-?} | RAM: ${HEADER_RAM:-?} GiB | IP: ${HEADER_IP:-unknown}"
+        echo "Hilf uns besser zu werden: https://github.com/ntx007/ntx-linux-utility-menu"
+        [[ -n "$UPDATE_NOTICE" ]] && echo "Hinweis: $UPDATE_NOTICE"
         t "main.opts"
     else
         cat <<EOF
-================= NTX COMMAND CENTER ($VERSION) =================
+=========================== NTX COMMAND CENTER ($VERSION) ===========================
+Host: ${HEADER_HOST:-unknown} | Threads: ${HEADER_CPU:-?} | RAM: ${HEADER_RAM:-?} GiB | IP: ${HEADER_IP:-unknown}
+Help us get better: https://github.com/ntx007/ntx-linux-utility-menu
+$( [[ -n "$UPDATE_NOTICE" ]] && echo "Notice: $UPDATE_NOTICE" )
  1) System update
  2) DNS management
  3) Network / IP
@@ -1696,6 +1744,7 @@ menu_update() {
  1) Update all (apt-get update && upgrade)
  2) Update all with sudo and reboot
  3) Update all and reboot if required
+ 4) do-release-upgrade (Ubuntu)
  4) Enable unattended upgrades
  5) Disable unattended upgrades
  6) Check unattended upgrades status
@@ -1711,14 +1760,15 @@ EOF
             1) update_all ;;
             2) update_all_with_sudo_reboot ;;
             3) update_all_reboot_if_needed ;;
-            4) enable_unattended_upgrades ;;
-            5) disable_unattended_upgrades ;;
-            6) check_unattended_status ;;
-            7) run_unattended_upgrade_now ;;
-            8) list_custom_sources ;;
-            9) remove_custom_source ;;
-            10) apt_health_check ;;
-            11) update_health_check ;;
+            4) do_release_upgrade ;;
+            5) enable_unattended_upgrades ;;
+            6) disable_unattended_upgrades ;;
+            7) check_unattended_status ;;
+            8) run_unattended_upgrade_now ;;
+            9) list_custom_sources ;;
+            10) remove_custom_source ;;
+            11) apt_health_check ;;
+            12) update_health_check ;;
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
@@ -2040,6 +2090,7 @@ menu_tools() {
  1) Essentials bundle submenu
  2) Install ibramenu
  3) Install QEMU guest agent
+ 4) Install nvm (Node Version Manager)
  0) Back
 EOF
         read -p "Select: " c
@@ -2047,6 +2098,7 @@ EOF
             1) menu_essentials ;;
             2) install_ibramenu ;;
             3) install_qemu_guest_agent ;;
+            4) install_nvm ;;
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
@@ -2068,6 +2120,15 @@ menu_containers() {
  9) Containers with sensitive mounts
 10) Containers running as root
 11) Containers using host network
+12) Stop all Docker containers
+13) Start all containers (compose up -d)
+14) Run custom docker command
+15) Install Portainer (CE)
+16) Install Nginx Proxy Manager (Docker)
+17) Install Pi-hole + Unbound (Docker)
+18) Install Nextcloud All-in-One (Docker)
+19) Install Tactical RMM (Docker)
+20) Install Hemmelig.app (Docker)
  0) Back
 EOF
         read -p "Select: " c
@@ -2083,10 +2144,268 @@ EOF
             9) docker_sensitive_mounts ;;
             10) docker_containers_running_as_root ;;
             11) dockers_with_host_network ;;
+            12) docker_stop_all ;;
+            13) docker_start_all_compose ;;
+            14) docker_run_custom ;;
+            15) install_portainer ;;
+            16) install_nginx_proxy_manager ;;
+            17) install_pihole_unbound ;;
+            18) install_nextcloud_aio ;;
+            19) install_tactical_rmm ;;
+            20) install_hemmelig ;;
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
     done
+}
+
+docker_stop_all() {
+    if ! command -v docker >/dev/null 2>&1; then
+        echo "Docker not installed."
+        return 1
+    fi
+    run_cmd "Stop all Docker containers" docker stop $(docker ps -q)
+}
+
+docker_start_all_compose() {
+    if ! command -v docker >/dev/null 2>&1; then
+        echo "Docker not installed."
+        return 1
+    fi
+    run_cmd "Start all containers (compose up -d)" docker compose up -d
+}
+
+docker_run_custom() {
+    if ! command -v docker >/dev/null 2>&1; then
+        echo "Docker not installed."
+        return 1
+    fi
+    read -p "Enter docker command (after 'docker '): " CMD
+    [[ -z "$CMD" ]] && { echo "No command provided."; return 1; }
+    run_cmd "docker $CMD" docker $CMD
+}
+
+install_portainer() {
+    if ! command -v docker >/dev/null 2>&1; then
+        echo "Docker not installed."
+        return 1
+    fi
+    run_cmd "Pull Portainer image" docker pull portainer/portainer-ce:latest
+    run_cmd "Create Portainer data volume" docker volume create portainer_data
+    run_cmd "Run Portainer" docker run -d -p 8000:8000 -p 9443:9443 --name portainer --restart=always -v /var/run/docker.sock:/var/run/docker.sock -v portainer_data:/data portainer/portainer-ce:latest
+    echo "Portainer running on https://<host>:9443"
+}
+
+install_nginx_proxy_manager() {
+    if ! command -v docker >/dev/null 2>&1; then
+        echo "Docker not installed."
+        return 1
+    fi
+    if ! docker compose version >/dev/null 2>&1; then
+        echo "Docker Compose plugin not found. Install it first (Containers menu option 1)."
+        return 1
+    fi
+    local app="npm"
+    local image="jc21/nginx-proxy-manager:latest"
+    local base="/opt/appdata/${app}"
+    read -p "Docker network to use/create (default npm_proxy): " dockernet
+    dockernet=${dockernet:-npm_proxy}
+
+    run_cmd "Create app directory" mkdir -p "$base"
+    cat > "${base}/.env" <<EOF
+APP_NAME=${app}
+IMAGE=${image}
+EOF
+    cat > "${base}/compose.yaml" <<EOF
+services:
+  nginx-proxy-manager:
+    image: \${IMAGE:?err}
+    container_name: \${APP_NAME:?err}
+    ports:
+      - "80:80"
+      - "81:81"
+      - "443:443"
+    networks:
+      - ${dockernet}
+    volumes:
+      - ./data:/data
+      - ./letsencrypt:/etc/letsencrypt
+    restart: unless-stopped
+    security_opt:
+      - apparmor:unconfined
+
+networks:
+  ${dockernet}:
+    driver: bridge
+    external: true
+EOF
+    if ! docker network inspect "$dockernet" >/dev/null 2>&1; then
+        run_cmd "Create Docker network ${dockernet}" docker network create "$dockernet"
+    fi
+    (cd "$base" && run_cmd "Deploy Nginx Proxy Manager" docker compose up -d --force-recreate)
+    local ip
+    ip=$(hostname -I 2>/dev/null | awk '{print $1}')
+    echo
+    echo "Nginx Proxy Manager deployed."
+    echo "URL   : http://${ip:-<host>}:81"
+    echo "User  : admin@example.com"
+    echo "Pass  : changeme"
+}
+
+install_pihole_unbound() {
+    if ! command -v docker >/dev/null 2>&1; then
+        echo "Docker not installed."
+        return 1
+    fi
+    if ! docker compose version >/dev/null 2>&1; then
+        echo "Docker Compose plugin not found. Install it first (Containers menu option 1)."
+        return 1
+    fi
+    local base="/opt/appdata/pihole-unbound"
+    local tz
+    tz=$(cat /etc/timezone 2>/dev/null || echo "UTC")
+    read -p "Set Pi-hole WEBPASSWORD (leave blank for default changeme): " webpw
+    webpw=${webpw:-changeme}
+    run_cmd "Create app directory" mkdir -p "$base"
+    cat > "${base}/.env" <<EOF
+TZ=${tz}
+WEBPASSWORD=${webpw}
+PIHOLE_IMAGE=pihole/pihole:latest
+UNBOUND_IMAGE=mvance/unbound:latest
+EOF
+    cat > "${base}/docker-compose.yml" <<'EOF'
+services:
+  unbound:
+    image: ${UNBOUND_IMAGE:?err}
+    container_name: unbound
+    restart: unless-stopped
+    ports:
+      - "5335:5335/tcp"
+      - "5335:5335/udp"
+    volumes:
+      - ./unbound:/opt/unbound/etc/unbound
+
+  pihole:
+    image: ${PIHOLE_IMAGE:?err}
+    container_name: pihole
+    depends_on:
+      - unbound
+    environment:
+      TZ: ${TZ}
+      WEBPASSWORD: ${WEBPASSWORD}
+      DNS1: 127.0.0.1#5335
+      DNS2: 127.0.0.1#5335
+      REV_SERVER: "false"
+    ports:
+      - "53:53/tcp"
+      - "53:53/udp"
+      - "80:80/tcp"
+    volumes:
+      - ./etc-pihole:/etc/pihole
+      - ./dnsmasq.d:/etc/dnsmasq.d
+    restart: unless-stopped
+EOF
+    (cd "$base" && run_cmd "Deploy Pi-hole + Unbound" docker compose up -d --force-recreate)
+    local ip
+    ip=$(hostname -I 2>/dev/null | awk '{print $1}')
+    echo
+    echo "Pi-hole + Unbound deployed."
+    echo "Pi-hole UI: http://${ip:-<host>}/ (default user: admin, password: ${webpw})"
+    echo "DNS: ${ip:-<host>} on port 53"
+}
+
+install_nextcloud_aio() {
+    if ! command -v docker >/dev/null 2>&1; then
+        echo "Docker not installed."
+        return 1
+    fi
+    if ! docker compose version >/dev/null 2>&1; then
+        echo "Docker Compose plugin not found. Install it first (Containers menu option 1)."
+        return 1
+    fi
+    local base="/opt/appdata/nextcloud-aio"
+    run_cmd "Create app directory" mkdir -p "$base"
+    cat > "${base}/docker-compose.yml" <<'EOF'
+services:
+  nextcloud-aio-mastercontainer:
+    image: nextcloud/all-in-one:latest
+    container_name: nextcloud-aio-mastercontainer
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080"
+    volumes:
+      - nextcloud_aio_mastercontainer:/mnt/docker-aio-config
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      - APACHE_PORT=11000
+      - APACHE_IP_BINDING=0.0.0.0
+      - NEXTCLOUD_DATADIR=/mnt/ncdata
+
+volumes:
+  nextcloud_aio_mastercontainer:
+EOF
+    (cd "$base" && run_cmd "Deploy Nextcloud All-in-One" docker compose up -d --force-recreate)
+    local ip
+    ip=$(hostname -I 2>/dev/null | awk '{print $1}')
+    echo
+    echo "Nextcloud All-in-One deployed."
+    echo "Access the AIO interface: https://${ip:-<host>}:8080"
+}
+
+install_tactical_rmm() {
+    if ! command -v docker >/dev/null 2>&1; then
+        echo "Docker not installed."
+        return 1
+    fi
+    if ! docker compose version >/dev/null 2>&1; then
+        echo "Docker Compose plugin not found. Install it first (Containers menu option 1)."
+        return 1
+    fi
+    echo "Tactical RMM install (Docker) per https://docs.tacticalrmm.com/install_docker/"
+    echo "Ensure DNS (FQDN) is configured per their docs before proceeding."
+    if [[ "$SAFE_MODE" == "true" ]]; then
+        echo "SAFE_MODE=true; skipping install."
+        return 1
+    fi
+    run_cmd "Download Tactical RMM docker installer" bash -c "curl -fsSL https://raw.githubusercontent.com/amidaware/tacticalrmm/master/docker_install.sh -o /tmp/trmm_install.sh"
+    run_cmd "Run Tactical RMM docker installer" bash -c "bash /tmp/trmm_install.sh"
+    echo "Tactical RMM installer executed. Review output for URLs and credentials."
+}
+
+install_hemmelig() {
+    if ! command -v docker >/dev/null 2>&1; then
+        echo "Docker not installed."
+        return 1
+    fi
+    if ! docker compose version >/devnull 2>&1; then
+        echo "Docker Compose plugin not found. Install it first (Containers menu option 1)."
+        return 1
+    fi
+    local base="/opt/appdata/hemmelig"
+    run_cmd "Create app directory" mkdir -p "$base"
+    cat > "${base}/docker-compose.yml" <<'EOF'
+version: "3.7"
+
+services:
+  hemmelig:
+    image: hemmeligapp/hemmelig
+    container_name: hemmelig
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+    volumes:
+      - ./uploads:/var/app/uploads
+EOF
+    (cd "$base" && run_cmd "Deploy Hemmelig.app" docker compose up -d --force-recreate)
+    local ip
+    ip=$(hostname -I 2>/dev/null | awk '{print $1}')
+    echo
+    echo "Hemmelig.app deployed."
+    echo "URL: http://${ip:-<host>}:3000"
 }
 
 menu_monitoring() {
@@ -2256,6 +2575,8 @@ load_config
 check_environment
 ensure_dirs
 preflight_dependencies
+gather_header_info
+check_updates
 log_line "Starting NTX Command Center..."
 
 echo "Starting NTX Command Center $VERSION..."
