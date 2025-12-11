@@ -166,21 +166,15 @@ self_update_script() {
     local choice tag url
 
     echo "[Self-update] Choose source:"
-    echo " 1) Latest release (GitHub)"
-    echo " 2) Pick a release tag (GitHub)"
-    echo " 3) Latest dev (main branch)"
+    echo " 1) Update from main branch"
+    echo " 2) Latest release"
+    echo " 3) Select from branches"
     echo " 0) Cancel"
     read -p "Select: " choice
 
     case "$choice" in
         1)
-            tag=$(curl -fsSL "https://api.github.com/repos/ntx007/ntx-linux-utility-menu/releases?per_page=1" 2>/dev/null | grep -o '"tag_name": *"[^"]*"' | head -n1 | cut -d'"' -f4)
-            if [[ -z "$tag" ]]; then
-                echo "Could not determine latest release; falling back to main."
-                url="https://raw.githubusercontent.com/ntx007/ntx-linux-utility-menu/main/ntx-utility-menu.sh"
-            else
-                url="https://raw.githubusercontent.com/ntx007/ntx-linux-utility-menu/${tag}/ntx-utility-menu.sh"
-            fi
+            url="https://raw.githubusercontent.com/ntx007/ntx-linux-utility-menu/main/ntx-utility-menu.sh"
             ;;
         2)
             echo "Fetching recent releases..."
@@ -205,7 +199,26 @@ self_update_script() {
             fi
             ;;
         3)
-            url="https://raw.githubusercontent.com/ntx007/ntx-linux-utility-menu/main/ntx-utility-menu.sh"
+            echo "Fetching branches..."
+            mapfile -t branches < <(curl -fsSL "https://api.github.com/repos/ntx007/ntx-linux-utility-menu/branches?per_page=20" 2>/dev/null | grep -o '"name": *"[^"]*"' | cut -d'"' -f4)
+            if [[ ${#branches[@]} -eq 0 ]]; then
+                echo "No branches retrieved; falling back to main."
+                url="https://raw.githubusercontent.com/ntx007/ntx-linux-utility-menu/main/ntx-utility-menu.sh"
+            else
+                local i=1
+                for b in "${branches[@]}"; do
+                    echo " $i) $b"
+                    i=$((i+1))
+                done
+                read -p "Select branch (1-${#branches[@]}): " selb
+                selb=${selb:-1}
+                local branch=${branches[$((selb-1))]}
+                if [[ -z "$branch" ]]; then
+                    echo "Invalid selection; cancelling."
+                    return 1
+                fi
+                url="https://raw.githubusercontent.com/ntx007/ntx-linux-utility-menu/${branch}/ntx-utility-menu.sh"
+            fi
             ;;
         0)
             echo "Update cancelled."
