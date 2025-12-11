@@ -994,7 +994,18 @@ install_ntxmenu_path() {
     if install -m 0755 "$script_path" /usr/local/bin/ntx-utility-menu && install -m 0755 "$wrapper_path" /usr/local/bin/ntxmenu; then
         echo "Installed to /usr/local/bin: ntx-utility-menu and ntxmenu"
         if [[ ":$PATH:" != *":/usr/local/bin:"* ]]; then
-            echo "/usr/local/bin not in PATH. Add it (export PATH=/usr/local/bin:\$PATH) or re-login."
+            if [[ -w /etc/profile.d ]]; then
+                cat <<'EOF' > /etc/profile.d/ntxmenu.sh
+# Added by NTX installer
+case ":\$PATH:" in
+    *:/usr/local/bin:*) ;;
+    *) export PATH=/usr/local/bin:\$PATH ;;
+esac
+EOF
+                echo "/usr/local/bin not in PATH. Added /etc/profile.d/ntxmenu.sh; re-login or export PATH=/usr/local/bin:\$PATH for current shell."
+            else
+                echo "/usr/local/bin not in PATH. Add it (export PATH=/usr/local/bin:\$PATH) or re-login."
+            fi
         fi
     else
         echo "Install failed. Do you have sufficient privileges?"

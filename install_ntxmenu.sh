@@ -7,6 +7,7 @@ set -euo pipefail
 TARGET_DIR="${TARGET_DIR:-/usr/local/bin}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 URL_BASE="https://raw.githubusercontent.com/ntx007/ntx-linux-utility-menu/main"
+PROFILE_SNIPPET="/etc/profile.d/ntxmenu.sh"
 
 if [[ $EUID -ne 0 ]]; then
     echo "Please run as root (e.g., sudo $0)."
@@ -46,5 +47,17 @@ echo "  ${TARGET_DIR}/ntxmenu (wrapper)"
 echo
 echo "Run with: sudo ntxmenu"
 if [[ ":$PATH:" != *":${TARGET_DIR}:"* ]]; then
-    echo "Note: ${TARGET_DIR} is not in PATH. Add it (e.g., export PATH=${TARGET_DIR}:\$PATH) or re-login."
+    echo "Note: ${TARGET_DIR} is not in PATH. Attempting to add via ${PROFILE_SNIPPET}..."
+    if [[ -w /etc/profile.d ]]; then
+        cat <<EOF > "$PROFILE_SNIPPET"
+# Added by install_ntxmenu.sh
+case ":\$PATH:" in
+    *:"${TARGET_DIR}":*) ;;
+    *) export PATH="${TARGET_DIR}:\$PATH" ;;
+esac
+EOF
+        echo "PATH will include ${TARGET_DIR} on next login. Current shell: run 'export PATH=${TARGET_DIR}:\$PATH' or re-login."
+    else
+        echo "Could not write ${PROFILE_SNIPPET}; add ${TARGET_DIR} to PATH manually."
+    fi
 fi
