@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased (v0.7-dev)
+- Placeholder for upcoming changes.
+
+### Bug fixes
+- TBD
+- Installer one-liner: updated `install_ntxmenu.sh` to download missing scripts from GitHub main when run outside the repo.
+
+### Known behaviors
+- Same as v0.6: pending updates may undercount on localized systems; WireGuard assumes `/etc/wireguard/wg0.conf`; service units may differ per distro; `qrencode`/Docker Compose plugin required for their helpers; self-update needs full path if `realpath/readlink -f` are absent.
+
 ## v0.6
 - Self-update: version-aware updater lists GitHub releases (semantic sort) and allows rollbacks to a selected version or the latest dev build (GitHub raw URL).
 - UX: security/remote split into clearer submenus; removed mandatory “Press Enter to continue” pauses.

@@ -51,7 +51,7 @@ Use `--help` for the supported list.
 - **Users/time**: create sudo user, time sync info, chrony install.
 - **Control**: reboot, power down.
 
-## Notes and caveats
+## Known behaviors & caveats
 - Self-update uses `https://raw.githubusercontent.com/ntx007/ntx-linux-utility-menu/main/ntx-utility-menu.sh` (GitHub main); use full path if `realpath`/`readlink -f` are absent to avoid writing to the current directory.
 - Service status uses standard systemd unit names; adjust unit variables if your distro differs.
 - Pending updates count may undercount on localized systems.
