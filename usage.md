@@ -27,7 +27,7 @@ Use `--help` for the supported list.
 - Shortcuts in the main menu: `h` Help/About, `s` Status dashboard, `l` Tail logs, `c` Config/env, `u` Self-update, `q` Quit.
 - Language toggle: `d` switches between English and German labels (menus only).
 
-- **System update**: updates, unattended-upgrades, apt source list/remove, APT health, update health (with stale-update warning support).
+- **System update**: updates, unattended-upgrades, apt source list/remove, APT health, update health (with stale-update warning support), version-aware self-update (choose release/rollback or dev).
 - **DNS**: view/edit with backups, IPv4/IPv6 presets (includes Netcup 46.38.225.230 + 46.38.252.230 + 1.1.1.1), restore latest backup.
 - **Network**: public IP, interfaces/routes/connections, ping/traceroute.
 - **Benchmarks**: Speedtest install/run, YABS, YABS preset submenu.
@@ -38,6 +38,7 @@ Use `--help` for the supported list.
 - **Tools/env**: essentials (sudo, nano, curl, net-tools, iproute2, unzip, python3-pip, gcc/python3-dev, psutil via pip, gdown, dos2unix, glances, tmux, zsh, mc, npm), ibramenu, QEMU guest agent.
 - **Security**: UFW presets with snapshot/revert, Fail2ban (summary/reload/list/unban), SSH hardening, Tailscale, Netmaker, CrowdSec, WireGuard (install/QR/validate/start/stop/restart, interface choice), rootkit check, ClamAV install/scan, Google Authenticator install, config backup/restore (with optional Docker Compose include).
 - **Containers**: Docker/Compose install, service/status/info, list running/all, Compose health, rootless check, list privileged containers, list containers with sensitive mounts, containers running as root, containers using host network.
+- **Proxmox**: list LXC containers (`pct list`) and enter with `pct enter <vmid>` via a dedicated submenu.
 - **Monitoring**: node exporter, top CPU/mem, iostat, SMART, status dashboard, export status report (text/JSON with optional upload path).
 - **Maintenance**: cleanup, disks, largest `/var`, maintenance bundle (can auto-update first), log integrity.
 - **System info**: `/etc/os-release`, neofetch, memory, VM check, display adapters.

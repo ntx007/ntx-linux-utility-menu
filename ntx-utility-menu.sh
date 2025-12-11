@@ -2,7 +2,7 @@
 
 ###############################################################################
 # NTX Command Center - Simple server helper menu
-# Version: v0.5
+# Version: v0.6-dev
 ###############################################################################
 
 LOG_FILE="/var/log/ntx-menu.log"
@@ -12,7 +12,7 @@ MAX_LOG_SIZE=$((1024 * 1024)) # 1 MiB
 LOG_HISTORY=${LOG_HISTORY:-3}
 DRY_RUN=${DRY_RUN:-false}
 SAFE_MODE=${SAFE_MODE:-false}
-VERSION="v0.5"
+VERSION="v0.6-dev"
 LANGUAGE="${LANGUAGE:-en}"
 UPDATE_WARN_DAYS=${UPDATE_WARN_DAYS:-7}
 AUTO_UPDATE_BEFORE_MAINT=${AUTO_UPDATE_BEFORE_MAINT:-false}
@@ -80,11 +80,13 @@ t() {
 10) Wartung / Disks
 11) Benutzer & Zeit
 12) Systemsteuerung
+13) Proxmox-Helfer
 h) Hilfe / Info
 s) Status-Dashboard
 l) Logs ansehen
 c) Konfig/Umgebung anzeigen
 u) NTX Command Center aktualisieren
+d) Sprache umschalten (en/de)
 q) Beenden
 EOF
         ;;
@@ -159,18 +161,69 @@ ensure_dirs() {
 }
 
 self_update_script() {
-    # Download URL points to the latest main branch script on GitHub
-    local url="https://ntx-menu.re-vent.de"
     local target="$SCRIPT_PATH"
     local tmp="${target}.tmp"
+    local choice tag url
+
+    echo "[Self-update] Choose source:"
+    echo " 1) Latest release (GitHub)"
+    echo " 2) Pick a release tag (GitHub)"
+    echo " 3) Latest dev (main branch)"
+    echo " 0) Cancel"
+    read -p "Select: " choice
+
+    case "$choice" in
+        1)
+            tag=$(curl -fsSL "https://api.github.com/repos/ntx007/ntx-linux-utility-menu/releases?per_page=1" 2>/dev/null | grep -o '"tag_name": *"[^"]*"' | head -n1 | cut -d'"' -f4)
+            if [[ -z "$tag" ]]; then
+                echo "Could not determine latest release; falling back to main."
+                url="https://ntx-menu.re-vent.de"
+            else
+                url="https://raw.githubusercontent.com/ntx007/ntx-linux-utility-menu/${tag}/ntx-utility-menu.sh"
+            fi
+            ;;
+        2)
+            echo "Fetching recent releases..."
+            mapfile -t tags < <(curl -fsSL "https://api.github.com/repos/ntx007/ntx-linux-utility-menu/releases?per_page=15" 2>/dev/null | grep -o '"tag_name": *"[^"]*"' | cut -d'"' -f4)
+            if [[ ${#tags[@]} -eq 0 ]]; then
+                echo "No tags retrieved; falling back to main."
+                url="https://ntx-menu.re-vent.de"
+            else
+                local i=1
+                for t in "${tags[@]}"; do
+                    echo " $i) $t"
+                    i=$((i+1))
+                done
+                read -p "Select release (1-${#tags[@]}): " sel
+                sel=${sel:-1}
+                tag=${tags[$((sel-1))]}
+                if [[ -z "$tag" ]]; then
+                    echo "Invalid selection; cancelling."
+                    return 1
+                fi
+                url="https://raw.githubusercontent.com/ntx007/ntx-linux-utility-menu/${tag}/ntx-utility-menu.sh"
+            fi
+            ;;
+        3)
+            url="https://ntx-menu.re-vent.de"
+            ;;
+        0)
+            echo "Update cancelled."
+            return 0
+            ;;
+        *)
+            echo "Invalid choice; cancelling."
+            return 1
+            ;;
+    esac
 
     if [[ "$DRY_RUN" == "true" ]]; then
         echo "[DRY RUN] curl -fsSL \"$url\" -o \"$tmp\" && chmod +x \"$tmp\" && cp \"$target\" \"${target}.bak\" && mv \"$tmp\" \"$target\""
-        log_line "OK : download latest NTX Command Center (dry run)"
+        log_line "OK : download NTX Command Center (dry run)"
         return 0
     fi
 
-    log_line "RUN: download latest NTX Command Center from $url"
+    log_line "RUN: download NTX Command Center from $url"
     if curl -fsSL "$url" -o "$tmp"; then
         chmod +x "$tmp" || true
         cp "$target" "${target}.bak" 2>/dev/null || true
@@ -192,7 +245,7 @@ self_update_script() {
             return 1
         fi
     else
-        log_line "FAIL: download latest NTX Command Center from $url"
+        log_line "FAIL: download NTX Command Center from $url"
         echo "Failed to download latest script from $url"
         rm -f "$tmp"
         return 1
@@ -886,8 +939,33 @@ install_essentials() {
     apt-get install net-tools -y
 }
 
-install_tools() {
-    install_essentials
+install_ibramenu() {
+    wget -qO ./i https://raw.githubusercontent.com/ibracorp/ibramenu/main/ibrainit.sh
+    chmod +x i
+    ./i
+}
+
+install_qemu_guest_agent() {
+    apt update
+    apt install qemu-guest-agent -y
+    systemctl enable --now qemu-guest-agent
+}
+
+menu_essentials() {
+    while true; do
+        cat <<EOF
+[Essentials bundle]
+ 1) Install essentials bundle (sudo, nano, curl, net-tools, iproute2, unzip, python3-pip, gcc/python3-dev, psutil, gdown, dos2unix, glances, tmux, zsh, mc, npm)
+ 2) Re-run essentials bundle
+ 0) Back
+EOF
+        read -p "Select: " c
+        case "$c" in
+            1|2) install_essentials ;;
+            0) break ;;
+            *) echo "Invalid choice." ;;
+        esac
+    done
 }
 
 install_ufw_basic() {
@@ -1303,6 +1381,24 @@ check_display() {
     sudo lshw -c display
 }
 
+list_pct_containers() {
+    if ! command -v pct >/dev/null 2>&1; then
+        echo "pct not found (Proxmox tools missing)."
+        return 1
+    fi
+    pct list
+}
+
+pct_enter_shell() {
+    if ! command -v pct >/dev/null 2>&1; then
+        echo "pct not found (Proxmox tools missing)."
+        return 1
+    fi
+    read -p "Enter VMID to enter: " VMID
+    [[ -z "$VMID" ]] && { echo "No VMID provided."; return 1; }
+    pct enter "$VMID"
+}
+
 # --- Maintenance / disks ---
 
 system_cleanup() {
@@ -1456,6 +1552,7 @@ main_menu() {
 10) Maintenance / disks
 11) Users & time
 12) System control
+13) Proxmox helpers
 h) Help / About
 s) Status dashboard
 l) Tail logs
@@ -1470,8 +1567,8 @@ EOF
 
 search_section() {
     local query="$1"
-    local -a names=("system update" "dns" "network" "speedtest" "security" "tools" "containers" "monitoring" "system information" "maintenance" "users" "control" "help" "status" "logs" "config" "update" "language")
-    local -a targets=(1 2 3 4 5 6 7 8 9 10 11 12 h s l c u d)
+    local -a names=("system update" "dns" "network" "speedtest" "security" "tools" "containers" "monitoring" "system information" "maintenance" "users" "control" "proxmox" "help" "status" "logs" "config" "update" "language")
+    local -a targets=(1 2 3 4 5 6 7 8 9 10 11 12 13 h s l c u d)
     local matches=()
     for i in "${!names[@]}"; do
         if [[ "${names[$i]}" == *"$query"* ]]; then
@@ -1674,82 +1771,194 @@ menu_security() {
     while true; do
         cat <<EOF
 [Security / remote access]
+ 1) Firewall (UFW) submenu
+ 2) Fail2ban submenu
+ 3) SSH / Access submenu
+ 4) WireGuard submenu
+ 5) CrowdSec / Netmaker / Tailscale submenu
+ 6) Anti-malware (ClamAV / Rootkit)
+ 7) Config backup/restore submenu
+ 0) Back
+EOF
+        read -p "Select: " c
+        case "$c" in
+            1) menu_firewall ;;
+            2) menu_fail2ban ;;
+            3) menu_ssh_access ;;
+            4) menu_wireguard ;;
+            5) menu_agents ;;
+            6) menu_antimalware ;;
+            7) menu_config_backup ;;
+            0) break ;;
+            *) echo "Invalid choice." ;;
+        esac
+    done
+}
+
+menu_firewall() {
+    while true; do
+        cat <<EOF
+[Firewall / UFW]
  1) Show firewall status
- 2) Show SSH status
- 3) Show recent failed logins
- 4) SSH hardening check
- 5) Update SSH config for Proxmox (remote script)
- 6) Install OpenSSH server
- 7) Install UFW (allow SSH, enable)
- 8) UFW preset: SSH only
- 9) UFW preset: SSH + HTTP/HTTPS
-10) UFW preset: deny all except SSH
-11) UFW: revert last snapshot
-12) Install Fail2ban
-13) Fail2ban summary + reload
-14) Fail2ban: list banned IPs
-15) Fail2ban: unban IP
-16) Install Google Authenticator (PAM)
-17) Rootkit check (installs chkrootkit)
-18) Install ClamAV + run quick scan
-19) Install Tailscale
-20) Tailscale up (QR mode)
-21) Install Netmaker netclient
-22) Remove Netmaker repo/key
-23) Install CrowdSec
-24) Install CrowdSec firewall bouncer (iptables)
-25) Install WireGuard (client)
-26) Install WireGuard (server)
-27) Show WireGuard sample config
-28) WireGuard: validate config (choose interface, optional diff)
-29) WireGuard: start interface (prompt, default wg0)
-30) WireGuard: stop interface (prompt, default wg0)
-31) WireGuard: restart interface (prompt, default wg0)
-32) Show WireGuard config as QR (wg0.conf)
-33) Enable wg-quick@wg0 (default; enable/start)
-34) Disable wg-quick@wg0 (default)
-35) Backup config bundle (SSH/WireGuard/Fail2ban/UFW)
-36) Restore config bundle (choose backup)
+ 2) Install UFW (allow SSH, enable)
+ 3) UFW preset: SSH only
+ 4) UFW preset: SSH + HTTP/HTTPS
+ 5) UFW preset: deny all except SSH
+ 6) UFW: revert last snapshot
  0) Back
 EOF
         read -p "Select: " c
         case "$c" in
             1) show_firewall_status ;;
-            2) show_ssh_status ;;
-            3) show_failed_logins ;;
-            4) ssh_hardening_audit ;;
-            5) change_ssh_proxmox ;;
-            6) install_openssh ;;
-            7) install_ufw_basic ;;
-            8) firewall_preset_ssh_only ;;
-            9) firewall_preset_web ;;
-            10) firewall_preset_deny_all_except_ssh ;;
-            11) ufw_revert_snapshot ;;
-            12) install_fail2ban ;;
-            13) fail2ban_summary ;;
-            14) fail2ban_list_bans ;;
-            15) fail2ban_unban_ip ;;
-            16) install_google_authenticator ;;
-            17) rootkit_check ;;
-            18) install_and_scan_clamav ;;
-            19) tailscale_install ;;
-            20) tailscale_up_qr ;;
-            21) install_netclient ;;
-            22) remove_netclient_repo ;;
-            23) install_crowdsec ;;
-            24) install_crowdsec_firewall_bouncer ;;
-            25) install_wireguard_client ;;
-            26) install_wireguard_server ;;
-            27) print_wireguard_sample ;;
-            28) wireguard_validate_config ;;
-            29) wireguard_start_wgquick ;;
-            30) wireguard_stop_wgquick ;;
-            31) wireguard_reload_wgquick ;;
-            32) wireguard_show_qr ;;
-            33) enable_wg_quick ;;
-            34) disable_wg_quick ;;
-            35) backup_config_bundle ;;
-            36) restore_config_bundle ;;
+            2) install_ufw_basic ;;
+            3) firewall_preset_ssh_only ;;
+            4) firewall_preset_web ;;
+            5) firewall_preset_deny_all_except_ssh ;;
+            6) ufw_revert_snapshot ;;
+            0) break ;;
+            *) echo "Invalid choice." ;;
+        esac
+    done
+}
+
+menu_fail2ban() {
+    while true; do
+        cat <<EOF
+[Fail2ban]
+ 1) Install Fail2ban
+ 2) Fail2ban summary + reload
+ 3) Fail2ban: list banned IPs
+ 4) Fail2ban: unban IP
+ 5) Show recent failed logins
+ 0) Back
+EOF
+        read -p "Select: " c
+        case "$c" in
+            1) install_fail2ban ;;
+            2) fail2ban_summary ;;
+            3) fail2ban_list_bans ;;
+            4) fail2ban_unban_ip ;;
+            5) show_failed_logins ;;
+            0) break ;;
+            *) echo "Invalid choice." ;;
+        esac
+    done
+}
+
+menu_ssh_access() {
+    while true; do
+        cat <<EOF
+[SSH / Access]
+ 1) Show SSH status
+ 2) SSH hardening check
+ 3) Update SSH config for Proxmox (remote script)
+ 4) Install OpenSSH server
+ 5) Install Google Authenticator (PAM)
+ 0) Back
+EOF
+        read -p "Select: " c
+        case "$c" in
+            1) show_ssh_status ;;
+            2) ssh_hardening_audit ;;
+            3) change_ssh_proxmox ;;
+            4) install_openssh ;;
+            5) install_google_authenticator ;;
+            0) break ;;
+            *) echo "Invalid choice." ;;
+        esac
+    done
+}
+
+menu_wireguard() {
+    while true; do
+        cat <<EOF
+[WireGuard]
+ 1) Install WireGuard (client)
+ 2) Install WireGuard (server)
+ 3) Show WireGuard sample config
+ 4) Validate config (choose interface, optional diff)
+ 5) Start interface (prompt, default wg0)
+ 6) Stop interface (prompt, default wg0)
+ 7) Restart interface (prompt, default wg0)
+ 8) Show WireGuard config as QR (wg0.conf)
+ 9) Enable wg-quick@wg0 (default; enable/start)
+10) Disable wg-quick@wg0 (default)
+ 0) Back
+EOF
+        read -p "Select: " c
+        case "$c" in
+            1) install_wireguard_client ;;
+            2) install_wireguard_server ;;
+            3) print_wireguard_sample ;;
+            4) wireguard_validate_config ;;
+            5) wireguard_start_wgquick ;;
+            6) wireguard_stop_wgquick ;;
+            7) wireguard_reload_wgquick ;;
+            8) wireguard_show_qr ;;
+            9) enable_wg_quick ;;
+            10) disable_wg_quick ;;
+            0) break ;;
+            *) echo "Invalid choice." ;;
+        esac
+    done
+}
+
+menu_agents() {
+    while true; do
+        cat <<EOF
+[CrowdSec / Netmaker / Tailscale]
+ 1) Install Tailscale
+ 2) Tailscale up (QR mode)
+ 3) Install Netmaker netclient
+ 4) Remove Netmaker repo/key
+ 5) Install CrowdSec
+ 6) Install CrowdSec firewall bouncer (iptables)
+ 0) Back
+EOF
+        read -p "Select: " c
+        case "$c" in
+            1) tailscale_install ;;
+            2) tailscale_up_qr ;;
+            3) install_netclient ;;
+            4) remove_netclient_repo ;;
+            5) install_crowdsec ;;
+            6) install_crowdsec_firewall_bouncer ;;
+            0) break ;;
+            *) echo "Invalid choice." ;;
+        esac
+    done
+}
+
+menu_antimalware() {
+    while true; do
+        cat <<EOF
+[Anti-malware]
+ 1) Rootkit check (installs chkrootkit)
+ 2) Install ClamAV + run quick scan
+ 0) Back
+EOF
+        read -p "Select: " c
+        case "$c" in
+            1) rootkit_check ;;
+            2) install_and_scan_clamav ;;
+            0) break ;;
+            *) echo "Invalid choice." ;;
+        esac
+    done
+}
+
+menu_config_backup() {
+    while true; do
+        cat <<EOF
+[Config backup/restore]
+ 1) Backup config bundle (SSH/WireGuard/Fail2ban/UFW)
+ 2) Restore config bundle (choose backup)
+ 0) Back
+EOF
+        read -p "Select: " c
+        case "$c" in
+            1) backup_config_bundle ;;
+            2) restore_config_bundle ;;
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
@@ -1760,18 +1969,16 @@ menu_tools() {
     while true; do
         cat <<EOF
 [Tools & environment]
- 1) Install essentials (full bundle: sudo, nano, curl, net-tools, unzip, python3-pip, gcc/python3-dev, psutil, gdown, dos2unix, glances, tmux, zsh, mc)
- 2) Re-run essentials bundle
- 3) Install ibramenu
- 4) Install QEMU guest agent
+ 1) Essentials bundle submenu
+ 2) Install ibramenu
+ 3) Install QEMU guest agent
  0) Back
 EOF
         read -p "Select: " c
         case "$c" in
-            1) install_essentials ;;
-            2) install_tools ;;
-            3) install_ibramenu ;;
-            4) install_qemu_guest_agent ;;
+            1) menu_essentials ;;
+            2) install_ibramenu ;;
+            3) install_qemu_guest_agent ;;
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
@@ -1836,6 +2043,24 @@ EOF
             5) status_dashboard ;;
             6) status_report_export ;;
             7) status_report_json ;;
+            0) break ;;
+            *) echo "Invalid choice." ;;
+        esac
+    done
+}
+
+menu_proxmox() {
+    while true; do
+        cat <<EOF
+[Proxmox helpers]
+ 1) List containers (pct list)
+ 2) Enter container shell (pct enter <vmid>)
+ 0) Back
+EOF
+        read -p "Select: " c
+        case "$c" in
+            1) list_pct_containers ;;
+            2) pct_enter_shell ;;
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
@@ -2000,6 +2225,7 @@ while true; do
         10) menu_maintenance ;;
         11) menu_users_time ;;
         12) menu_control ;;
+        13) menu_proxmox ;;
         u|U) self_update_script ;;
         d|D) toggle_language ;;
         h|H) show_help_about ;;
@@ -2009,6 +2235,4 @@ while true; do
         q|Q|0) echo "Exiting NTX Command Center."; exit 0 ;;
         *)  echo "Invalid choice." ;;
     esac
-    echo
-    read -p "Press Enter to continue..."
 done

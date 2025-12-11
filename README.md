@@ -2,18 +2,18 @@
 
 A portable, menu-driven Bash utility for common Linux admin tasks. Built for Debian/Ubuntu (and derivatives), it centralizes updates, diagnostics, networking tools, security hardening, and maintenance in a single interactive script.
 
-- Current version: **v0.5** (main branch).
+- Current version: **v0.6-dev** (main branch).
 - Self-update URL: `https://ntx-menu.re-vent.de` serves the latest script from GitHub main. If `realpath`/`readlink -f` are unavailable and you launch via `$PATH`, run the script with its full path (e.g., `/usr/local/bin/ntx-utility-menu`) so the updater replaces the installed file instead of writing into the current directory.
 
-## Highlights (v0.5)
+## Highlights (v0.6-dev)
 
 - Interactive nested menu with shortcuts (Help, Status, Logs) and search via `/keyword`; language toggle `d` (en/de)
-- Updates: unattended-upgrades enable/disable/status/run; reboot-if-needed flow; apt source hygiene (list/remove); self-update to latest script; non-interactive `--run` actions; cadence warning and health checks
+- Updates: unattended-upgrades enable/disable/status/run; reboot-if-needed flow; apt source hygiene (list/remove); version-aware self-update (pick release/rollback or dev); non-interactive `--run` actions; cadence warning and health checks
 - Networking: public IP with fallback, interfaces/routes/connections, DNS backups/restore, ping common endpoints, traceroute
-- Security/remote: UFW with snapshots/revert, Fail2ban (summary/list/unban), OpenSSH, Tailscale, Netmaker netclient, CrowdSec + firewall bouncer, WireGuard (client/server, QR, validate/diff, interface choice), SSH hardening, rootkit check, ClamAV improved workflow
-- Tools/monitoring: essentials bundle, node exporter, top CPU/mem, iostat summary, SMART checks, status dashboard, exportable status report (text/JSON with optional upload path)
+- Security/remote: organized submenus (firewall, Fail2ban, SSH/access, WireGuard, agents, anti-malware, config backup); UFW with snapshots/revert, Fail2ban (summary/list/unban), OpenSSH, Tailscale, Netmaker netclient, CrowdSec + firewall bouncer, WireGuard (client/server, QR, validate/diff, interface choice), SSH hardening, rootkit check, ClamAV improved workflow
+- Tools/monitoring: essentials bundle (and dedicated submenu), node exporter, top CPU/mem, iostat summary, SMART checks, status dashboard, exportable status report (text/JSON with optional upload path)
 - Containers: Docker + Compose plugin install, service status/info, running/all containers, Compose health (ls/ps), hardening checks (privileged, root user, host network, sensitive mounts)
-- Maintenance/info: cleanup, daily maintenance bundle (optional pre-update + log rotate + status report), disk usage, largest `/var` dirs, system info (os-release, neofetch, VM check, display adapters), GitHub link
+- Maintenance/info: cleanup, daily maintenance bundle (optional pre-update + log rotate + status report), disk usage, largest `/var` dirs, system info (os-release, neofetch, VM check, display adapters), GitHub link, Proxmox helpers (pct list/enter)
 - Logging/backups: `/var/log/ntx-menu.log` with rotation/history; `/etc/resolv.conf` backups; config backup/restore with optional Docker Compose includes
 - Modes: `DRY_RUN=true` to preview commands; `SAFE_MODE=true` to skip destructive actions
 
@@ -91,18 +91,19 @@ sudo ./ntx-utility-menu.sh --run wireguard_qr
 
 Run `./ntx-utility-menu.sh --help` for the full list.
 
-## Menu map (v0.5)
+## Menu map (v0.6-dev)
 
-- **System update**: standard upgrade, reboot-if-needed, unattended-upgrades (enable/disable/status/run), list/remove custom apt sources, APT health/update health checks
+- **System update**: standard upgrade, reboot-if-needed, unattended-upgrades (enable/disable/status/run), list/remove custom apt sources, APT health/update health checks, version-aware self-update (choose release/dev/rollback)
 - **DNS**: view/edit with backups, preset DNS choices (Netcup 46.38.225.230 + 46.38.252.230 + 1.1.1.1), restore last backup, append/overwrite IPv4 Cloudflare/Google and IPv6 Cloudflare/Google
 - **Network/IP**: public IP (fallback), interfaces, routes, connections, ping common endpoints, traceroute
 - **Speedtest/benchmarks**: Speedtest install/update/run, repo/key removal, YABS, YABS preset submenu (all/disk/network/system)
-- **Security/remote**: UFW, Fail2ban, OpenSSH, Tailscale, Netmaker netclient (install/remove repo), CrowdSec + firewall bouncer, WireGuard (client/server), WireGuard QR helper, firewall/SSH status, SSH hardening check, failed logins, rootkit check, ClamAV install + quick scan, Fail2ban summary/reload/list/unban, UFW presets, Google Authenticator install, config backup/restore, WireGuard validate/start/stop/restart
-- **Tools/env**: essentials (sudo, nano, curl, net-tools, iproute2, unzip, python3-pip, gcc/python3-dev, psutil via pip, gdown, dos2unix, glances, tmux, zsh, mc, npm), ibramenu, QEMU guest agent
+- **Security/remote**: organized submenus (firewall, Fail2ban, SSH/access, WireGuard, agents, anti-malware, config backup); UFW snapshots/presets, Fail2ban summary/reload/list/unban, OpenSSH, Tailscale, Netmaker netclient (install/remove repo), CrowdSec + firewall bouncer, WireGuard (client/server, QR, validate/diff, interface choice), SSH hardening check, failed logins, rootkit check, ClamAV install + quick scan, Google Authenticator install, config backup/restore
+- **Tools/env**: essentials (sudo, nano, curl, net-tools, iproute2, unzip, python3-pip, gcc/python3-dev, psutil via pip, gdown, dos2unix, glances, tmux, zsh, mc, npm) with a dedicated submenu, plus ibramenu and QEMU guest agent
 - **Containers**: Docker + Compose plugin, service status, short info, running containers, list all containers, Docker Compose health, Docker rootless check, list privileged containers, list containers with sensitive mounts, containers running as root, containers using host network
 - **Monitoring**: node exporter, top CPU/mem processes, iostat summary, SMART health check, status dashboard (services, IPs, CPU/mem snapshot), export status report to file/JSON (optional upload path)
 - **System info**: `/etc/os-release`, neofetch, memory info, VM check, display adapters, GitHub link
 - **Maintenance/disks**: cleanup, disks usage, largest `/var` dirs, maintenance bundle (update + cleanup + log rotate + status report), log integrity check
+- **Proxmox**: list LXC containers and enter with `pct enter <vmid>`
 - **Users/time**: create sudo user, time sync info, chrony install
 - **System control**: reboot, power down (SAFE_MODE-aware)
 - **Help/logs**: Help/About (config, modes, repo), tail log; **Self-update** shortcut `u` to pull the latest NTX Command Center

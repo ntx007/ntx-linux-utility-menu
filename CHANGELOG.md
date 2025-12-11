@@ -1,7 +1,16 @@
 # Changelog
 
 ## Unreleased (v0.6-dev)
-- Placeholder: upcoming changes after v0.5 release.
+- Self-update: add version-aware updater that lists GitHub releases (semantic sort) and allows rollbacks to a selected version or the latest dev build.
+- UX: split the Security/remote section into clearer submenus; remove mandatory “Press Enter to continue” pauses to allow direct selection flow.
+- Proxmox: dedicated submenu for Proxmox helpers including `pct enter <vmid>` (prompted VMID) and listing LXC containers before entering.
+- Tools: add a separate submenu to install the essentials bundle independently.
+
+### Bug fixes
+- TBD
+
+### Known behaviors
+- Same as v0.5 unless noted; pending updates count may undercount on localized systems, WireGuard assumes `/etc/wireguard/wg0.conf`, service unit names may differ per distro, and `qrencode`/Docker Compose plugin are required for their respective helpers.
 
 ## v0.5
 - Added language toggle (en/de) in the main menu and more translated labels.
@@ -14,6 +23,9 @@
 - Self-update: after updating, prompt to restart so the new script loads.
 - Tools: essentials bundle now installs npm and iproute2 by default.
 - DNS: Netcup presets now include 46.38.225.230 + 46.38.252.230 + 1.1.1.1 for append/overwrite options.
+- Self-update: version-aware updater to pick/rollback to GitHub releases or the latest dev build.
+- UX: Security menu split into submenus; removed mandatory “Press Enter to continue” prompt between actions.
+- Tools: dedicated essentials submenu; Proxmox helpers submenu (pct list/enter).
 
 ### Bug fixes
 - Restored missing monitoring functions (node exporter/top/iostat/SMART).
@@ -24,6 +36,7 @@
 - Private IP listing now ensures `iproute2`/`ip` is present before running, avoiding failures on minimal systems.
 - update_all now stops early with a clear hint when apt-get update fails (e.g., proxy/offline) instead of continuing.
 - Inode summary falls back with a friendly note if `df -i` is unsupported; SSH audit skips cleanly if sshd is absent.
+- German menu updated for Proxmox entry; removed unused install_tools helper.
 
 ### Known behaviors
 - When realpath/readlink -f are unavailable and the script is invoked via $PATH, self-update may write to the current directory instead of the installed path; run with the full path to update in place.
