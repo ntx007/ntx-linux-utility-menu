@@ -45,3 +45,6 @@ echo "  ${TARGET_DIR}/ntx-utility-menu"
 echo "  ${TARGET_DIR}/ntxmenu (wrapper)"
 echo
 echo "Run with: sudo ntxmenu"
+if [[ ":$PATH:" != *":${TARGET_DIR}:"* ]]; then
+    echo "Note: ${TARGET_DIR} is not in PATH. Add it (e.g., export PATH=${TARGET_DIR}:\$PATH) or re-login."
+fi

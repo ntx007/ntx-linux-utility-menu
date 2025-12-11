@@ -6,6 +6,7 @@
 ### Bug fixes
 - TBD
 - Installer one-liner: updated `install_ntxmenu.sh` to download missing scripts from GitHub main when run outside the repo.
+- Installer now warns when `/usr/local/bin` is not in PATH after install.
 
 ### Known behaviors
 - Same as v0.6: pending updates may undercount on localized systems; WireGuard assumes `/etc/wireguard/wg0.conf`; service units may differ per distro; `qrencode`/Docker Compose plugin required for their helpers; self-update needs full path if `realpath/readlink -f` are absent.

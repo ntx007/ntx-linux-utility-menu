@@ -993,6 +993,9 @@ install_ntxmenu_path() {
     chmod +x "$script_path" "$wrapper_path"
     if install -m 0755 "$script_path" /usr/local/bin/ntx-utility-menu && install -m 0755 "$wrapper_path" /usr/local/bin/ntxmenu; then
         echo "Installed to /usr/local/bin: ntx-utility-menu and ntxmenu"
+        if [[ ":$PATH:" != *":/usr/local/bin:"* ]]; then
+            echo "/usr/local/bin not in PATH. Add it (export PATH=/usr/local/bin:\$PATH) or re-login."
+        fi
     else
         echo "Install failed. Do you have sufficient privileges?"
     fi
