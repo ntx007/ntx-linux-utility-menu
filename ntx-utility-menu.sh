@@ -558,6 +558,56 @@ docker_compose_health() {
     docker compose ps --all 2>/dev/null || echo "Compose ps not available."
 }
 
+install_docker() {
+    # Use the official Docker convenience script (https://github.com/docker/docker-install)
+    run_cmd "Download Docker install script" bash -c "curl -fsSL https://get.docker.com -o /tmp/get-docker.sh"
+    run_cmd "Run Docker install script" bash -c "sh /tmp/get-docker.sh"
+    if ! command -v docker >/dev/null 2>&1; then
+        echo "Docker installation failed (docker not found)."
+        return 1
+    fi
+    # Ensure compose plugin is present; try apt package first, then binary fallback from GitHub Compose releases.
+    if ! docker compose version >/dev/null 2>&1; then
+        if ! run_cmd "Install docker-compose-plugin (apt)" apt-get install -y docker-compose-plugin; then
+            local plugin_dir="/usr/local/lib/docker/cli-plugins"
+            local compose_bin="${plugin_dir}/docker-compose"
+            mkdir -p "$plugin_dir"
+            run_cmd "Download docker compose CLI plugin" bash -c "curl -fsSL https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m) -o \"$compose_bin\""
+            run_cmd "Make docker compose executable" chmod +x "$compose_bin"
+        fi
+    fi
+    run_cmd "Enable and start Docker" systemctl enable --now docker
+}
+
+docker_service_status() {
+    show_service_status docker "$DOCKER_UNIT"
+}
+
+docker_ps() {
+    if ! command -v docker >/dev/null 2>&1; then
+        echo "Docker not installed."
+        return 1
+    fi
+    docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Image}}"
+}
+
+docker_list_all() {
+    if ! command -v docker >/dev/null 2>&1; then
+        echo "Docker not installed."
+        return 1
+    fi
+    msgbox "Alle Docker Container"
+    docker container ls -a --format "table {{.Names}}\t{{.Image}}\t{{.ID}}\t{{.Size}}\t{{.Networks}}"
+}
+
+docker_info_short() {
+    if ! command -v docker >/dev/null 2>&1; then
+        echo "Docker not installed."
+        return 1
+    fi
+    docker info --format 'Server Version: {{.ServerVersion}}\nStorage Driver: {{.Driver}}\nCgroup Driver: {{.CgroupDriver}}'
+}
+
 wireguard_show_qr() {
     local cfg="${1:-/etc/wireguard/wg0.conf}"
     if [[ ! -f "$cfg" ]]; then

@@ -13,6 +13,7 @@
 - UI: cleaned and regrouped submenus for clearer spacing and task clustering across update/DNS/containers/monitoring.
 - Docs: README/usage/installation refreshed for clearer install/run instructions and grouped menu overview.
 - UI: main menu reorganized into Core / Operations / Shortcuts and aligned in both English and German layouts.
+- Containers: Docker install now uses the official convenience script (get.docker.com) with a compose plugin fallback from GitHub releases.
 
 ## v1.0.0
 - Semantic versioning adopted; canonical version string: v1.0.0.
@@ -30,6 +31,7 @@
 - Wrapper expanded to look for `/usr/local/bin` and `/usr/bin` variants of the script before falling back to its own directory, fixing missing-script errors when symlinked.
 - Tools: added nvm installer to the Tools & environment menu.
 - Installer now warns when `/usr/local/bin` is not in PATH after install.
+- Containers menu: restored missing Docker helpers (install/status/ps/list/info) to prevent “command not found” errors.
 
 ### Known behaviors
 - Same as v0.6: pending updates may undercount on localized systems; WireGuard assumes `/etc/wireguard/wg0.conf`; service units may differ per distro; `qrencode`/Docker Compose plugin required for their helpers; self-update needs full path if `realpath/readlink -f` are absent.
