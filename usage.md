@@ -5,9 +5,13 @@ From the project directory:
 ```bash
 sudo ./ntx-utility-menu.sh
 ```
+Or use the wrapper:
+```bash
+sudo ./ntxmenu
+```
 If installed to PATH:
 ```bash
-sudo ntx-utility-menu
+sudo ntxmenu
 ```
 
 ## Non-interactive actions

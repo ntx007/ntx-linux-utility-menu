@@ -32,16 +32,16 @@ git clone https://github.com/ntx007/ntx-linux-utility-menu.git
 cd ntx-linux-utility-menu
 ```
 
-2. Make the script executable:
+2. Make the scripts executable:
 
 ```bash
-chmod +x ntx-utility-menu.sh
+chmod +x ntx-utility-menu.sh ntxmenu
 ```
 
-3. (Optional) Move it to a directory in your PATH for global usage:
+3. (Optional) Move the wrapper to a directory in your PATH for global usage:
 
 ```bash
-sudo mv ntx-utility-menu.sh /usr/local/bin/ntx-utility-menu
+sudo mv ntxmenu /usr/local/bin/ntxmenu
 ```
 
 ## Usage

@@ -10,7 +10,7 @@
 ```bash
 git clone https://github.com/ntx007/ntx-linux-utility-menu.git
 cd ntx-linux-utility-menu
-chmod +x ntx-utility-menu.sh
+chmod +x ntx-utility-menu.sh ntxmenu
 ```
 
 ## Quick download (one-liner)
@@ -22,7 +22,7 @@ sudo bash ntx-utility-menu.sh
 
 ## Optional: install to PATH
 ```bash
-sudo mv ntx-utility-menu.sh /usr/local/bin/ntx-utility-menu
+sudo mv ntxmenu /usr/local/bin/ntxmenu
 ```
 
 ## Self-update

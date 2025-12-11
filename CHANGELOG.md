@@ -5,6 +5,7 @@
 - UX: split the Security/remote section into clearer submenus; remove mandatory “Press Enter to continue” pauses to allow direct selection flow.
 - Proxmox: dedicated submenu for Proxmox helpers including `pct enter <vmid>` (prompted VMID), listing LXC containers, and the Proxmox SSH config updater; placed ahead of System control in the main menu.
 - Tools: add a separate submenu to install the essentials bundle independently.
+- CLI: added `ntxmenu` wrapper script so the tool can be launched with a shorter command.
 
 ### Bug fixes
 - Replaced remote Proxmox SSH config updater with an inline PermitRootLogin yes helper (backs up sshd_config, edits locally, reloads SSH).
