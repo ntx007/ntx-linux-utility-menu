@@ -9,6 +9,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 URL_BASE="https://raw.githubusercontent.com/ntx007/ntx-linux-utility-menu/main"
 PROFILE_SNIPPET="/etc/profile.d/ntxmenu.sh"
 ALT_LINK="/usr/bin/ntxmenu"
+ALT_SCRIPT_LINK="/usr/local/bin/ntx-utility-menu.sh"
 
 if [[ $EUID -ne 0 ]]; then
     echo "Please run as root (e.g., sudo $0)."
@@ -41,6 +42,7 @@ chmod +x "${SCRIPT_DIR}/ntx-utility-menu.sh" "${SCRIPT_DIR}/ntxmenu"
 
 install -m 0755 "${SCRIPT_DIR}/ntx-utility-menu.sh" "${TARGET_DIR}/ntx-utility-menu"
 install -m 0755 "${SCRIPT_DIR}/ntxmenu" "${TARGET_DIR}/ntxmenu"
+ln -sf "${TARGET_DIR}/ntx-utility-menu" "${ALT_SCRIPT_LINK}"
 
 echo "Installed:"
 echo "  ${TARGET_DIR}/ntx-utility-menu"

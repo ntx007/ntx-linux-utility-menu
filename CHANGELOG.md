@@ -9,6 +9,7 @@
 - Installer and in-app install now add a `/etc/profile.d/ntxmenu.sh` PATH snippet when `/usr/local/bin` is missing.
 - Installer and in-app install also symlink `ntxmenu` to `/usr/bin` when `/usr/local/bin` is not in PATH to allow immediate use.
 - Wrapper: `ntxmenu` now resolves to `/usr/local/bin/ntx-utility-menu` (or local copies) so it works even when symlinked from `/usr/bin`.
+- Installer now creates a `/usr/local/bin/ntx-utility-menu.sh` symlink pointing to the installed script for older wrappers.
 - Installer now warns when `/usr/local/bin` is not in PATH after install.
 
 ### Known behaviors
