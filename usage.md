@@ -18,7 +18,7 @@ Quick install to PATH (one-liner):
 ```bash
 wget -qO ./i https://raw.githubusercontent.com/ntx007/ntx-linux-utility-menu/main/install_ntxmenu.sh && chmod +x ./i && sudo ./i
 ```
-If `/usr/local/bin` is not in your PATH, add it (e.g., `export PATH=/usr/local/bin:$PATH`) or re-login.
+If `/usr/local/bin` is not in your PATH, the installer will add a profile snippet and symlink to `/usr/bin` when possible; otherwise, add it manually (e.g., `export PATH=/usr/local/bin:$PATH`) or re-login.
 
 ## Non-interactive actions
 ```bash

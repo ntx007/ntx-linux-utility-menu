@@ -8,6 +8,7 @@ TARGET_DIR="${TARGET_DIR:-/usr/local/bin}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 URL_BASE="https://raw.githubusercontent.com/ntx007/ntx-linux-utility-menu/main"
 PROFILE_SNIPPET="/etc/profile.d/ntxmenu.sh"
+ALT_LINK="/usr/bin/ntxmenu"
 
 if [[ $EUID -ne 0 ]]; then
     echo "Please run as root (e.g., sudo $0)."
@@ -59,5 +60,9 @@ EOF
         echo "PATH will include ${TARGET_DIR} on next login. Current shell: run 'export PATH=${TARGET_DIR}:\$PATH' or re-login."
     else
         echo "Could not write ${PROFILE_SNIPPET}; add ${TARGET_DIR} to PATH manually."
+    fi
+    if [[ -d /usr/bin && -w /usr/bin ]]; then
+        ln -sf "${TARGET_DIR}/ntxmenu" "$ALT_LINK"
+        echo "Symlinked ntxmenu to ${ALT_LINK} for immediate use."
     fi
 fi

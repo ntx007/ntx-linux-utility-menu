@@ -979,6 +979,7 @@ install_ntxmenu_path() {
     tmpdir=$(mktemp -d)
     local script_path="${tmpdir}/ntx-utility-menu.sh"
     local wrapper_path="${tmpdir}/ntxmenu"
+    local link_target="/usr/bin/ntxmenu"
     echo "Downloading latest scripts to install into /usr/local/bin..."
     if ! curl -fsSL "${url_base}/ntx-utility-menu.sh" -o "$script_path"; then
         echo "Failed to download ntx-utility-menu.sh"
@@ -1006,6 +1007,10 @@ EOF
             else
                 echo "/usr/local/bin not in PATH. Add it (export PATH=/usr/local/bin:\$PATH) or re-login."
             fi
+        fi
+        if [[ ":$PATH:" != *":/usr/local/bin:"* && -d /usr/bin && -w /usr/bin ]]; then
+            ln -sf /usr/local/bin/ntxmenu "$link_target"
+            echo "Symlinked ntxmenu to $link_target for immediate use in current PATH."
         fi
     else
         echo "Install failed. Do you have sufficient privileges?"

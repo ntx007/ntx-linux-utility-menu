@@ -7,6 +7,7 @@
 - TBD
 - Installer one-liner: updated `install_ntxmenu.sh` to download missing scripts from GitHub main when run outside the repo.
 - Installer and in-app install now add a `/etc/profile.d/ntxmenu.sh` PATH snippet when `/usr/local/bin` is missing.
+- Installer and in-app install also symlink `ntxmenu` to `/usr/bin` when `/usr/local/bin` is not in PATH to allow immediate use.
 - Installer now warns when `/usr/local/bin` is not in PATH after install.
 
 ### Known behaviors
