@@ -34,8 +34,7 @@ Use `--help` for the supported list.
 ## Modes and shortcuts
 - `DRY_RUN=true ./ntx-utility-menu.sh` to preview commands.
 - `SAFE_MODE=true ./ntx-utility-menu.sh` to skip destructive actions.
-- Shortcuts in the main menu: `h` Help/About, `s` Status dashboard, `l` Tail logs, `c` Config/env, `u` Self-update, `i` Install to PATH, `q` Quit.
- - Install shortcut: `i` installs the script + wrapper into `/usr/local/bin`.
+- Shortcuts: `h` Help/About, `s` Status dashboard, `l` Tail logs, `c` Config/env, `u` Self-update, `i` Install to PATH, `q` Quit.
 - Language toggle: `d` switches between English and German labels (menus only).
 
 - **System update**: updates, unattended-upgrades, apt source list/remove, APT health, update health (with stale-update warning support), version-aware self-update (choose release/rollback or dev).
