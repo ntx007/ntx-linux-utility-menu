@@ -3,11 +3,11 @@
 ## Unreleased (v0.6-dev)
 - Self-update: add version-aware updater that lists GitHub releases (semantic sort) and allows rollbacks to a selected version or the latest dev build.
 - UX: split the Security/remote section into clearer submenus; remove mandatory “Press Enter to continue” pauses to allow direct selection flow.
-- Proxmox: dedicated submenu for Proxmox helpers including `pct enter <vmid>` (prompted VMID) and listing LXC containers before entering.
+- Proxmox: dedicated submenu for Proxmox helpers including `pct enter <vmid>` (prompted VMID), listing LXC containers, and the Proxmox SSH config updater; placed ahead of System control in the main menu.
 - Tools: add a separate submenu to install the essentials bundle independently.
 
 ### Bug fixes
-- TBD
+- Replaced remote Proxmox SSH config updater with an inline PermitRootLogin yes helper (backs up sshd_config, edits locally, reloads SSH).
 
 ### Known behaviors
 - Same as v0.5 unless noted; pending updates count may undercount on localized systems, WireGuard assumes `/etc/wireguard/wg0.conf`, service unit names may differ per distro, and `qrencode`/Docker Compose plugin are required for their respective helpers.

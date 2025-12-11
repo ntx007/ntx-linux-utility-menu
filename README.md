@@ -10,7 +10,7 @@ A portable, menu-driven Bash utility for common Linux admin tasks. Built for Deb
 - Interactive nested menu with shortcuts (Help, Status, Logs) and search via `/keyword`; language toggle `d` (en/de)
 - Updates: unattended-upgrades enable/disable/status/run; reboot-if-needed flow; apt source hygiene (list/remove); version-aware self-update (pick release/rollback or dev); non-interactive `--run` actions; cadence warning and health checks
 - Networking: public IP with fallback, interfaces/routes/connections, DNS backups/restore, ping common endpoints, traceroute
-- Security/remote: organized submenus (firewall, Fail2ban, SSH/access, WireGuard, agents, anti-malware, config backup); UFW with snapshots/revert, Fail2ban (summary/list/unban), OpenSSH, Tailscale, Netmaker netclient, CrowdSec + firewall bouncer, WireGuard (client/server, QR, validate/diff, interface choice), SSH hardening, rootkit check, ClamAV improved workflow
+- Security/remote: organized submenus (firewall, Fail2ban, SSH/access, WireGuard, agents, anti-malware, config backup); UFW with snapshots/revert, Fail2ban (summary/list/unban), OpenSSH, Tailscale, Netmaker netclient, CrowdSec + firewall bouncer, WireGuard (client/server, QR, validate/diff, interface choice), SSH hardening, rootkit check, ClamAV improved workflow, Proxmox SSH config updater (PermitRootLogin yes)
 - Tools/monitoring: essentials bundle (and dedicated submenu), node exporter, top CPU/mem, iostat summary, SMART checks, status dashboard, exportable status report (text/JSON with optional upload path)
 - Containers: Docker + Compose plugin install, service status/info, running/all containers, Compose health (ls/ps), hardening checks (privileged, root user, host network, sensitive mounts)
 - Maintenance/info: cleanup, daily maintenance bundle (optional pre-update + log rotate + status report), disk usage, largest `/var` dirs, system info (os-release, neofetch, VM check, display adapters), GitHub link, Proxmox helpers (pct list/enter)
@@ -103,7 +103,7 @@ Run `./ntx-utility-menu.sh --help` for the full list.
 - **Monitoring**: node exporter, top CPU/mem processes, iostat summary, SMART health check, status dashboard (services, IPs, CPU/mem snapshot), export status report to file/JSON (optional upload path)
 - **System info**: `/etc/os-release`, neofetch, memory info, VM check, display adapters, GitHub link
 - **Maintenance/disks**: cleanup, disks usage, largest `/var` dirs, maintenance bundle (update + cleanup + log rotate + status report), log integrity check
-- **Proxmox**: list LXC containers and enter with `pct enter <vmid>`
+- **Proxmox**: list LXC containers, enter with `pct enter <vmid>`, and run the Proxmox SSH config updater (PermitRootLogin yes)
 - **Users/time**: create sudo user, time sync info, chrony install
 - **System control**: reboot, power down (SAFE_MODE-aware)
 - **Help/logs**: Help/About (config, modes, repo), tail log; **Self-update** shortcut `u` to pull the latest NTX Command Center

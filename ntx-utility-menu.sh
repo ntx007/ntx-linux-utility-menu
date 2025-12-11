@@ -79,8 +79,8 @@ t() {
  9) Systeminfo
 10) Wartung / Disks
 11) Benutzer & Zeit
-12) Systemsteuerung
-13) Proxmox-Helfer
+12) Proxmox-Helfer
+13) Systemsteuerung
 h) Hilfe / Info
 s) Status-Dashboard
 l) Logs ansehen
@@ -842,7 +842,16 @@ remove_speedtest_repo() {
 # --- Security / remote access ---
 
 change_ssh_proxmox() {
-    curl -fsSL "https://cloud.io.anatolium.eu/s/jR9crxfoLHz5474/download" | bash
+    local file="/etc/ssh/sshd_config"
+    backup_file "$file"
+    if [[ ! -f "$file" ]]; then
+        echo "sshd_config not found at $file"
+        return 1
+    fi
+    sed -i 's/^#PermitRootLogin.*/PermitRootLogin yes/' "$file"
+    sed -i 's/^PermitRootLogin.*/PermitRootLogin yes/' "$file"
+    systemctl reload sshd 2>/dev/null || systemctl restart sshd
+    echo "sshd_config adjusted. Backup: ${file}.bak"
 }
 
 install_openssh() {
@@ -1551,8 +1560,8 @@ main_menu() {
  9) System information
 10) Maintenance / disks
 11) Users & time
-12) System control
-13) Proxmox helpers
+12) Proxmox helpers
+13) System control
 h) Help / About
 s) Status dashboard
 l) Tail logs
@@ -1567,7 +1576,7 @@ EOF
 
 search_section() {
     local query="$1"
-    local -a names=("system update" "dns" "network" "speedtest" "security" "tools" "containers" "monitoring" "system information" "maintenance" "users" "control" "proxmox" "help" "status" "logs" "config" "update" "language")
+    local -a names=("system update" "dns" "network" "speedtest" "security" "tools" "containers" "monitoring" "system information" "maintenance" "users" "proxmox" "control" "help" "status" "logs" "config" "update" "language")
     local -a targets=(1 2 3 4 5 6 7 8 9 10 11 12 13 h s l c u d)
     local matches=()
     for i in "${!names[@]}"; do
@@ -1851,7 +1860,7 @@ menu_ssh_access() {
 [SSH / Access]
  1) Show SSH status
  2) SSH hardening check
- 3) Update SSH config for Proxmox (remote script)
+ 3) Update SSH config for Proxmox (PermitRootLogin yes)
  4) Install OpenSSH server
  5) Install Google Authenticator (PAM)
  0) Back
@@ -2055,12 +2064,14 @@ menu_proxmox() {
 [Proxmox helpers]
  1) List containers (pct list)
  2) Enter container shell (pct enter <vmid>)
+ 3) Update SSH config for Proxmox (remote script)
  0) Back
 EOF
         read -p "Select: " c
         case "$c" in
             1) list_pct_containers ;;
             2) pct_enter_shell ;;
+            3) change_ssh_proxmox ;;
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
@@ -2224,8 +2235,8 @@ while true; do
         9) menu_sysinfo ;;
         10) menu_maintenance ;;
         11) menu_users_time ;;
-        12) menu_control ;;
-        13) menu_proxmox ;;
+        12) menu_proxmox ;;
+        13) menu_control ;;
         u|U) self_update_script ;;
         d|D) toggle_language ;;
         h|H) show_help_about ;;

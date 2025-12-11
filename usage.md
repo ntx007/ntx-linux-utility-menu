@@ -36,9 +36,9 @@ Use `--help` for the supported list.
 - **Network**: public IP, interfaces/routes/connections, ping/traceroute.
 - **Benchmarks**: Speedtest install/run, YABS, YABS preset submenu.
 - **Tools/env**: essentials (sudo, nano, curl, net-tools, iproute2, unzip, python3-pip, gcc/python3-dev, psutil via pip, gdown, dos2unix, glances, tmux, zsh, mc, npm), ibramenu, QEMU guest agent.
-- **Security**: UFW presets with snapshot/revert, Fail2ban (summary/reload/list/unban), SSH hardening, Tailscale, Netmaker, CrowdSec, WireGuard (install/QR/validate/start/stop/restart, interface choice), rootkit check, ClamAV install/scan, Google Authenticator install, config backup/restore (with optional Docker Compose include).
+- **Security**: UFW presets with snapshot/revert, Fail2ban (summary/reload/list/unban), SSH hardening, Tailscale, Netmaker, CrowdSec, WireGuard (install/QR/validate/start/stop/restart, interface choice), rootkit check, ClamAV install/scan, Google Authenticator install, config backup/restore (with optional Docker Compose include), Proxmox SSH config updater (PermitRootLogin yes).
 - **Containers**: Docker/Compose install, service/status/info, list running/all, Compose health, rootless check, list privileged containers, list containers with sensitive mounts, containers running as root, containers using host network.
-- **Proxmox**: list LXC containers (`pct list`) and enter with `pct enter <vmid>` via a dedicated submenu.
+- **Proxmox**: list LXC containers (`pct list`), enter with `pct enter <vmid>`, and run the Proxmox SSH config updater (PermitRootLogin yes) via a dedicated submenu.
 - **Monitoring**: node exporter, top CPU/mem, iostat, SMART, status dashboard, export status report (text/JSON with optional upload path).
 - **Maintenance**: cleanup, disks, largest `/var`, maintenance bundle (can auto-update first), log integrity.
 - **System info**: `/etc/os-release`, neofetch, memory, VM check, display adapters.
