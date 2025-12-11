@@ -1,18 +1,22 @@
 #!/bin/bash
 
 # Wrapper to launch NTX Command Center via 'ntxmenu'
-TARGET="/usr/local/bin/ntx-utility-menu"
-if [[ -x "$TARGET" ]]; then
-    exec "$TARGET" "$@"
-fi
+try_exec() {
+    local cand="$1"
+    if [[ -x "$cand" ]]; then
+        exec "$cand" "$@"
+    fi
+}
 
-# Fallback to the directory where this wrapper lives
+try_exec "/usr/local/bin/ntx-utility-menu"
+try_exec "/usr/local/bin/ntx-utility-menu.sh"
+try_exec "/usr/bin/ntx-utility-menu"
+try_exec "/usr/bin/ntx-utility-menu.sh"
+
+# Fallback to the directory where this wrapper lives (symlink-safe)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-if [[ -x "${SCRIPT_DIR}/ntx-utility-menu.sh" ]]; then
-    exec "${SCRIPT_DIR}/ntx-utility-menu.sh" "$@"
-elif [[ -x "${SCRIPT_DIR}/ntx-utility-menu" ]]; then
-    exec "${SCRIPT_DIR}/ntx-utility-menu" "$@"
-fi
+try_exec "${SCRIPT_DIR}/ntx-utility-menu.sh"
+try_exec "${SCRIPT_DIR}/ntx-utility-menu"
 
-echo "Cannot find ntx-utility-menu script. Checked /usr/local/bin and ${SCRIPT_DIR}."
+echo "Cannot find ntx-utility-menu script. Checked /usr/local/bin, /usr/bin, and ${SCRIPT_DIR}."
 exit 1
