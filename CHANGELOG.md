@@ -1,5 +1,8 @@
 # Changelog
 
+## Unreleased (v1.1.0-dev)
+- Placeholder for upcoming changes.
+
 ## v1.0.0
 - Semantic versioning adopted; canonical version string: v1.0.0.
 - Self-update: version-aware updater lists GitHub releases (semantic sort) and allows rollbacks to a selected version or the latest dev build (GitHub raw URL).

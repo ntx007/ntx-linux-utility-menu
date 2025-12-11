@@ -2,7 +2,7 @@
 
 ###############################################################################
 # NTX Command Center - Simple server helper menu
-# Version: v1.0.0
+# Version: v1.1.0-dev
 ###############################################################################
 
 LOG_FILE="/var/log/ntx-menu.log"
@@ -12,7 +12,7 @@ MAX_LOG_SIZE=$((1024 * 1024)) # 1 MiB
 LOG_HISTORY=${LOG_HISTORY:-3}
 DRY_RUN=${DRY_RUN:-false}
 SAFE_MODE=${SAFE_MODE:-false}
-VERSION="v1.0.0"
+VERSION="v1.1.0-dev"
 LANGUAGE="${LANGUAGE:-en}"
 UPDATE_WARN_DAYS=${UPDATE_WARN_DAYS:-7}
 AUTO_UPDATE_BEFORE_MAINT=${AUTO_UPDATE_BEFORE_MAINT:-false}

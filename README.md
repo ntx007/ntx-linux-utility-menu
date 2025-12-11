@@ -2,10 +2,10 @@
 
 A portable, menu-driven Bash utility for common Linux admin tasks. Built for Debian/Ubuntu (and derivatives), it centralizes updates, diagnostics, networking tools, security hardening, and maintenance in a single interactive script.
 
-- Current version: **v1.0.0**.
+- Current version: **v1.1.0-dev**.
 - Self-update URL: `https://raw.githubusercontent.com/ntx007/ntx-linux-utility-menu/main/ntx-utility-menu.sh` (GitHub main). If `realpath`/`readlink -f` are unavailable and you launch via `$PATH`, run the script with its full path (e.g., `/usr/local/bin/ntx-utility-menu`) so the updater replaces the installed file instead of writing into the current directory.
 
-## Highlights (v1.0.0)
+## Highlights (v1.1.0-dev)
 
 - Interactive nested menu with shortcuts (Help, Status, Logs) and search via `/keyword`; language toggle `d` (en/de)
 - Updates: unattended-upgrades enable/disable/status/run; reboot-if-needed flow; apt source hygiene (list/remove); version-aware self-update (pick release/rollback or dev); non-interactive `--run` actions; cadence warning and health checks
@@ -101,7 +101,7 @@ sudo ./ntx-utility-menu.sh --run wireguard_qr
 
 Run `./ntx-utility-menu.sh --help` for the full list.
 
-## Menu map (v1.0.0)
+## Menu map (v1.1.0-dev)
 
 - **System update**: standard upgrade, reboot-if-needed, unattended-upgrades (enable/disable/status/run), list/remove custom apt sources, APT health/update health checks, version-aware self-update (choose release/dev/rollback)
 - **DNS**: view/edit with backups, preset DNS choices (Netcup 46.38.225.230 + 46.38.252.230 + 1.1.1.1), restore last backup, append/overwrite IPv4 Cloudflare/Google and IPv6 Cloudflare/Google
