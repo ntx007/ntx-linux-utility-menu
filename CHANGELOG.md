@@ -1,19 +1,20 @@
 # Changelog
 
-## Unreleased (v0.6-dev)
-- Self-update: add version-aware updater that lists GitHub releases (semantic sort) and allows rollbacks to a selected version or the latest dev build.
-- UX: split the Security/remote section into clearer submenus; remove mandatory “Press Enter to continue” pauses to allow direct selection flow.
-- Proxmox: dedicated submenu for Proxmox helpers including `pct enter <vmid>` (prompted VMID), listing LXC containers, and the Proxmox SSH config updater; placed ahead of System control in the main menu.
-- Tools: add a separate submenu to install the essentials bundle independently.
-- CLI: added `ntxmenu` wrapper script so the tool can be launched with a shorter command.
-- Installer: added `install_ntxmenu.sh` to copy both scripts into `/usr/local/bin`.
-- Menu: added in-app installer shortcut (`i`) to download latest scripts from GitHub main and install to `/usr/local/bin`.
+## v0.6
+- Self-update: version-aware updater lists GitHub releases (semantic sort) and allows rollbacks to a selected version or the latest dev build (GitHub raw URL).
+- UX: security/remote split into clearer submenus; removed mandatory “Press Enter to continue” pauses.
+- Proxmox: dedicated submenu for Proxmox helpers including `pct enter <vmid>`, LXC listing, and SSH config updater (PermitRootLogin yes); placed ahead of System control.
+- Tools: added a separate submenu to install the essentials bundle; CLI wrapper `ntxmenu` plus installer `install_ntxmenu.sh`; in-menu install shortcut (`i`) downloads and installs to `/usr/local/bin`.
 
 ### Bug fixes
 - Replaced remote Proxmox SSH config updater with an inline PermitRootLogin yes helper (backs up sshd_config, edits locally, reloads SSH).
+- German menu updated for Proxmox entry; removed unused install_tools helper.
 
 ### Known behaviors
-- Same as v0.5 unless noted; pending updates count may undercount on localized systems, WireGuard assumes `/etc/wireguard/wg0.conf`, service unit names may differ per distro, and `qrencode`/Docker Compose plugin are required for their respective helpers.
+- When realpath/readlink -f are unavailable and the script is invoked via $PATH, self-update may write to the current directory instead of the installed path; run with the full path to update in place.
+- Status dashboard uses standard systemd unit names (e.g., ssh, docker); if your distro uses different names they may show as “not installed.”
+- Pending update count uses `apt-get -s upgrade | grep '^Inst'` and may undercount on localized systems; WireGuard enable/disable assumes `/etc/wireguard/wg0.conf` exists; service status may show “not installed” if units use non-default names.
+- WireGuard QR helper requires `qrencode`; Docker Compose health assumes the Compose plugin is present.
 
 ## v0.5
 - Added language toggle (en/de) in the main menu and more translated labels.
