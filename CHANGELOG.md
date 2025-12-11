@@ -1,7 +1,7 @@
 # Changelog
 
-## v1.0.0-rc.1
-- Semantic versioning adopted; canonical version string: v1.0.0-rc.1.
+## v1.0.0
+- Semantic versioning adopted; canonical version string: v1.0.0.
 - Self-update: version-aware updater lists GitHub releases (semantic sort) and allows rollbacks to a selected version or the latest dev build (GitHub raw URL).
 - UX: security/remote split into clearer submenus; removed mandatory “Press Enter to continue” pauses.
 - Proxmox: dedicated submenu for Proxmox helpers including `pct enter <vmid>`, LXC listing, and SSH config updater (PermitRootLogin yes); placed ahead of System control.
