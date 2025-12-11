@@ -73,11 +73,14 @@ t() {
     case "$LANGUAGE:$key" in
         de:main.title) echo "=========================== NTX BEFEHLSZENTRALE ($VERSION) ===========================" ;;
         de:main.opts) cat <<'EOF'
+[Kern]
  1) Systemupdate
- 2) DNS Verwaltung
+ 2) DNS-Verwaltung
  3) Netzwerk / IP
  4) Speedtest & Benchmarks
  5) Sicherheit / Remote
+
+[Betrieb]
  6) Tools & Umgebung
  7) Container / Docker
  8) Monitoring
@@ -86,13 +89,11 @@ t() {
 11) Benutzer & Zeit
 12) Proxmox-Helfer
 13) Systemsteuerung
-h) Hilfe / Info
-s) Status-Dashboard
-l) Logs ansehen
-c) Konfig/Umgebung anzeigen
-u) NTX Command Center aktualisieren
-        d) Sprache umschalten (en/de)
-q) Beenden
+
+[Schnellzugriff]
+h) Hilfe / Info    s) Status-Dashboard    l) Logs ansehen
+c) Konfig/Umgebung u) Self-Update         d) Sprache (en/de)
+i) Installation    q) Beenden
 EOF
         ;;
         de:status.reboot) echo "Neustart erforderlich." ;;
@@ -1062,12 +1063,21 @@ EOF
 
 menu_essentials() {
     while true; do
-        cat <<EOF
+        if [[ "$LANGUAGE" == "de" ]]; then
+            cat <<EOF
+[Essentials-Paket]
+ 1) Essentials installieren (sudo, nano, curl, net-tools, iproute2, unzip, python3-pip, gcc/python3-dev, psutil, gdown, dos2unix, glances, tmux, zsh, mc, npm)
+ 2) Essentials erneut ausführen
+ 0) Zurück
+EOF
+        else
+            cat <<EOF
 [Essentials bundle]
  1) Install essentials bundle (sudo, nano, curl, net-tools, iproute2, unzip, python3-pip, gcc/python3-dev, psutil, gdown, dos2unix, glances, tmux, zsh, mc, npm)
  2) Re-run essentials bundle
  0) Back
 EOF
+        fi
         read -p "Select: " c
         case "$c" in
             1|2) install_essentials ;;
@@ -1655,11 +1665,15 @@ main_menu() {
 Host: ${HEADER_HOST:-unknown} | Threads: ${HEADER_CPU:-?} | RAM: ${HEADER_RAM:-?} GiB | IP: ${HEADER_IP:-unknown}
 Help us get better: https://github.com/ntx007/ntx-linux-utility-menu
 $( [[ -n "$UPDATE_NOTICE" ]] && echo "Notice: $UPDATE_NOTICE" )
+
+[Core]
  1) System update
  2) DNS management
  3) Network / IP
  4) Speedtest & benchmarks
  5) Security / remote access
+
+[Operations]
  6) Tools & environment
  7) Containers / Docker
  8) Monitoring
@@ -1668,14 +1682,11 @@ $( [[ -n "$UPDATE_NOTICE" ]] && echo "Notice: $UPDATE_NOTICE" )
 11) Users & time
 12) Proxmox helpers
 13) System control
-h) Help / About
-s) Status dashboard
-l) Tail logs
-c) Show config/env
-u) Update NTX Command Center
-d) Toggle language (en/de)
-i) Install ntxmenu to PATH
-q) Quit
+
+[Shortcuts]
+h) Help / About    s) Status dashboard    l) Tail logs
+c) Config/env      u) Self-update         d) Language (en/de)
+i) Install to PATH q) Quit
 ================================================================
 EOF
     fi
@@ -1739,27 +1750,50 @@ EOF
 
 menu_update() {
     while true; do
-        cat <<EOF
+        if [[ "$LANGUAGE" == "de" ]]; then
+            cat <<EOF
+[Systemupdate]
+ 1) Alles aktualisieren (apt-get update && upgrade)
+ 2) Aktualisieren und bei Bedarf neu starten
+ 3) Aktualisieren mit sudo und neu starten
+ 4) do-release-upgrade (Ubuntu)
+
+ 5) Automatische Updates aktivieren
+ 6) Automatische Updates deaktivieren
+ 7) Automatische Updates: Status
+ 8) Automatische Updates jetzt ausführen
+
+ 9) Benutzerdefinierte apt-Quellen auflisten
+10) Benutzerdefinierte apt-Quelle entfernen (.list)
+11) APT-Gesundheit (gehalten/defekt/Security)
+12) Update-Status (Reboot + Zeitstempel)
+ 0) Zurück
+EOF
+        else
+            cat <<EOF
 [System update]
  1) Update all (apt-get update && upgrade)
- 2) Update all with sudo and reboot
- 3) Update all and reboot if required
+ 2) Update all and reboot if required
+ 3) Update all with sudo and reboot
  4) do-release-upgrade (Ubuntu)
- 4) Enable unattended upgrades
- 5) Disable unattended upgrades
- 6) Check unattended upgrades status
- 7) Run unattended upgrade now
- 8) List custom apt sources
- 9) Remove custom apt source (.list)
-10) APT health check (held/broken/security)
-11) Update health (reboot + last update)
+
+ 5) Unattended upgrades: enable
+ 6) Unattended upgrades: disable
+ 7) Unattended upgrades: status
+ 8) Unattended upgrades: run now
+
+ 9) List custom apt sources
+10) Remove custom apt source (.list)
+11) APT health check (held/broken/security)
+12) Update health (reboot + last update)
  0) Back
 EOF
+        fi
         read -p "Select: " c
         case "$c" in
             1) update_all ;;
-            2) update_all_with_sudo_reboot ;;
-            3) update_all_reboot_if_needed ;;
+            2) update_all_reboot_if_needed ;;
+            3) update_all_with_sudo_reboot ;;
             4) do_release_upgrade ;;
             5) enable_unattended_upgrades ;;
             6) disable_unattended_upgrades ;;
@@ -1777,19 +1811,41 @@ EOF
 
 menu_dns() {
     while true; do
-        cat <<EOF
+        if [[ "$LANGUAGE" == "de" ]]; then
+            cat <<EOF
+[DNS-Verwaltung]
+ 1) DNS anzeigen (/etc/resolv.conf)
+ 2) DNS bearbeiten (nano)
+
+ 3) Netcup anhängen: 46.38.225.230 + 46.38.252.230 + 1.1.1.1
+ 4) Netcup überschreiben: 46.38.225.230 + 46.38.252.230 + 1.1.1.1
+ 5) Überschreiben: 1.1.1.1 + 8.8.8.8
+ 6) Anhängen: 1.1.1.1 + 8.8.8.8
+
+ 7) IPv6 überschreiben: 2606:4700:4700::1111 + 2001:4860:4860::8888
+ 8) IPv6 anhängen: 2606:4700:4700::1111 + 2001:4860:4860::8888
+
+ 9) DNS aus letztem Backup wiederherstellen
+ 0) Zurück
+EOF
+        else
+            cat <<EOF
 [DNS management]
  1) Show DNS (/etc/resolv.conf)
  2) Edit DNS (nano)
- 3) Append Netcup DNS 46.38.225.230 + 46.38.252.230 + 1.1.1.1
- 4) Overwrite Netcup DNS 46.38.225.230 + 46.38.252.230 + 1.1.1.1
- 5) Overwrite DNS with 1.1.1.1 + 8.8.8.8
- 6) Append DNS with 1.1.1.1 + 8.8.8.8
- 7) Overwrite DNS with IPv6 (2606:4700:4700::1111 + 2001:4860:4860::8888)
- 8) Append DNS with IPv6 (2606:4700:4700::1111 + 2001:4860:4860::8888)
+
+ 3) Netcup append: 46.38.225.230 + 46.38.252.230 + 1.1.1.1
+ 4) Netcup overwrite: 46.38.225.230 + 46.38.252.230 + 1.1.1.1
+ 5) Overwrite: 1.1.1.1 + 8.8.8.8
+ 6) Append: 1.1.1.1 + 8.8.8.8
+
+ 7) Overwrite IPv6: 2606:4700:4700::1111 + 2001:4860:4860::8888
+ 8) Append IPv6: 2606:4700:4700::1111 + 2001:4860:4860::8888
+
  9) Restore DNS from latest backup
  0) Back
 EOF
+        fi
         read -p "Select: " c
         case "$c" in
             1) show_dns ;;
@@ -1809,16 +1865,31 @@ EOF
 
 menu_network() {
     while true; do
-        cat <<EOF
+        if [[ "$LANGUAGE" == "de" ]]; then
+            cat <<EOF
+[Netzwerk / IP]
+ 1) Öffentliche IP anzeigen
+ 2) Schnittstellen (ifconfig)
+ 3) Routing-Tabelle
+ 4) Aktive Verbindungen
+
+ 5) Häufige Ziele anpingen
+ 6) Traceroute zu Host
+ 0) Zurück
+EOF
+        else
+            cat <<EOF
 [Network / IP]
  1) Show public IP
  2) Show ifconfig
  3) Show routing table
  4) Show active connections
+
  5) Ping common endpoints
  6) Traceroute to host
  0) Back
 EOF
+        fi
         read -p "Select: " c
         case "$c" in
             1) whats_my_ip ;;
@@ -1835,17 +1906,33 @@ EOF
 
 menu_bench() {
     while true; do
-        cat <<EOF
+        if [[ "$LANGUAGE" == "de" ]]; then
+            cat <<EOF
+[Speedtest & Benchmarks]
+ 1) Speedtest installieren (Repo + Paket)
+ 2) Speedtest-Repo-Liste aktualisieren (jammy)
+ 3) Speedtest nach Repo-Update installieren
+ 4) Speedtest ausführen
+
+ 5) YABS ausführen
+ 6) Speedtest Repo/Key entfernen
+ 7) Benchmark-Presets (YABS Untermenü)
+ 0) Zurück
+EOF
+        else
+            cat <<EOF
 [Speedtest & benchmarks]
  1) Install Speedtest (repo + package)
  2) Update Speedtest repo list (jammy)
  3) Install Speedtest after repo update
  4) Run Speedtest
+
  5) Run YABS
  6) Remove Speedtest repo/key
  7) Benchmark presets (YABS submenu)
  0) Back
 EOF
+        fi
         read -p "Select: " c
         case "$c" in
             1) install_speedtest_full ;;
@@ -1863,7 +1950,18 @@ EOF
 
 menu_yabs_presets() {
     while true; do
-        cat <<EOF
+        if [[ "$LANGUAGE" == "de" ]]; then
+            cat <<EOF
+[YABS Benchmark-Presets]
+ 1) Benchmark - Alle Tests
+ 2) Benchmark - Disk Performance
+ 3) Benchmark - Netzwerk Performance
+ 4) Benchmark - System Performance (ältere Version)
+ 5) Benchmark - System Performance
+ 0) Zurück
+EOF
+        else
+            cat <<EOF
 [YABS benchmark presets]
  1) Benchmark - All Tests
  2) Benchmark - Disk Performance
@@ -1872,6 +1970,7 @@ menu_yabs_presets() {
  5) Benchmark - System Performance
  0) Back
 EOF
+        fi
         read -p "Select: " c
         case "$c" in
             1) run_yabs_all ;;
@@ -1887,7 +1986,20 @@ EOF
 
 menu_security() {
     while true; do
-        cat <<EOF
+        if [[ "$LANGUAGE" == "de" ]]; then
+            cat <<EOF
+[Sicherheit / Remote]
+ 1) Firewall (UFW) Untermenü
+ 2) Fail2ban Untermenü
+ 3) SSH / Zugriff Untermenü
+ 4) WireGuard Untermenü
+ 5) CrowdSec / Netmaker / Tailscale Untermenü
+ 6) Anti-Malware (ClamAV / Rootkit)
+ 7) Config-Backup/Wiederherstellung
+ 0) Zurück
+EOF
+        else
+            cat <<EOF
 [Security / remote access]
  1) Firewall (UFW) submenu
  2) Fail2ban submenu
@@ -1898,6 +2010,7 @@ menu_security() {
  7) Config backup/restore submenu
  0) Back
 EOF
+        fi
         read -p "Select: " c
         case "$c" in
             1) menu_firewall ;;
@@ -1915,7 +2028,19 @@ EOF
 
 menu_firewall() {
     while true; do
-        cat <<EOF
+        if [[ "$LANGUAGE" == "de" ]]; then
+            cat <<EOF
+[Firewall / UFW]
+ 1) Firewall-Status anzeigen
+ 2) UFW installieren (SSH erlauben, aktivieren)
+ 3) UFW Preset: nur SSH
+ 4) UFW Preset: SSH + HTTP/HTTPS
+ 5) UFW Preset: alles außer SSH blocken
+ 6) UFW: letztes Snapshot zurückrollen
+ 0) Zurück
+EOF
+        else
+            cat <<EOF
 [Firewall / UFW]
  1) Show firewall status
  2) Install UFW (allow SSH, enable)
@@ -1925,6 +2050,7 @@ menu_firewall() {
  6) UFW: revert last snapshot
  0) Back
 EOF
+        fi
         read -p "Select: " c
         case "$c" in
             1) show_firewall_status ;;
@@ -1941,7 +2067,18 @@ EOF
 
 menu_fail2ban() {
     while true; do
-        cat <<EOF
+        if [[ "$LANGUAGE" == "de" ]]; then
+            cat <<EOF
+[Fail2ban]
+ 1) Fail2ban installieren
+ 2) Fail2ban Übersicht + Reload
+ 3) Gebannte IPs auflisten
+ 4) IP entbannen
+ 5) Letzte fehlgeschlagene Logins
+ 0) Zurück
+EOF
+        else
+            cat <<EOF
 [Fail2ban]
  1) Install Fail2ban
  2) Fail2ban summary + reload
@@ -1950,6 +2087,7 @@ menu_fail2ban() {
  5) Show recent failed logins
  0) Back
 EOF
+        fi
         read -p "Select: " c
         case "$c" in
             1) install_fail2ban ;;
@@ -1965,7 +2103,18 @@ EOF
 
 menu_ssh_access() {
     while true; do
-        cat <<EOF
+        if [[ "$LANGUAGE" == "de" ]]; then
+            cat <<EOF
+[SSH / Zugriff]
+ 1) SSH-Status anzeigen
+ 2) SSH-Hardening-Check
+ 3) SSH-Konfig für Proxmox (PermitRootLogin yes)
+ 4) OpenSSH-Server installieren
+ 5) Google Authenticator (PAM) installieren
+ 0) Zurück
+EOF
+        else
+            cat <<EOF
 [SSH / Access]
  1) Show SSH status
  2) SSH hardening check
@@ -1974,6 +2123,7 @@ menu_ssh_access() {
  5) Install Google Authenticator (PAM)
  0) Back
 EOF
+        fi
         read -p "Select: " c
         case "$c" in
             1) show_ssh_status ;;
@@ -1989,7 +2139,23 @@ EOF
 
 menu_wireguard() {
     while true; do
-        cat <<EOF
+        if [[ "$LANGUAGE" == "de" ]]; then
+            cat <<EOF
+[WireGuard]
+ 1) WireGuard installieren (Client)
+ 2) WireGuard installieren (Server)
+ 3) Beispielkonfiguration anzeigen
+ 4) Konfig validieren (Interface wählen, optional Diff)
+ 5) Interface starten (Standard wg0)
+ 6) Interface stoppen (Standard wg0)
+ 7) Interface neu starten (Standard wg0)
+ 8) Konfig als QR anzeigen (wg0.conf)
+ 9) wg-quick@wg0 aktivieren
+10) wg-quick@wg0 deaktivieren
+ 0) Zurück
+EOF
+        else
+            cat <<EOF
 [WireGuard]
  1) Install WireGuard (client)
  2) Install WireGuard (server)
@@ -2003,6 +2169,7 @@ menu_wireguard() {
 10) Disable wg-quick@wg0 (default)
  0) Back
 EOF
+        fi
         read -p "Select: " c
         case "$c" in
             1) install_wireguard_client ;;
@@ -2023,7 +2190,19 @@ EOF
 
 menu_agents() {
     while true; do
-        cat <<EOF
+        if [[ "$LANGUAGE" == "de" ]]; then
+            cat <<EOF
+[CrowdSec / Netmaker / Tailscale]
+ 1) Tailscale installieren
+ 2) Tailscale up (QR-Modus)
+ 3) Netmaker netclient installieren
+ 4) Netmaker Repo/Key entfernen
+ 5) CrowdSec installieren
+ 6) CrowdSec Firewall Bouncer (iptables) installieren
+ 0) Zurück
+EOF
+        else
+            cat <<EOF
 [CrowdSec / Netmaker / Tailscale]
  1) Install Tailscale
  2) Tailscale up (QR mode)
@@ -2033,6 +2212,7 @@ menu_agents() {
  6) Install CrowdSec firewall bouncer (iptables)
  0) Back
 EOF
+        fi
         read -p "Select: " c
         case "$c" in
             1) tailscale_install ;;
@@ -2049,12 +2229,21 @@ EOF
 
 menu_antimalware() {
     while true; do
-        cat <<EOF
+        if [[ "$LANGUAGE" == "de" ]]; then
+            cat <<EOF
+[Anti-Malware]
+ 1) Rootkit-Check (installiert chkrootkit)
+ 2) ClamAV installieren + Schnellscan
+ 0) Zurück
+EOF
+        else
+            cat <<EOF
 [Anti-malware]
  1) Rootkit check (installs chkrootkit)
  2) Install ClamAV + run quick scan
  0) Back
 EOF
+        fi
         read -p "Select: " c
         case "$c" in
             1) rootkit_check ;;
@@ -2067,12 +2256,21 @@ EOF
 
 menu_config_backup() {
     while true; do
-        cat <<EOF
+        if [[ "$LANGUAGE" == "de" ]]; then
+            cat <<EOF
+[Config-Backup/Wiederherstellung]
+ 1) Config-Bundle sichern (SSH/WireGuard/Fail2ban/UFW)
+ 2) Config-Bundle wiederherstellen (Auswahl)
+ 0) Zurück
+EOF
+        else
+            cat <<EOF
 [Config backup/restore]
  1) Backup config bundle (SSH/WireGuard/Fail2ban/UFW)
  2) Restore config bundle (choose backup)
  0) Back
 EOF
+        fi
         read -p "Select: " c
         case "$c" in
             1) backup_config_bundle ;;
@@ -2085,14 +2283,27 @@ EOF
 
 menu_tools() {
     while true; do
-        cat <<EOF
+        if [[ "$LANGUAGE" == "de" ]]; then
+            cat <<EOF
+[Tools & Umgebung]
+ 1) Essentials-Bundle Untermenü
+
+ 2) ibramenu installieren
+ 3) QEMU Guest Agent installieren
+ 4) nvm (Node Version Manager) installieren
+ 0) Zurück
+EOF
+        else
+            cat <<EOF
 [Tools & environment]
  1) Essentials bundle submenu
+
  2) Install ibramenu
  3) Install QEMU guest agent
  4) Install nvm (Node Version Manager)
  0) Back
 EOF
+        fi
         read -p "Select: " c
         case "$c" in
             1) menu_essentials ;;
@@ -2107,7 +2318,37 @@ EOF
 
 menu_containers() {
     while true; do
-        cat <<EOF
+        if [[ "$LANGUAGE" == "de" ]]; then
+            cat <<EOF
+[Container / Docker]
+ 1) Docker & Compose-Plugin installieren
+ 2) Docker Dienst-Status
+ 3) Docker Info (kurz)
+ 4) Docker ps (laufende Container)
+ 5) Docker Compose Health (ls/ps)
+ 6) Alle Container auflisten
+
+ 7) Rootless-Check
+ 8) Privilegierte Container
+ 9) Sensible Mounts
+10) Container als Root
+11) Host-Netzwerk-Container
+
+12) Alle Container stoppen
+13) Alle Container starten (compose up -d)
+14) Eigenen Docker-Befehl ausführen
+
+15) Portainer installieren
+16) Nginx Proxy Manager installieren
+17) Pi-hole installieren
+18) Pi-hole + Unbound installieren
+19) Nextcloud All-in-One installieren
+20) Tactical RMM installieren
+21) Hemmelig.app installieren
+ 0) Zurück
+EOF
+        else
+            cat <<EOF
 [Containers / Docker]
  1) Install Docker & Docker Compose plugin
  2) Docker service status
@@ -2115,22 +2356,27 @@ menu_containers() {
  4) Docker ps (running containers)
  5) Docker Compose health (ls/ps)
  6) List all Docker containers
+
  7) Docker rootless check
  8) List privileged containers
  9) Containers with sensitive mounts
 10) Containers running as root
 11) Containers using host network
+
 12) Stop all Docker containers
 13) Start all containers (compose up -d)
 14) Run custom docker command
+
 15) Install Portainer (CE)
-16) Install Nginx Proxy Manager (Docker)
-17) Install Pi-hole + Unbound (Docker)
-18) Install Nextcloud All-in-One (Docker)
-19) Install Tactical RMM (Docker)
-20) Install Hemmelig.app (Docker)
+16) Install Nginx Proxy Manager
+17) Install Pi-hole
+18) Install Pi-hole + Unbound
+19) Install Nextcloud All-in-One
+20) Install Tactical RMM
+21) Install Hemmelig.app
  0) Back
 EOF
+        fi
         read -p "Select: " c
         case "$c" in
             1) install_docker ;;
@@ -2149,10 +2395,11 @@ EOF
             14) docker_run_custom ;;
             15) install_portainer ;;
             16) install_nginx_proxy_manager ;;
-            17) install_pihole_unbound ;;
-            18) install_nextcloud_aio ;;
-            19) install_tactical_rmm ;;
-            20) install_hemmelig ;;
+            17) install_pihole_only ;;
+            18) install_pihole_unbound ;;
+            19) install_nextcloud_aio ;;
+            20) install_tactical_rmm ;;
+            21) install_hemmelig ;;
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
@@ -2313,6 +2560,51 @@ EOF
     echo "Pi-hole UI: http://${ip:-<host>}/ (default user: admin, password: ${webpw})"
     echo "DNS: ${ip:-<host>} on port 53"
 }
+install_pihole_only() {
+    if ! command -v docker >/dev/null 2>&1; then
+        echo "Docker not installed."
+        return 1
+    fi
+    if ! docker compose version >/dev/null 2>&1; then
+        echo "Docker Compose plugin not found. Install it first (Containers menu option 1)."
+        return 1
+    fi
+    local base="/opt/appdata/pihole"
+    local tz
+    tz=$(cat /etc/timezone 2>/dev/null || echo "UTC")
+    read -p "Set Pi-hole WEBPASSWORD (leave blank for default changeme): " webpw
+    webpw=${webpw:-changeme}
+    run_cmd "Create app directory" mkdir -p "$base"
+    cat > "${base}/docker-compose.yml" <<EOF
+version: "3"
+
+services:
+  pihole:
+    image: pihole/pihole:latest
+    container_name: pihole
+    environment:
+      TZ: ${tz}
+      WEBPASSWORD: ${webpw}
+      DNS1: 1.1.1.1
+      DNS2: 8.8.8.8
+      REV_SERVER: "false"
+    ports:
+      - "53:53/tcp"
+      - "53:53/udp"
+      - "80:80/tcp"
+    volumes:
+      - ./etc-pihole:/etc/pihole
+      - ./dnsmasq.d:/etc/dnsmasq.d
+    restart: unless-stopped
+EOF
+    (cd "$base" && run_cmd "Deploy Pi-hole" docker compose up -d --force-recreate)
+    local ip
+    ip=$(hostname -I 2>/dev/null | awk '{print $1}')
+    echo
+    echo "Pi-hole deployed."
+    echo "Pi-hole UI: http://${ip:-<host>}/ (default user: admin, password: ${webpw})"
+    echo "DNS: ${ip:-<host>} on port 53"
+}
 
 install_nextcloud_aio() {
     if ! command -v docker >/dev/null 2>&1; then
@@ -2410,17 +2702,33 @@ EOF
 
 menu_monitoring() {
     while true; do
-        cat <<EOF
+        if [[ "$LANGUAGE" == "de" ]]; then
+            cat <<EOF
+[Monitoring]
+ 1) Node Exporter installieren
+ 2) Top CPU/Memory Prozesse
+ 3) IO-Statistiken (iostat)
+ 4) SMART-Check (erste Platte)
+ 5) Status-Dashboard (Dienste + IP)
+
+ 6) Statusreport als Datei
+ 7) Statusreport als JSON
+ 0) Zurück
+EOF
+        else
+            cat <<EOF
 [Monitoring]
  1) Install node exporter
  2) Show top CPU/mem processes
  3) Show IO stats (iostat)
  4) SMART health check (first disk)
  5) Status dashboard (services + IP)
+
  6) Export status report to file
  7) Export status report to JSON
  0) Back
 EOF
+        fi
         read -p "Select: " c
         case "$c" in
             1) install_node_exporter ;;
@@ -2438,13 +2746,23 @@ EOF
 
 menu_proxmox() {
     while true; do
-        cat <<EOF
+        if [[ "$LANGUAGE" == "de" ]]; then
+            cat <<EOF
+[Proxmox-Helfer]
+ 1) Container auflisten (pct list)
+ 2) Container-Shell betreten (pct enter <vmid>)
+ 3) SSH-Konfig für Proxmox anpassen (PermitRootLogin yes)
+ 0) Zurück
+EOF
+        else
+            cat <<EOF
 [Proxmox helpers]
  1) List containers (pct list)
  2) Enter container shell (pct enter <vmid>)
- 3) Update SSH config for Proxmox (remote script)
+ 3) Update SSH config for Proxmox (PermitRootLogin yes)
  0) Back
 EOF
+        fi
         read -p "Select: " c
         case "$c" in
             1) list_pct_containers ;;
@@ -2458,7 +2776,19 @@ EOF
 
 menu_sysinfo() {
     while true; do
-        cat <<EOF
+        if [[ "$LANGUAGE" == "de" ]]; then
+            cat <<EOF
+[Systeminformationen]
+ 1) /etc/os-release anzeigen
+ 2) Allgemeine Systeminfo (neofetch)
+ 3) Speicherinformationen
+ 4) VM / Virtualisierungscheck
+ 5) Projekt-GitHub öffnen
+ 6) Grafikkarten anzeigen (lshw display)
+ 0) Zurück
+EOF
+        else
+            cat <<EOF
 [System information]
  1) Show /etc/os-release
  2) General system info (neofetch)
@@ -2468,6 +2798,7 @@ menu_sysinfo() {
  6) Show video adapters (lshw display)
  0) Back
 EOF
+        fi
         read -p "Select: " c
         case "$c" in
             1) os_release_check ;;
@@ -2484,7 +2815,18 @@ EOF
 
 menu_maintenance() {
     while true; do
-        cat <<EOF
+        if [[ "$LANGUAGE" == "de" ]]; then
+            cat <<EOF
+[Wartung / Disks]
+ 1) System bereinigen (APT autoremove/autoclean, Logs 7d)
+ 2) Datenträger anzeigen (lsblk + df -h)
+ 3) Größte /var Verzeichnisse
+ 4) Wartungspaket ausführen (Update + Cleanup + Logrotate + Statusreport)
+ 5) Log-Integrität (Größe + SHA256)
+ 0) Zurück
+EOF
+        else
+            cat <<EOF
 [Maintenance / disks]
  1) System cleanup (APT autoremove/autoclean, logs 7d)
  2) Show disks (lsblk + df -h)
@@ -2493,6 +2835,7 @@ menu_maintenance() {
  5) Log integrity (size + SHA256)
  0) Back
 EOF
+        fi
         read -p "Select: " c
         case "$c" in
             1) system_cleanup ;;
@@ -2508,13 +2851,23 @@ EOF
 
 menu_users_time() {
     while true; do
-        cat <<EOF
+        if [[ "$LANGUAGE" == "de" ]]; then
+            cat <<EOF
+[Benutzer & Zeit]
+ 1) Sudo-Benutzer anlegen
+ 2) Zeitsynchronisation anzeigen (timedatectl)
+ 3) Chrony (NTP) installieren und Zeitstatus anzeigen
+ 0) Zurück
+EOF
+        else
+            cat <<EOF
 [Users & time]
  1) Create sudo user
  2) Show time sync (timedatectl)
  3) Install chrony (NTP) and show time status
  0) Back
 EOF
+        fi
         read -p "Select: " c
         case "$c" in
             1) create_sudo_user ;;
@@ -2528,12 +2881,21 @@ EOF
 
 menu_control() {
     while true; do
-        cat <<EOF
+        if [[ "$LANGUAGE" == "de" ]]; then
+            cat <<EOF
+[Systemsteuerung]
+ 1) Neustarten
+ 2) Herunterfahren
+ 0) Zurück
+EOF
+        else
+            cat <<EOF
 [System control]
  1) Reboot
  2) Power down
  0) Back
 EOF
+        fi
         read -p "Select: " c
         case "$c" in
             1) system_reboot ;;

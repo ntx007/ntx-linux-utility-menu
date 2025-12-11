@@ -5,10 +5,6 @@ From the project directory:
 ```bash
 sudo ./ntx-utility-menu.sh
 ```
-Or use the wrapper:
-```bash
-sudo ./ntxmenu
-```
 If installed to PATH:
 ```bash
 sudo ntxmenu
@@ -31,25 +27,16 @@ sudo ./ntx-utility-menu.sh --run wireguard_qr
 ```
 Use `--help` for the supported list.
 
-## Modes and shortcuts
-- `DRY_RUN=true ./ntx-utility-menu.sh` to preview commands.
-- `SAFE_MODE=true ./ntx-utility-menu.sh` to skip destructive actions.
+## Modes & shortcuts
+- `DRY_RUN=true ./ntx-utility-menu.sh`: preview commands.
+- `SAFE_MODE=true ./ntx-utility-menu.sh`: skip destructive actions.
 - Shortcuts: `h` Help/About, `s` Status dashboard, `l` Tail logs, `c` Config/env, `u` Self-update, `i` Install to PATH, `q` Quit.
-- Language toggle: `d` switches between English and German labels (menus only).
+- Language toggle: `d` switches between English and German labels.
 
-- **System update**: updates, unattended-upgrades, apt source list/remove, APT health, update health (with stale-update warning support), version-aware self-update (choose release/rollback or dev).
-- **DNS**: view/edit with backups, IPv4/IPv6 presets (includes Netcup 46.38.225.230 + 46.38.252.230 + 1.1.1.1), restore latest backup.
-- **Network**: public IP, interfaces/routes/connections, ping/traceroute.
-- **Benchmarks**: Speedtest install/run, YABS, YABS preset submenu.
-- **Tools/env**: essentials (sudo, nano, curl, net-tools, iproute2, unzip, python3-pip, gcc/python3-dev, psutil via pip, gdown, dos2unix, glances, tmux, zsh, mc, npm), ibramenu, QEMU guest agent, nvm installer.
-- **Security**: UFW presets with snapshot/revert, Fail2ban (summary/reload/list/unban), SSH hardening, Tailscale, Netmaker, CrowdSec, WireGuard (install/QR/validate/start/stop/restart, interface choice), rootkit check, ClamAV install/scan, Google Authenticator install, config backup/restore (with optional Docker Compose include), Proxmox SSH config updater (PermitRootLogin yes).
-- **Containers**: Docker/Compose install, service/status/info, list running/all, Compose health, rootless check, list privileged containers, list containers with sensitive mounts, containers running as root, containers using host network, installers for Portainer, Nginx Proxy Manager, Pi-hole+Unbound, Nextcloud AIO, Tactical RMM, and Hemmelig.app.
-- **Proxmox**: list LXC containers (`pct list`), enter with `pct enter <vmid>`, and run the Proxmox SSH config updater (PermitRootLogin yes) via a dedicated submenu.
-- **Monitoring**: node exporter, top CPU/mem, iostat, SMART, status dashboard, export status report (text/JSON with optional upload path).
-- **Maintenance**: cleanup, disks, largest `/var`, maintenance bundle (can auto-update first), log integrity.
-- **System info**: `/etc/os-release`, neofetch, memory, VM check, display adapters.
-- **Users/time**: create sudo user, time sync info, chrony install.
-- **Control**: reboot, power down.
+## Menu at a glance
+- Core: updates (incl. unattended), do-release-upgrade, apt source hygiene, APT/update health, self-update; DNS presets/backups; network views; Speedtest/YABS; security submenus (firewall, Fail2ban, SSH, WireGuard, agents, anti-malware, config backup).
+- Operations: tools/essentials/nvm, containers (Docker/Compose, hardening checks, app installers), monitoring (status dashboard, reports, node exporter), system info, maintenance (cleanup/bundle/log integrity), Proxmox helpers, users/time, system control.
+- Shortcuts: `h` help, `s` dashboard, `l` logs, `c` config/env, `u` self-update, `d` language, `i` install to PATH, `q` quit.
 
 ## Known behaviors & caveats
 - Self-update uses `https://raw.githubusercontent.com/ntx007/ntx-linux-utility-menu/main/ntx-utility-menu.sh` (GitHub main); use full path if `realpath`/`readlink -f` are absent to avoid writing to the current directory.

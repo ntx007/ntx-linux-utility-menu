@@ -4,10 +4,12 @@ A portable, menu-driven Bash utility for common Linux admin tasks. Built for Deb
 
 - Current version: **v1.1.0-dev**.
 - Self-update URL: `https://raw.githubusercontent.com/ntx007/ntx-linux-utility-menu/main/ntx-utility-menu.sh` (GitHub main). If `realpath`/`readlink -f` are unavailable and you launch via `$PATH`, run the script with its full path (e.g., `/usr/local/bin/ntx-utility-menu`) so the updater replaces the installed file instead of writing into the current directory.
+- UI: grouped main menu (Core / Operations / Shortcuts) with header info (host, threads, RAM, IP) and update notice; language toggle `d` (en/de).
 
-## Highlights (v1.1.0-dev)
+## Highlights
 
 - Interactive nested menu with shortcuts (Help, Status, Logs) and search via `/keyword`; language toggle `d` (en/de)
+- Clean header with host/threads/RAM/IP + update notice, and a grouped main menu (Core / Operations / Shortcuts) for faster navigation
 - Updates: unattended-upgrades enable/disable/status/run; reboot-if-needed flow; apt source hygiene (list/remove); version-aware self-update (pick release/rollback or dev); non-interactive `--run` actions; cadence warning and health checks
 - Networking: public IP with fallback, interfaces/routes/connections, DNS backups/restore, ping common endpoints, traceroute
 - Security/remote: organized submenus (firewall, Fail2ban, SSH/access, WireGuard, agents, anti-malware, config backup); UFW with snapshots/revert, Fail2ban (summary/list/unban), OpenSSH, Tailscale, Netmaker netclient, CrowdSec + firewall bouncer, WireGuard (client/server, QR, validate/diff, interface choice), SSH hardening, rootkit check, ClamAV improved workflow, Proxmox SSH config updater (PermitRootLogin yes)
@@ -23,38 +25,40 @@ A portable, menu-driven Bash utility for common Linux admin tasks. Built for Deb
 - Basic shell utilities available on most Linux systems (curl, wget, ip, ifconfig or iproute2)
 - Root (or sudo) is required for most actions; the script exits if not run as root
 
-## Installation
+## Install
 
-1. Clone or download this repository:
+Clone the repo:
 
 ```bash
 git clone https://github.com/ntx007/ntx-linux-utility-menu.git
 cd ntx-linux-utility-menu
 ```
 
-2. Make the scripts executable:
+Make the scripts executable:
 
 ```bash
 chmod +x ntx-utility-menu.sh ntxmenu
 ```
 
-3. Install to PATH (choose one):
+Install to PATH (pick one):
 
-   - One-liner:
-   ```bash
-   wget -qO ./i https://raw.githubusercontent.com/ntx007/ntx-linux-utility-menu/main/install_ntxmenu.sh && chmod +x ./i && sudo ./i
-   ```
-   - Using the bundled installer:
-   ```bash
-   sudo ./install_ntxmenu.sh
-   ```
-   - Manual copy:
-   ```bash
-   sudo mv ntxmenu /usr/local/bin/ntxmenu
-   sudo mv ntx-utility-menu.sh /usr/local/bin/ntx-utility-menu
-   ```
+- One-liner installer:
+```bash
+wget -qO ./i https://raw.githubusercontent.com/ntx007/ntx-linux-utility-menu/main/install_ntxmenu.sh && chmod +x ./i && sudo ./i
+```
+- Bundled installer:
+```bash
+sudo ./install_ntxmenu.sh
+```
+- Manual copy:
+```bash
+sudo mv ntxmenu /usr/local/bin/ntxmenu
+sudo mv ntx-utility-menu.sh /usr/local/bin/ntx-utility-menu
+```
 
-## Usage
+If `/usr/local/bin` is not in your PATH, the installer will add a profile snippet and, when possible, a symlink in `/usr/bin`. Otherwise add it manually (e.g., `export PATH=/usr/local/bin:$PATH`) or re-login.
+
+## Run
 
 - Run from the project directory:
 
@@ -62,13 +66,11 @@ chmod +x ntx-utility-menu.sh ntxmenu
 sudo ./ntx-utility-menu.sh
 ```
 
-- Or, if installed in your PATH:
+- If installed in PATH:
 
 ```bash
 sudo ntx-utility-menu
 ```
-
-The script shows a numbered interactive menu. Enter the number of the action you want to run and press Enter.
 
 ### Download & run (one-liner)
 
@@ -88,7 +90,7 @@ chmod +x ntx-utility-menu.sh
 
 ## Non-interactive usage
 
-You can run common actions without the menu:
+Run common actions without the menu:
 
 ```bash
 sudo ./ntx-utility-menu.sh --run update_all
@@ -103,21 +105,26 @@ Run `./ntx-utility-menu.sh --help` for the full list.
 
 ## Menu map (v1.1.0-dev)
 
-- **System update**: standard upgrade, reboot-if-needed, unattended-upgrades (enable/disable/status/run), list/remove custom apt sources, APT health/update health checks, version-aware self-update (choose release/dev/rollback)
-- **DNS**: view/edit with backups, preset DNS choices (Netcup 46.38.225.230 + 46.38.252.230 + 1.1.1.1), restore last backup, append/overwrite IPv4 Cloudflare/Google and IPv6 Cloudflare/Google
-- **Network/IP**: public IP (fallback), interfaces, routes, connections, ping common endpoints, traceroute
-- **Speedtest/benchmarks**: Speedtest install/update/run, repo/key removal, YABS, YABS preset submenu (all/disk/network/system)
-- **Security/remote**: organized submenus (firewall, Fail2ban, SSH/access, WireGuard, agents, anti-malware, config backup); UFW snapshots/presets, Fail2ban summary/reload/list/unban, OpenSSH, Tailscale, Netmaker netclient (install/remove repo), CrowdSec + firewall bouncer, WireGuard (client/server, QR, validate/diff, interface choice), SSH hardening check, failed logins, rootkit check, ClamAV install + quick scan, Google Authenticator install, config backup/restore
-- **Tools/env**: essentials (sudo, nano, curl, net-tools, iproute2, unzip, python3-pip, gcc/python3-dev, psutil via pip, gdown, dos2unix, glances, tmux, zsh, mc, npm) with a dedicated submenu, plus ibramenu, QEMU guest agent, and nvm installer
-- **Containers**: Docker + Compose plugin, service status, short info, running containers, list all containers, Docker Compose health, Docker rootless check, list privileged containers, list containers with sensitive mounts, containers running as root, containers using host network, plus installers for Portainer, Nginx Proxy Manager, Pi-hole+Unbound, Nextcloud AIO, Tactical RMM, and Hemmelig.app
-- **Monitoring**: node exporter, top CPU/mem processes, iostat summary, SMART health check, status dashboard (services, IPs, CPU/mem snapshot), export status report to file/JSON (optional upload path)
-- **System info**: `/etc/os-release`, neofetch, memory info, VM check, display adapters, GitHub link
-- **Maintenance/disks**: cleanup, disks usage, largest `/var` dirs, maintenance bundle (update + cleanup + log rotate + status report), log integrity check
-- **Proxmox**: list LXC containers, enter with `pct enter <vmid>`, and run the Proxmox SSH config updater (PermitRootLogin yes)
-- **Users/time**: create sudo user, time sync info, chrony install
-- **System control**: reboot, power down (SAFE_MODE-aware)
-- **Help/logs**: Help/About (config, modes, repo), tail log; **Self-update** shortcut `u` to pull the latest NTX Command Center
-- **Install**: shortcut `i` to download and install ntxmenu + script into `/usr/local/bin`
+- **Core**
+  - System update: upgrade flows, unattended-upgrades, apt source list/remove, APT health/update health, version-aware self-update (release/dev/rollback)
+  - DNS: backups/edit, Netcup presets (46.38.225.230 + 46.38.252.230 + 1.1.1.1), Cloudflare/Google IPv4+IPv6, restore last backup
+  - Network/IP: public IP (fallback), interfaces, routes, connections, ping common endpoints, traceroute
+  - Speedtest/benchmarks: Speedtest install/update/run, repo/key removal, YABS + presets
+  - Security/remote: firewall, Fail2ban, SSH/access, WireGuard, agents (CrowdSec/Netmaker/Tailscale), anti-malware, config backup/restore
+
+- **Operations**
+  - Tools/env: essentials bundle (sudo, nano, curl, net-tools, iproute2, unzip, python3-pip, gcc/python3-dev, psutil via pip, gdown, dos2unix, glances, tmux, zsh, mc, npm), ibramenu, QEMU guest agent, nvm installer
+  - Containers: Docker + Compose plugin, status/info, running/all containers, Compose health, hardening checks (privileged/root/host network/sensitive mounts), installers for Portainer, Nginx Proxy Manager, Pi-hole, Pi-hole+Unbound, Nextcloud AIO, Tactical RMM, Hemmelig.app
+  - Monitoring: node exporter, top CPU/mem, iostat, SMART, status dashboard, export report (text/JSON)
+  - System info: `/etc/os-release`, neofetch, memory info, VM check, display adapters, GitHub link
+  - Maintenance/disks: cleanup, disks, largest `/var`, maintenance bundle (update + cleanup + log rotate + status report), log integrity
+  - Proxmox: list LXC, `pct enter <vmid>`, Proxmox SSH config updater (PermitRootLogin yes)
+  - Users/time: create sudo user, time sync info, chrony install
+  - System control: reboot, power down (SAFE_MODE-aware)
+
+- **Shortcuts**
+  - `h` Help/About, `s` Status dashboard, `l` Tail log, `c` Config/env
+  - `u` Self-update, `d` Language (en/de), `i` Install to PATH, `q` Quit
 
 Quick one-liner install to PATH:
 ```bash
@@ -125,7 +132,7 @@ wget -qO ./i https://raw.githubusercontent.com/ntx007/ntx-linux-utility-menu/mai
 ```
 If `/usr/local/bin` is not in your PATH, the installer will add a profile snippet and also symlink to `/usr/bin` when possible; otherwise, add it manually (e.g., `export PATH=/usr/local/bin:$PATH`) or re-login.
 
-## Modes and shortcuts
+## Modes & shortcuts
 
 - `DRY_RUN=true ./ntx-utility-menu.sh`: print commands instead of executing them.
 - `SAFE_MODE=true ./ntx-utility-menu.sh`: skip destructive actions (cleanup, reboot, powerdown, apt source removal).
@@ -148,12 +155,12 @@ Search tip: in the main menu, type `/keyword` (e.g., `/docker`, `/dns`) to jump 
 - Offline/proxy: `apt-get update` must succeed for upgrades; if blocked, set `http_proxy/https_proxy` or skip update steps (they will now stop early with a hint).
 - Minimal envs: Inode view may be skipped if `df -i` is unsupported; IP listing falls back to `ip addr` or `ifconfig` if `ip` is absent.
 
-## Quick start (best practice)
+## Quick start
 
 - Run as root on Debian/Ubuntu (or derivatives). If testing, start with `DRY_RUN=true` or `SAFE_MODE=true`.
-- Before first use, skim the config section in the script for paths (log/backup), DNS presets, and service unit names.
-- Open `Help/About` (`h`) to see paths, modes, and shortcuts; tail the log (`l`) if something looks off.
-- Use the status dashboard (`s`) to check key services (SSH, UFW, Fail2ban, Tailscale, Netmaker, CrowdSec, Docker), pending upgrades, kernel vs. running versions, public/private IPs, and CPU/mem/disk/inode snapshot.
+- Skim the config block (log/backup paths, DNS presets, service unit names) before first use.
+- Open `Help/About` (`h`) for paths, modes, and shortcuts; tail the log (`l`) if something looks off.
+- Use the status dashboard (`s`) to check services (SSH, UFW, Fail2ban, Tailscale, Netmaker, CrowdSec, Docker), pending upgrades, kernel vs. running versions, public/private IPs, and CPU/mem/disk/inode snapshots.
 - Before adding repos, review custom sources in **System update → list/remove apt sources**.
 - For VPN/remote, use the Security menu: Tailscale, Netmaker netclient, CrowdSec + bouncer, and WireGuard (client/server installs).
 

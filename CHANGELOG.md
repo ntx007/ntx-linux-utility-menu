@@ -5,11 +5,14 @@
 - Containers: added basic Docker controls (stop all containers, start via compose up -d, run custom docker command).
 - Containers: added Portainer (CE) installer (pull image, create volume, run on 9443).
 - Containers: added Nginx Proxy Manager installer (compose stack with ports 80/81/443, external network support).
-- Containers: added Pi-hole + Unbound installer (compose stack with defaults and optional custom network/password).
+- Containers: added Pi-hole (standalone) and Pi-hole + Unbound installers (compose stacks with defaults and optional custom network/password).
 - Containers: added Nextcloud All-in-One installer (compose stack using nextcloud/all-in-one).
 - Containers: added Tactical RMM installer (docker install script from upstream; requires DNS/FQDN prep).
 - Containers: added Hemmelig.app installer (compose stack on port 3000).
 - UI: header now shows host, CPU threads, RAM, IP, and a GitHub link; update notice shown if a newer release is detected.
+- UI: cleaned and regrouped submenus for clearer spacing and task clustering across update/DNS/containers/monitoring.
+- Docs: README/usage/installation refreshed for clearer install/run instructions and grouped menu overview.
+- UI: main menu reorganized into Core / Operations / Shortcuts and aligned in both English and German layouts.
 
 ## v1.0.0
 - Semantic versioning adopted; canonical version string: v1.0.0.
@@ -19,7 +22,6 @@
 - Tools: added a separate submenu to install the essentials bundle; CLI wrapper `ntxmenu` plus installer `install_ntxmenu.sh`; in-menu install shortcut (`i`) downloads and installs to `/usr/local/bin`.
 
 ### Bug fixes
-- TBD
 - Installer one-liner: updated `install_ntxmenu.sh` to download missing scripts from GitHub main when run outside the repo.
 - Installer and in-app install now add a `/etc/profile.d/ntxmenu.sh` PATH snippet when `/usr/local/bin` is missing.
 - Installer and in-app install also symlink `ntxmenu` to `/usr/bin` when `/usr/local/bin` is not in PATH to allow immediate use.
