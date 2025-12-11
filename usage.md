@@ -14,6 +14,11 @@ If installed to PATH:
 sudo ntxmenu
 ```
 
+Quick install to PATH (one-liner):
+```bash
+wget -qO ./i https://raw.githubusercontent.com/ntx007/ntx-linux-utility-menu/main/install_ntxmenu.sh && chmod +x ./i && sudo ./i
+```
+
 ## Non-interactive actions
 ```bash
 sudo ./ntx-utility-menu.sh --run update_all
@@ -28,15 +33,12 @@ Use `--help` for the supported list.
 ## Modes and shortcuts
 - `DRY_RUN=true ./ntx-utility-menu.sh` to preview commands.
 - `SAFE_MODE=true ./ntx-utility-menu.sh` to skip destructive actions.
-- Shortcuts in the main menu: `h` Help/About, `s` Status dashboard, `l` Tail logs, `c` Config/env, `u` Self-update, `q` Quit.
+- Shortcuts in the main menu: `h` Help/About, `s` Status dashboard, `l` Tail logs, `c` Config/env, `u` Self-update, `i` Install to PATH, `q` Quit.
+ - Install shortcut: `i` installs the script + wrapper into `/usr/local/bin`.
 - Language toggle: `d` switches between English and German labels (menus only).
 
 - **System update**: updates, unattended-upgrades, apt source list/remove, APT health, update health (with stale-update warning support), version-aware self-update (choose release/rollback or dev).
 - **DNS**: view/edit with backups, IPv4/IPv6 presets (includes Netcup 46.38.225.230 + 46.38.252.230 + 1.1.1.1), restore latest backup.
-- **Network**: public IP, interfaces/routes/connections, ping/traceroute.
-- **Benchmarks**: Speedtest install/run, YABS, YABS preset submenu.
-- **System update**: updates, unattended-upgrades, apt source list/remove, APT health, update health (with stale-update warning support).
-- **DNS**: view/edit with backups, IPv4/IPv6 presets, restore latest backup.
 - **Network**: public IP, interfaces/routes/connections, ping/traceroute.
 - **Benchmarks**: Speedtest install/run, YABS, YABS preset submenu.
 - **Tools/env**: essentials (sudo, nano, curl, net-tools, iproute2, unzip, python3-pip, gcc/python3-dev, psutil via pip, gdown, dos2unix, glances, tmux, zsh, mc, npm), ibramenu, QEMU guest agent.
@@ -50,7 +52,7 @@ Use `--help` for the supported list.
 - **Control**: reboot, power down.
 
 ## Notes and caveats
-- Self-update uses `https://ntx-menu.re-vent.de` (GitHub main); use full path if `realpath`/`readlink -f` are absent to avoid writing to the current directory.
+- Self-update uses `https://raw.githubusercontent.com/ntx007/ntx-linux-utility-menu/main/ntx-utility-menu.sh` (GitHub main); use full path if `realpath`/`readlink -f` are absent to avoid writing to the current directory.
 - Service status uses standard systemd unit names; adjust unit variables if your distro differs.
 - Pending updates count may undercount on localized systems.
 - WireGuard enable/disable assumes `/etc/wireguard/wg0.conf` exists; QR requires `qrencode`.

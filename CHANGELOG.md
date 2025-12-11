@@ -6,6 +6,8 @@
 - Proxmox: dedicated submenu for Proxmox helpers including `pct enter <vmid>` (prompted VMID), listing LXC containers, and the Proxmox SSH config updater; placed ahead of System control in the main menu.
 - Tools: add a separate submenu to install the essentials bundle independently.
 - CLI: added `ntxmenu` wrapper script so the tool can be launched with a shorter command.
+- Installer: added `install_ntxmenu.sh` to copy both scripts into `/usr/local/bin`.
+- Menu: added in-app installer shortcut (`i`) to download latest scripts from GitHub main and install to `/usr/local/bin`.
 
 ### Bug fixes
 - Replaced remote Proxmox SSH config updater with an inline PermitRootLogin yes helper (backs up sshd_config, edits locally, reloads SSH).
@@ -46,7 +48,7 @@
 - WireGuard QR helper requires `qrencode`; Docker Compose health assumes the Compose plugin is present.
 
 ## v0.4
-- Added in-menu self-update (main menu shortcut `u`) to download the latest NTX Command Center script from https://ntx-menu.re-vent.de. The link serves the script from the GitHub main branch.
+- Added in-menu self-update (main menu shortcut `u`) to download the latest NTX Command Center script from GitHub main: https://raw.githubusercontent.com/ntx007/ntx-linux-utility-menu/main/ntx-utility-menu.sh
 - New non-interactive mode via `--run` (e.g., update_all, maintenance_bundle, status_report, ssh_audit, docker_compose_health, wireguard_qr).
 - Added maintenance bundle (update + cleanup + log rotate + status report) and exportable status reports to `/var/log/ntx-menu-reports`.
 - Introduced SSH hardening check and WireGuard QR helper; Docker Compose health view (ls/ps) added to containers menu.

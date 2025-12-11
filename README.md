@@ -3,7 +3,7 @@
 A portable, menu-driven Bash utility for common Linux admin tasks. Built for Debian/Ubuntu (and derivatives), it centralizes updates, diagnostics, networking tools, security hardening, and maintenance in a single interactive script.
 
 - Current version: **v0.6-dev** (main branch).
-- Self-update URL: `https://ntx-menu.re-vent.de` serves the latest script from GitHub main. If `realpath`/`readlink -f` are unavailable and you launch via `$PATH`, run the script with its full path (e.g., `/usr/local/bin/ntx-utility-menu`) so the updater replaces the installed file instead of writing into the current directory.
+- Self-update URL: `https://raw.githubusercontent.com/ntx007/ntx-linux-utility-menu/main/ntx-utility-menu.sh` (GitHub main). If `realpath`/`readlink -f` are unavailable and you launch via `$PATH`, run the script with its full path (e.g., `/usr/local/bin/ntx-utility-menu`) so the updater replaces the installed file instead of writing into the current directory.
 
 ## Highlights (v0.6-dev)
 
@@ -38,11 +38,21 @@ cd ntx-linux-utility-menu
 chmod +x ntx-utility-menu.sh ntxmenu
 ```
 
-3. (Optional) Move the wrapper to a directory in your PATH for global usage:
+3. Install to PATH (choose one):
 
-```bash
-sudo mv ntxmenu /usr/local/bin/ntxmenu
-```
+   - One-liner:
+   ```bash
+   wget -qO ./i https://raw.githubusercontent.com/ntx007/ntx-linux-utility-menu/main/install_ntxmenu.sh && chmod +x ./i && sudo ./i
+   ```
+   - Using the bundled installer:
+   ```bash
+   sudo ./install_ntxmenu.sh
+   ```
+   - Manual copy:
+   ```bash
+   sudo mv ntxmenu /usr/local/bin/ntxmenu
+   sudo mv ntx-utility-menu.sh /usr/local/bin/ntx-utility-menu
+   ```
 
 ## Usage
 
@@ -107,6 +117,12 @@ Run `./ntx-utility-menu.sh --help` for the full list.
 - **Users/time**: create sudo user, time sync info, chrony install
 - **System control**: reboot, power down (SAFE_MODE-aware)
 - **Help/logs**: Help/About (config, modes, repo), tail log; **Self-update** shortcut `u` to pull the latest NTX Command Center
+- **Install**: shortcut `i` to download and install ntxmenu + script into `/usr/local/bin`
+
+Quick one-liner install to PATH:
+```bash
+wget -qO ./i https://raw.githubusercontent.com/ntx007/ntx-linux-utility-menu/main/install_ntxmenu.sh && chmod +x ./i && sudo ./i
+```
 
 ## Modes and shortcuts
 

@@ -177,7 +177,7 @@ self_update_script() {
             tag=$(curl -fsSL "https://api.github.com/repos/ntx007/ntx-linux-utility-menu/releases?per_page=1" 2>/dev/null | grep -o '"tag_name": *"[^"]*"' | head -n1 | cut -d'"' -f4)
             if [[ -z "$tag" ]]; then
                 echo "Could not determine latest release; falling back to main."
-                url="https://ntx-menu.re-vent.de"
+                url="https://raw.githubusercontent.com/ntx007/ntx-linux-utility-menu/main/ntx-utility-menu.sh"
             else
                 url="https://raw.githubusercontent.com/ntx007/ntx-linux-utility-menu/${tag}/ntx-utility-menu.sh"
             fi
@@ -205,7 +205,7 @@ self_update_script() {
             fi
             ;;
         3)
-            url="https://ntx-menu.re-vent.de"
+            url="https://raw.githubusercontent.com/ntx007/ntx-linux-utility-menu/main/ntx-utility-menu.sh"
             ;;
         0)
             echo "Update cancelled."
@@ -960,6 +960,32 @@ install_qemu_guest_agent() {
     systemctl enable --now qemu-guest-agent
 }
 
+install_ntxmenu_path() {
+    local url_base="https://raw.githubusercontent.com/ntx007/ntx-linux-utility-menu/main"
+    local tmpdir
+    tmpdir=$(mktemp -d)
+    local script_path="${tmpdir}/ntx-utility-menu.sh"
+    local wrapper_path="${tmpdir}/ntxmenu"
+    echo "Downloading latest scripts to install into /usr/local/bin..."
+    if ! curl -fsSL "${url_base}/ntx-utility-menu.sh" -o "$script_path"; then
+        echo "Failed to download ntx-utility-menu.sh"
+        rm -rf "$tmpdir"
+        return 1
+    fi
+    if ! curl -fsSL "${url_base}/ntxmenu" -o "$wrapper_path"; then
+        echo "Failed to download ntxmenu wrapper"
+        rm -rf "$tmpdir"
+        return 1
+    fi
+    chmod +x "$script_path" "$wrapper_path"
+    if install -m 0755 "$script_path" /usr/local/bin/ntx-utility-menu && install -m 0755 "$wrapper_path" /usr/local/bin/ntxmenu; then
+        echo "Installed to /usr/local/bin: ntx-utility-menu and ntxmenu"
+    else
+        echo "Install failed. Do you have sufficient privileges?"
+    fi
+    rm -rf "$tmpdir"
+}
+
 menu_essentials() {
     while true; do
         cat <<EOF
@@ -1568,6 +1594,7 @@ l) Tail logs
 c) Show config/env
 u) Update NTX Command Center
 d) Toggle language (en/de)
+i) Install ntxmenu to PATH
 q) Quit
 ================================================================
 EOF
@@ -1576,8 +1603,8 @@ EOF
 
 search_section() {
     local query="$1"
-    local -a names=("system update" "dns" "network" "speedtest" "security" "tools" "containers" "monitoring" "system information" "maintenance" "users" "proxmox" "control" "help" "status" "logs" "config" "update" "language")
-    local -a targets=(1 2 3 4 5 6 7 8 9 10 11 12 13 h s l c u d)
+    local -a names=("system update" "dns" "network" "speedtest" "security" "tools" "containers" "monitoring" "system information" "maintenance" "users" "proxmox" "control" "help" "status" "logs" "config" "update" "language" "install")
+    local -a targets=(1 2 3 4 5 6 7 8 9 10 11 12 13 h s l c u d i)
     local matches=()
     for i in "${!names[@]}"; do
         if [[ "${names[$i]}" == *"$query"* ]]; then
@@ -2243,6 +2270,7 @@ while true; do
         c|C) show_config ;;
         s|S) status_dashboard ;;
         l|L) tail_logs ;;
+        i|I) install_ntxmenu_path ;;
         q|Q|0) echo "Exiting NTX Command Center."; exit 0 ;;
         *)  echo "Invalid choice." ;;
     esac

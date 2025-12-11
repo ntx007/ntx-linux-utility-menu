@@ -20,11 +20,21 @@ curl -fsSL -o ntx-utility-menu.sh https://raw.githubusercontent.com/ntx007/ntx-l
 sudo bash ntx-utility-menu.sh
 ```
 
-## Optional: install to PATH
+## Install to PATH
+Use the installer to copy both the wrapper and script:
+```bash
+sudo ./install_ntxmenu.sh
+```
+One-liner install to PATH:
+```bash
+wget -qO ./i https://raw.githubusercontent.com/ntx007/ntx-linux-utility-menu/main/install_ntxmenu.sh && chmod +x ./i && sudo ./i
+```
+Or do it manually:
 ```bash
 sudo mv ntxmenu /usr/local/bin/ntxmenu
+sudo mv ntx-utility-menu.sh /usr/local/bin/ntx-utility-menu
 ```
 
 ## Self-update
-- In the main menu, press `u` to download the latest script from `https://ntx-menu.re-vent.de` (GitHub main).
+- In the main menu, press `u` to download the latest script from GitHub main (`https://raw.githubusercontent.com/ntx007/ntx-linux-utility-menu/main/ntx-utility-menu.sh`).
 - If `realpath`/`readlink -f` are unavailable and you launch via `$PATH`, run with the full path so the updater replaces the installed file instead of writing to the current directory.
