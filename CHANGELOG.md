@@ -14,6 +14,7 @@
 - Docs: README/usage/installation refreshed for clearer install/run instructions and grouped menu overview.
 - UI: main menu reorganized into Core / Operations / Shortcuts and aligned in both English and German layouts.
 - Containers: Docker install now uses the official convenience script (get.docker.com) with a compose plugin fallback from GitHub releases.
+- Agents: Netmaker netclient installer updated to follow official docs flow.
 
 ## v1.0.0
 - Semantic versioning adopted; canonical version string: v1.0.0.

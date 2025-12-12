@@ -962,11 +962,13 @@ tailscale_up_qr() {
 }
 
 install_netclient() {
+    # Based on https://docs.netmaker.io/docs/client-installation/netclient#installation
     run_cmd "Install dependencies for netclient" apt-get install -y curl gpg
     run_cmd "Add Netmaker GPG key" bash -c "curl -fsSL 'https://apt.netmaker.org/gpg.key' | gpg --dearmor -o /usr/share/keyrings/netmaker-keyring.gpg"
     run_cmd "Add Netmaker apt repository" bash -c "echo \"deb [signed-by=/usr/share/keyrings/netmaker-keyring.gpg] https://apt.netmaker.org stable main\" > /etc/apt/sources.list.d/netclient.list"
     run_cmd "apt-get update (netclient)" apt-get update
     run_cmd "Install netclient" apt-get install -y netclient
+    echo "Netmaker netclient installed. Join commands per https://docs.netmaker.io/docs/client-installation/netclient#installation"
 }
 
 remove_netclient_repo() {
