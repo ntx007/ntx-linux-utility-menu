@@ -631,6 +631,11 @@ skip_if_safe() {
     return 0
 }
 
+pause_prompt() {
+    echo
+    read -p "Press Enter to continue..."
+}
+
 ###############################################################################
 # Functions
 ###############################################################################
@@ -1858,6 +1863,7 @@ EOF
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
+        [[ "$c" != "0" ]] && pause_prompt
     done
 }
 
@@ -1912,6 +1918,7 @@ EOF
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
+        [[ "$c" != "0" ]] && pause_prompt
     done
 }
 
@@ -1953,6 +1960,7 @@ EOF
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
+        [[ "$c" != "0" ]] && pause_prompt
     done
 }
 
@@ -1997,6 +2005,7 @@ EOF
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
+        [[ "$c" != "0" ]] && pause_prompt
     done
 }
 
@@ -2033,6 +2042,7 @@ EOF
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
+        [[ "$c" != "0" ]] && pause_prompt
     done
 }
 
@@ -2075,6 +2085,7 @@ EOF
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
+        [[ "$c" != "0" ]] && pause_prompt
     done
 }
 
@@ -2114,6 +2125,7 @@ EOF
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
+        [[ "$c" != "0" ]] && pause_prompt
     done
 }
 
@@ -2150,6 +2162,7 @@ EOF
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
+        [[ "$c" != "0" ]] && pause_prompt
     done
 }
 
@@ -2186,6 +2199,7 @@ EOF
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
+        [[ "$c" != "0" ]] && pause_prompt
     done
 }
 
@@ -2237,6 +2251,7 @@ EOF
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
+        [[ "$c" != "0" ]] && pause_prompt
     done
 }
 
@@ -2276,6 +2291,7 @@ EOF
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
+        [[ "$c" != "0" ]] && pause_prompt
     done
 }
 
@@ -2303,6 +2319,7 @@ EOF
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
+        [[ "$c" != "0" ]] && pause_prompt
     done
 }
 
@@ -2330,6 +2347,7 @@ EOF
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
+        [[ "$c" != "0" ]] && pause_prompt
     done
 }
 
@@ -2365,6 +2383,7 @@ EOF
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
+        [[ "$c" != "0" ]] && pause_prompt
     done
 }
 
@@ -2455,6 +2474,7 @@ EOF
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
+        [[ "$c" != "0" ]] && pause_prompt
     done
 }
 
@@ -2793,6 +2813,7 @@ EOF
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
+        [[ "$c" != "0" ]] && pause_prompt
     done
 }
 
@@ -2823,6 +2844,7 @@ EOF
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
+        [[ "$c" != "0" ]] && pause_prompt
     done
 }
 
@@ -2862,6 +2884,7 @@ EOF
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
+        [[ "$c" != "0" ]] && pause_prompt
     done
 }
 
@@ -2898,6 +2921,7 @@ EOF
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
+        [[ "$c" != "0" ]] && pause_prompt
     done
 }
 
@@ -2928,6 +2952,7 @@ EOF
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
+        [[ "$c" != "0" ]] && pause_prompt
     done
 }
 
@@ -2955,6 +2980,7 @@ EOF
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
+        [[ "$c" != "0" ]] && pause_prompt
     done
 }
 
@@ -3040,5 +3066,9 @@ while true; do
         i|I) install_ntxmenu_path ;;
         q|Q|0) echo "Exiting NTX Command Center."; exit 0 ;;
         *)  echo "Invalid choice." ;;
+    esac
+    case "$choice" in
+        q|Q|0) ;;
+        *) pause_prompt ;;
     esac
 done
