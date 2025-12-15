@@ -845,7 +845,8 @@ whats_my_ip() {
 }
 
 show_ifconfig() {
-    ifconfig
+    ensure_cmd ifconfig net-tools
+    ifconfig || ip addr show
 }
 
 show_routes() {
