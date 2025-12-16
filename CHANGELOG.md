@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased (v1.1.0-dev)
+## v1.1.0
 - System update: added Ubuntu do-release-upgrade option (installs update-manager-core, shows held packages, and runs do-release-upgrade per Ubuntu wiki guidance).
 - Containers: added basic Docker controls (stop all containers, start via compose up -d, run custom docker command).
 - Containers: added Portainer (CE) installer (pull image, create volume, run on 9443).
