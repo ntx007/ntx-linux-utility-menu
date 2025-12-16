@@ -2,6 +2,7 @@
 
 ## v1.1.1
 - Header: fixed RAM detection fallback so systems without awk/PROC parsing quirks no longer show “unknown GiB”.
+- Update check: only surfaces a notice when the remote tag is newer than the current version (prevents downgrades being shown as updates).
 
 ## v1.1.0
 - System update: added Ubuntu do-release-upgrade option (installs update-manager-core, shows held packages, and runs do-release-upgrade per Ubuntu wiki guidance).

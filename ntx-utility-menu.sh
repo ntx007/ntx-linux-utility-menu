@@ -169,8 +169,16 @@ ensure_dirs() {
 check_updates() {
     local latest
     latest=$(curl -fsSL "https://api.github.com/repos/ntx007/ntx-linux-utility-menu/releases?per_page=1" 2>/dev/null | grep -o '"tag_name": *"[^"]*"' | head -n1 | cut -d'"' -f4)
-    if [[ -n "$latest" && "$latest" != "$VERSION" ]]; then
-        UPDATE_NOTICE="Update available: ${latest} (current ${VERSION})"
+    if [[ -n "$latest" ]]; then
+        local latest_clean="${latest#v}"
+        local current_clean="${VERSION#v}"
+        if [[ "$latest_clean" != "$current_clean" ]]; then
+            local highest
+            highest=$(printf "%s\n%s\n" "$current_clean" "$latest_clean" | sort -V | tail -1)
+            if [[ "$highest" == "$latest_clean" ]]; then
+                UPDATE_NOTICE="Update available: ${latest} (current ${VERSION})"
+            fi
+        fi
     fi
 }
 
