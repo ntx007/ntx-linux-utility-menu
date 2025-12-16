@@ -2,7 +2,7 @@
 
 A portable, menu-driven Bash utility for common Linux admin tasks. Built for Debian/Ubuntu (and derivatives), it centralizes updates, diagnostics, networking tools, security hardening, and maintenance in a single interactive script.
 
-- Current version: **v1.1.0**.
+- Current version: **v1.1.1**.
 - Self-update URL: `https://raw.githubusercontent.com/ntx007/ntx-linux-utility-menu/main/ntx-utility-menu.sh` (GitHub main). If `realpath`/`readlink -f` are unavailable and you launch via `$PATH`, run the script with its full path (e.g., `/usr/local/bin/ntx-utility-menu`) so the updater replaces the installed file instead of writing into the current directory.
 - UI: grouped main menu (Core / Operations / Shortcuts) with header info (host, threads, RAM, IP) and update notice; language toggle `d` (en/de).
 
@@ -103,7 +103,7 @@ sudo ./ntx-utility-menu.sh --run wireguard_qr
 
 Run `./ntx-utility-menu.sh --help` for the full list.
 
-## Menu map (v1.1.0)
+## Menu map (v1.1.1)
 
 - **Core**
   - System update: upgrade flows, unattended-upgrades, apt source list/remove, APT health/update health, version-aware self-update (release/dev/rollback)

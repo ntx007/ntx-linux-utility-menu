@@ -1,5 +1,8 @@
 # Changelog
 
+## v1.1.1
+- Header: fixed RAM detection fallback so systems without awk/PROC parsing quirks no longer show “unknown GiB”.
+
 ## v1.1.0
 - System update: added Ubuntu do-release-upgrade option (installs update-manager-core, shows held packages, and runs do-release-upgrade per Ubuntu wiki guidance).
 - Containers: added basic Docker controls (stop all containers, start via compose up -d, run custom docker command).

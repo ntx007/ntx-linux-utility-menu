@@ -2,7 +2,7 @@
 
 ###############################################################################
 # NTX Command Center - Simple server helper menu
-# Version: v1.1.0
+# Version: v1.1.1
 ###############################################################################
 
 LOG_FILE="/var/log/ntx-menu.log"
@@ -12,7 +12,7 @@ MAX_LOG_SIZE=$((1024 * 1024)) # 1 MiB
 LOG_HISTORY=${LOG_HISTORY:-3}
 DRY_RUN=${DRY_RUN:-false}
 SAFE_MODE=${SAFE_MODE:-false}
-VERSION="v1.1.0"
+VERSION="v1.1.1"
 UPDATE_NOTICE=""
 HEADER_CPU=""
 HEADER_RAM=""
@@ -176,7 +176,12 @@ check_updates() {
 
 gather_header_info() {
     HEADER_CPU=$(nproc 2>/dev/null || echo "unknown")
-    HEADER_RAM=$(awk '/MemTotal/ {printf \"%.0f\", $2/1024/1024}' /proc/meminfo 2>/dev/null || echo "unknown")
+    local mem_gib=""
+    mem_gib=$(awk '/MemTotal/ {printf "%.1f", $2/1024/1024}' /proc/meminfo 2>/dev/null | head -n1)
+    if [[ -z "$mem_gib" ]]; then
+        mem_gib=$(free -m 2>/dev/null | awk 'NR==2 {printf "%.1f", $2/1024}')
+    fi
+    HEADER_RAM=${mem_gib:-unknown}
     HEADER_HOST=$(hostname 2>/dev/null || echo "unknown")
     HEADER_IP=$(hostname -I 2>/dev/null | awk '{print $1}' | sed 's/[[:space:]]//g')
     HEADER_IP=${HEADER_IP:-unknown}
