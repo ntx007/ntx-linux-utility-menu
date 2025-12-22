@@ -1,21 +1,24 @@
-# Changelog
+# Changelog 📝
 
-## Unreleased (v1.2.1-dev)
-- TBD
-- Tools: added Node/npm version check; essentials bundle now installs mariadb-client-core.
-- Tools: MariaDB server installer added (apt install mariadb-server, enable/start, guidance to run mysql_secure_installation).
-  Note: installs MariaDB on the host (not containerized).
-- Proxmox helpers: entering a container now lists VMIDs first, then prompts for the target VMID.
-- DNS: custom nameserver option now prompts to append or overwrite `/etc/resolv.conf`.
-- Proxmox helpers expanded with start/stop/restart, storage view, snapshots (create/list/rollback), backup/restore (vzdump/pct restore), resource tuning, and services/cluster status.
-- Main menu layout cleaned up for better readability (two-column grouping for core/operations/shortcuts).
-- Header/footer styling: unified banner/footer around the menu for a cleaner UI.
-- Proxmox helpers: added community PVE Post Install script launcher.
-- Proxmox helpers: added community PVE All Templates downloader.
+## Unreleased (v1.2.1-dev) 🚧
+- Network: VLAN and bond helpers (create/delete) plus an SSH key generator utility alongside the existing custom nameserver append/overwrite flow.
+- Security: Fail2ban tuning shortcut (basic jail.local defaults) and auditd minimal ruleset installer.
+- Monitoring: SMART batch check for all disks; new service uptime and hardware overview snapshots.
+- Maintenance: added log cleanup preset, kernel list/purge helper, and /etc backup shortcut.
+- Proxmox: LXC flow now lists VMIDs before entering; added qm VM helpers (list, start/stop/restart, snapshots create/list/rollback, backup/restore) and ISO downloader alongside existing community scripts.
+- Tools: added Node/npm version check; essentials bundle now installs mariadb-client-core; MariaDB server installer (host install, systemd-based, not containerized).
 - System update: added APT proxy toggle (set/remove).
+- CLI: expanded `--run` support (status_report_json, apt_health, update_health, clamav_scan) and updated in-script help/usage to list them.
 - Network: added “Top talkers (TCP)” view (ss/netstat).
 - Containers: added prune helper, image scan helper (docker scan/trivy), and a simple compose project manager.
-- Known behavior: MariaDB installer expects systemd; enable/start may fail in containerized environments. Docker compose manager requires the compose plugin.
+- UI: main menu grouped layout with refreshed header/footer styling and German labels updated.
+- Versioning note: v1.2.0 was skipped during development; we moved directly to v1.2.1-dev.
+
+### Bug fixes 🐛
+- Hemmelig installer now correctly checks for the Docker Compose plugin before deployment.
+
+### Known behaviors ⚠️
+- Same as v1.1.1; MariaDB server install expects systemd (host) and may fail in containers. Compose manager still requires the Docker Compose plugin.
 
 ## v1.1.1
 - Header: fixed RAM detection fallback so systems without awk/PROC parsing quirks no longer show “unknown GiB”.

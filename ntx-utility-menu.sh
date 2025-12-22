@@ -452,6 +452,39 @@ delete_bond() {
     run_cmd "Delete bond $BOND" ip link delete "$BOND" type bond
 }
 
+create_vlan() {
+    read -r -p "Base interface (e.g., eth0): " IFACE
+    read -r -p "VLAN ID: " VID
+    [[ -z "$IFACE" || -z "$VID" ]] && { echo "Interface or VLAN ID missing."; return 1; }
+    run_cmd "Create VLAN ${IFACE}.${VID}" ip link add link "$IFACE" name "${IFACE}.${VID}" type vlan id "$VID"
+    run_cmd "Bring up ${IFACE}.${VID}" ip link set up dev "${IFACE}.${VID}"
+}
+
+delete_vlan() {
+    read -r -p "VLAN interface to delete (e.g., eth0.10): " VIF
+    [[ -z "$VIF" ]] && { echo "No interface provided."; return 1; }
+    run_cmd "Delete VLAN $VIF" ip link delete "$VIF"
+}
+
+create_bond() {
+    read -r -p "Bond name (e.g., bond0): " BOND
+    read -r -p "Mode (default 802.3ad): " MODE
+    MODE=${MODE:-802.3ad}
+    read -r -p "Slave interfaces (space separated, e.g., eth0 eth1): " SLAVES
+    [[ -z "$BOND" || -z "$SLAVES" ]] && { echo "Bond name or slaves missing."; return 1; }
+    run_cmd "Create bond $BOND" ip link add "$BOND" type bond mode "$MODE"
+    for s in $SLAVES; do
+        run_cmd "Set $s master $BOND" ip link set "$s" master "$BOND"
+    done
+    run_cmd "Bring up $BOND" ip link set "$BOND" up
+}
+
+delete_bond() {
+    read -r -p "Bond interface to delete (e.g., bond0): " BOND
+    [[ -z "$BOND" ]] && { echo "No bond provided."; return 1; }
+    run_cmd "Delete bond $BOND" ip link delete "$BOND" type bond
+}
+
 update_cadence_warn() {
     local mode="${1:-prompt}"
     if [[ -f /var/lib/apt/periodic/update-success-stamp ]]; then
@@ -612,6 +645,26 @@ ssh_hardening_audit() {
         echo "PubkeyAuthentication enabled (recommended)."
     else
         echo "Recommendation: enable PubkeyAuthentication yes"
+    fi
+}
+
+generate_ssh_key() {
+    local key="${HOME}/.ssh/id_ed25519"
+    read -r -p "Key path [${key}]: " KEY_PATH
+    KEY_PATH=${KEY_PATH:-$key}
+    read -r -p "Key comment [ntx-key]: " COMM
+    COMM=${COMM:-ntx-key}
+    if [[ -f "$KEY_PATH" ]]; then
+        echo "Key already exists at $KEY_PATH"
+    else
+        mkdir -p "$(dirname "$KEY_PATH")"
+        ssh-keygen -t ed25519 -f "$KEY_PATH" -C "$COMM" -N ""
+    fi
+    echo "Public key:"
+    cat "${KEY_PATH}.pub"
+    read -r -p "Copy to remote (user@host)? Leave blank to skip: " REM
+    if [[ -n "$REM" ]]; then
+        ssh-copy-id -i "${KEY_PATH}.pub" "$REM" || echo "ssh-copy-id failed."
     fi
 }
 
@@ -1075,6 +1128,43 @@ show_connections() {
 show_top_talkers() {
     echo "Top TCP talkers:"
     netstat_top_talkers
+}
+
+smart_health_batch() {
+    ensure_cmd smartctl smartmontools
+    lsblk -ndo NAME,TYPE | awk '$2=="disk"{print "/dev/"$1}' | while read -r disk; do
+        [[ -z "$disk" ]] && continue
+        echo "== $disk =="
+        smartctl -H "$disk" 2>/dev/null || smartctl -H -d scsi "$disk" 2>/dev/null || echo "SMART check failed for $disk"
+    done
+}
+
+service_uptime_summary() {
+    echo "Boot time: $(uptime -s 2>/dev/null || who -b)"
+    systemctl list-units --type=service --state=running --no-pager --plain 2>/dev/null | head -n 20
+}
+
+hardware_overview() {
+    echo "CPU model:"
+    lscpu 2>/dev/null | grep -E 'Model name|CPU\\(s\\)' || cat /proc/cpuinfo 2>/dev/null | grep -m1 'model name'
+    echo
+    echo "Memory total:"
+    free -h 2>/dev/null || cat /proc/meminfo 2>/dev/null | head -n 2
+    echo
+    echo "Disks:"
+    lsblk -ndo NAME,SIZE,MODEL,TYPE 2>/dev/null | awk '$4=="disk"{print $0}' || lsblk
+}
+
+auditd_minimal_rules() {
+    run_cmd "Install auditd" apt-get install -y auditd
+    cat <<'EOF' > /etc/audit/rules.d/99-minimal.rules
+-w /etc/passwd -p wa -k passwd_changes
+-w /etc/shadow -p wa -k shadow_changes
+-w /etc/group -p wa -k group_changes
+-w /etc/sudoers -p wa -k sudoers_changes
+-w /var/log/lastlog -p wa -k logins
+EOF
+    run_cmd "Reload audit rules" augenrules --load
 }
 
 ping_common() {
@@ -1590,7 +1680,7 @@ fail2ban_list_bans() {
         return 1
     fi
     fail2ban-client status || true
-    fail2ban-client status | awk '/Jail list/{$1=$2=\"\"; gsub(/ /,\"\",$0); gsub(/,/,\" \",$0); print $0}' | while read -r jail; do
+    fail2ban-client status | awk '/Jail list/{$1=$2=""; gsub(/ /,"",$0); gsub(/,/," ",$0); print $0}' | while read -r jail; do
         [[ -z "$jail" ]] && continue
         echo "Banned IPs for $jail:"
         fail2ban-client status "$jail" | awk '/Banned IP list/{print $NF}'
@@ -1609,6 +1699,27 @@ fail2ban_unban_ip() {
         return 1
     fi
     fail2ban-client set "$JAIL" unbanip "$IP"
+}
+
+fail2ban_tune_basics() {
+    if ! command -v fail2ban-client >/dev/null 2>&1; then
+        echo "Fail2ban not installed."
+        return 1
+    fi
+    local jail="/etc/fail2ban/jail.local"
+    backup_file "$jail"
+    read -r -p "maxretry [5]: " MAXR
+    read -r -p "findtime (seconds) [600]: " FND
+    read -r -p "bantime (seconds) [600]: " BAN
+    MAXR=${MAXR:-5}; FND=${FND:-600}; BAN=${BAN:-600}
+    cat > "$jail" <<EOF
+[DEFAULT]
+maxretry = $MAXR
+findtime = $FND
+bantime  = $BAN
+EOF
+    echo "Updated $jail with maxretry=$MAXR, findtime=$FND, bantime=$BAN"
+    fail2ban-client reload || true
 }
 
 wireguard_validate_config() {
@@ -1730,6 +1841,37 @@ log_integrity_report() {
     fi
 }
 
+kernel_list_installed() {
+    echo "Running kernel: $(uname -r)"
+    echo "Installed kernel packages (linux-image):"
+    dpkg -l 'linux-image-*' 2>/dev/null | awk '/^ii/{print $2,$3}' | column -t
+}
+
+kernel_purge_package() {
+    kernel_list_installed
+    read -r -p "Package name to purge (exact, e.g., linux-image-5.15.0-88-generic): " KP
+    [[ -z "$KP" ]] && { echo "No package provided."; return 1; }
+    if [[ "$KP" == *"$(uname -r)"* ]]; then
+        echo "Refusing to purge the running kernel."
+        return 1
+    fi
+    run_cmd "Purge kernel package $KP" apt-get purge -y "$KP"
+}
+
+log_cleanup_preset() {
+    echo "Journal vacuum (7d) and largest /var/log files (top 10):"
+    run_cmd "journalctl vacuum-time=7d" journalctl --vacuum-time=7d
+    find /var/log -type f -printf '%s %p\n' 2>/dev/null | sort -nr | head -n 10 | awk '{printf "%7.1f MiB  %s\n", $1/1024/1024, $2}'
+}
+
+kernel_manage_menu() {
+    kernel_list_installed
+    read -r -p "Purge a kernel package? (leave blank to skip): " DO_PURGE
+    if [[ -n "$DO_PURGE" ]]; then
+        kernel_purge_package
+    fi
+}
+
 # --- Monitoring ---
 
 install_node_exporter() {
@@ -1789,6 +1931,14 @@ os_release_check() {
 visit_project_github() {
     msgbox "NTX Linux Utility Menu - GitHub"
     echo "https://github.com/ntx007/ntx-linux-utility-menu"
+}
+
+qm_list_vms() {
+    if ! command -v qm >/dev/null 2>&1; then
+        echo "qm not found (Proxmox tools missing)."
+        return 1
+    fi
+    qm list
 }
 
 general_information() {
@@ -1992,6 +2142,114 @@ proxmox_download_templates() {
     echo "Running community 'all-templates' script to download Proxmox templates..."
     run_cmd "Execute all-templates" bash -c "curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/tools/pve/all-templates.sh | bash"
     echo "Template script execution finished. Review output above for details."
+}
+
+qm_start_vm() {
+    if ! command -v qm >/dev/null 2>&1; then
+        echo "qm not found."
+        return 1
+    fi
+    read -r -p "VMID to start: " VMID
+    [[ -z "$VMID" ]] && { echo "No VMID provided."; return 1; }
+    run_cmd "Start VM $VMID" qm start "$VMID"
+}
+
+qm_stop_vm() {
+    if ! command -v qm >/dev/null 2>&1; then
+        echo "qm not found."
+        return 1
+    fi
+    read -r -p "VMID to stop: " VMID
+    [[ -z "$VMID" ]] && { echo "No VMID provided."; return 1; }
+    run_cmd "Stop VM $VMID" qm stop "$VMID"
+}
+
+qm_restart_vm() {
+    if ! command -v qm >/dev/null 2>&1; then
+        echo "qm not found."
+        return 1
+    fi
+    read -r -p "VMID to restart: " VMID
+    [[ -z "$VMID" ]] && { echo "No VMID provided."; return 1; }
+    run_cmd "Restart VM $VMID" qm reset "$VMID"
+}
+
+qm_snapshot_create() {
+    if ! command -v qm >/dev/null 2>&1; then
+        echo "qm not found."
+        return 1
+    fi
+    read -r -p "VMID to snapshot: " VMID
+    [[ -z "$VMID" ]] && { echo "No VMID provided."; return 1; }
+    local SNAP="snap-$(date +%Y%m%d-%H%M%S)"
+    read -r -p "Snapshot name [${SNAP}]: " USER_SNAP
+    SNAP=${USER_SNAP:-$SNAP}
+    run_cmd "Create VM snapshot $SNAP on $VMID" qm snapshot "$VMID" "$SNAP"
+}
+
+qm_snapshot_list() {
+    if ! command -v qm >/dev/null 2>&1; then
+        echo "qm not found."
+        return 1
+    fi
+    read -r -p "VMID to list snapshots: " VMID
+    [[ -z "$VMID" ]] && { echo "No VMID provided."; return 1; }
+    qm listsnapshot "$VMID"
+}
+
+qm_snapshot_rollback() {
+    if ! command -v qm >/dev/null 2>&1; then
+        echo "qm not found."
+        return 1
+    fi
+    read -r -p "VMID to rollback: " VMID
+    [[ -z "$VMID" ]] && { echo "No VMID provided."; return 1; }
+    read -r -p "Snapshot name to rollback to: " SNAP
+    [[ -z "$SNAP" ]] && { echo "No snapshot provided."; return 1; }
+    run_cmd "Rollback VM $VMID to snapshot $SNAP" qm rollback "$VMID" "$SNAP"
+}
+
+qm_backup_vm() {
+    if ! command -v vzdump >/dev/null 2>&1; then
+        echo "vzdump not found."
+        return 1
+    fi
+    read -r -p "VMID to back up: " VMID
+    [[ -z "$VMID" ]] && { echo "No VMID provided."; return 1; }
+    read -r -p "Backup directory [/var/lib/vz/dump]: " BDIR
+    BDIR=${BDIR:-/var/lib/vz/dump}
+    read -r -p "Mode (snapshot/stop) [snapshot]: " MODE
+    MODE=${MODE:-snapshot}
+    run_cmd "Backup VM $VMID to $BDIR (mode=$MODE)" vzdump "$VMID" --mode "$MODE" --dumpdir "$BDIR" --compress zstd
+}
+
+qm_restore_vm() {
+    if ! command -v qmrestore >/dev/null 2>&1 && ! command -v qm >/dev/null 2>&1; then
+        echo "qm/qmrestore not found."
+        return 1
+    fi
+    read -r -p "Backup file path (e.g., /var/lib/vz/dump/vzdump-qemu-100-*.vma.zst): " BFILE
+    [[ -z "$BFILE" ]] && { echo "No backup file provided."; return 1; }
+    read -r -p "Target VMID to restore into: " VMID
+    [[ -z "$VMID" ]] && { echo "No VMID provided."; return 1; }
+    read -r -p "Storage (optional, e.g., local-lvm) [leave blank to default]: " STOR
+    local cmd="qmrestore"
+    [[ ! -x "$(command -v qmrestore)" ]] && cmd="qm restore"
+    if [[ -n "$STOR" ]]; then
+        run_cmd "Restore $BFILE to VMID $VMID (storage $STOR)" $cmd "$BFILE" "$VMID" --storage "$STOR"
+    else
+        run_cmd "Restore $BFILE to VMID $VMID" $cmd "$BFILE" "$VMID"
+    fi
+}
+
+qm_download_iso() {
+    read -r -p "ISO URL: " ISOURL
+    [[ -z "$ISOURL" ]] && { echo "No URL provided."; return 1; }
+    read -r -p "Target directory [/var/lib/vz/template/iso]: " TDIR
+    TDIR=${TDIR:-/var/lib/vz/template/iso}
+    mkdir -p "$TDIR"
+    run_cmd "Download ISO to $TDIR" bash -c "cd \"$TDIR\" && wget -q --show-progress \"$ISOURL\""
+    echo "Downloaded to $TDIR"
 }
 
 # --- Maintenance / disks ---
@@ -2221,10 +2479,14 @@ Actions (non-interactive):
   update_all            Run apt-get update && upgrade
   maintenance_bundle    Update, cleanup, rotate log, export status report
   status_report         Export status report to file
+  status_report_json    Export status report to JSON
   status_dashboard      Print status dashboard
   ssh_audit             Run SSH hardening check
   docker_compose_health Show Docker Compose health (ls/ps)
   wireguard_qr          Render /etc/wireguard/wg0.conf as QR (requires qrencode)
+  apt_health            Show held/broken/security updates
+  update_health         Show reboot requirement + last update timestamp
+  clamav_scan           Install ClamAV and run a quick recursive scan
 EOF
 }
 
@@ -2363,6 +2625,11 @@ menu_network() {
  5) Häufige Ziele anpingen
  6) Traceroute zu Host
  7) Top-Talkers (TCP)
+ 8) VLAN anlegen
+ 9) VLAN löschen
+10) Bond anlegen
+11) Bond löschen
+12) SSH-Key erzeugen + optional kopieren
  0) Zurück
 EOF
         else
@@ -2376,6 +2643,11 @@ EOF
  5) Ping common endpoints
  6) Traceroute to host
  7) Top talkers (TCP)
+ 8) Create VLAN
+ 9) Delete VLAN
+10) Create bond
+11) Delete bond
+12) Generate SSH key (+ optional ssh-copy-id)
  0) Back
 EOF
         fi
@@ -2388,6 +2660,11 @@ EOF
             5) ping_common ;;
             6) trace_route ;;
             7) show_top_talkers ;;
+            8) create_vlan ;;
+            9) delete_vlan ;;
+            10) create_bond ;;
+            11) delete_bond ;;
+            12) generate_ssh_key ;;
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
@@ -2489,6 +2766,7 @@ menu_security() {
  5) CrowdSec / Netmaker / Tailscale Untermenü
  6) Anti-Malware (ClamAV / Rootkit)
  7) Config-Backup/Wiederherstellung
+ 8) Auditd Minimal-Profile anwenden
  0) Zurück
 EOF
         else
@@ -2501,6 +2779,7 @@ EOF
  5) CrowdSec / Netmaker / Tailscale submenu
  6) Anti-malware (ClamAV / Rootkit)
  7) Config backup/restore submenu
+ 8) Auditd minimal ruleset
  0) Back
 EOF
         fi
@@ -2513,6 +2792,7 @@ EOF
             5) menu_agents ;;
             6) menu_antimalware ;;
             7) menu_config_backup ;;
+            8) auditd_minimal_rules ;;
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
@@ -2570,6 +2850,7 @@ menu_fail2ban() {
  3) Gebannte IPs auflisten
  4) IP entbannen
  5) Letzte fehlgeschlagene Logins
+ 6) Basis-Parameter setzen (maxretry/findtime/bantime)
  0) Zurück
 EOF
         else
@@ -2580,6 +2861,7 @@ EOF
  3) Fail2ban: list banned IPs
  4) Fail2ban: unban IP
  5) Show recent failed logins
+ 6) Tune basics (maxretry/findtime/bantime)
  0) Back
 EOF
         fi
@@ -2590,6 +2872,7 @@ EOF
             3) fail2ban_list_bans ;;
             4) fail2ban_unban_ip ;;
             5) show_failed_logins ;;
+            6) fail2ban_tune_basics ;;
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
@@ -3191,7 +3474,7 @@ install_hemmelig() {
         echo "Docker not installed."
         return 1
     fi
-    if ! docker compose version >/devnull 2>&1; then
+    if ! docker compose version >/dev/null 2>&1; then
         echo "Docker Compose plugin not found. Install it first (Containers menu option 1)."
         return 1
     fi
@@ -3229,10 +3512,11 @@ menu_monitoring() {
  2) Top CPU/Memory Prozesse
  3) IO-Statistiken (iostat)
  4) SMART-Check (erste Platte)
- 5) Status-Dashboard (Dienste + IP)
+ 5) SMART-Check (alle Platten)
+ 6) Status-Dashboard (Dienste + IP)
 
- 6) Statusreport als Datei
- 7) Statusreport als JSON
+ 7) Statusreport als Datei
+ 8) Statusreport als JSON
  0) Zurück
 EOF
         else
@@ -3242,10 +3526,11 @@ EOF
  2) Show top CPU/mem processes
  3) Show IO stats (iostat)
  4) SMART health check (first disk)
- 5) Status dashboard (services + IP)
+ 5) SMART health check (all disks)
+ 6) Status dashboard (services + IP)
 
- 6) Export status report to file
- 7) Export status report to JSON
+ 7) Export status report to file
+ 8) Export status report to JSON
  0) Back
 EOF
         fi
@@ -3255,9 +3540,10 @@ EOF
             2) show_top_processes ;;
             3) show_iostat_summary ;;
             4) smart_health_check ;;
-            5) status_dashboard ;;
-            6) status_report_export ;;
-            7) status_report_json ;;
+            5) smart_health_batch ;;
+            6) status_dashboard ;;
+            7) status_report_export ;;
+            8) status_report_json ;;
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
@@ -3286,6 +3572,16 @@ menu_proxmox() {
 14) Proxmox Dienste / Cluster-Status
 15) PVE Post Install Script (community)
 16) PVE All Templates Script (community)
+17) VMs auflisten (qm list)
+18) VM starten (qm start)
+19) VM stoppen (qm stop)
+20) VM neu starten (qm reset)
+21) VM Snapshot erstellen
+22) VM Snapshots anzeigen
+23) VM Snapshot zurückrollen
+24) VM Backup (vzdump)
+25) VM Wiederherstellen (qmrestore)
+26) ISO herunterladen (Templates-Verzeichnis)
  0) Zurück
 EOF
         else
@@ -3307,6 +3603,16 @@ EOF
 14) Proxmox services / cluster status
 15) PVE Post Install Script (community)
 16) PVE All Templates Script (community)
+17) List VMs (qm list)
+18) Start VM (qm start)
+19) Stop VM (qm stop)
+20) Restart VM (qm reset)
+21) Create VM snapshot
+22) List VM snapshots
+23) Rollback VM snapshot
+24) Backup VM (vzdump)
+25) Restore VM (qmrestore)
+26) Download ISO (template dir)
  0) Back
 EOF
         fi
@@ -3328,6 +3634,16 @@ EOF
             14) proxmox_health ;;
             15) proxmox_post_install ;;
             16) proxmox_download_templates ;;
+            17) qm_list_vms ;;
+            18) qm_start_vm ;;
+            19) qm_stop_vm ;;
+            20) qm_restart_vm ;;
+            21) qm_snapshot_create ;;
+            22) qm_snapshot_list ;;
+            23) qm_snapshot_rollback ;;
+            24) qm_backup_vm ;;
+            25) qm_restore_vm ;;
+            26) qm_download_iso ;;
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
@@ -3346,6 +3662,8 @@ menu_sysinfo() {
  4) VM / Virtualisierungscheck
  5) Projekt-GitHub öffnen
  6) Grafikkarten anzeigen (lshw display)
+ 7) Dienste-Uptime-Übersicht
+ 8) Hardware-Überblick
  0) Zurück
 EOF
         else
@@ -3357,6 +3675,8 @@ EOF
  4) VM / virtualization check
  5) Visit project GitHub
  6) Show video adapters (lshw display)
+ 7) Service uptime summary
+ 8) Hardware overview
  0) Back
 EOF
         fi
@@ -3368,6 +3688,8 @@ EOF
             4) vm_check ;;
             5) visit_project_github ;;
             6) check_display ;;
+            7) service_uptime_summary ;;
+            8) hardware_overview ;;
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
@@ -3385,6 +3707,9 @@ menu_maintenance() {
  3) Größte /var Verzeichnisse
  4) Wartungspaket ausführen (Update + Cleanup + Logrotate + Statusreport)
  5) Log-Integrität (Größe + SHA256)
+ 6) Log-Cleanup (Journal 7d + größte /var/log)
+ 7) Kernel-Liste / optional Paket entfernen
+ 8) /etc Backup erstellen
  0) Zurück
 EOF
         else
@@ -3395,6 +3720,9 @@ EOF
  3) Show biggest /var directories
  4) Run maintenance bundle (update + cleanup + log rotate + status report)
  5) Log integrity (size + SHA256)
+ 6) Log cleanup preset (journal 7d + top /var/log files)
+ 7) Kernel list / optional purge package
+ 8) Create /etc backup
  0) Back
 EOF
         fi
@@ -3405,6 +3733,9 @@ EOF
             3) show_big_var_dirs ;;
             4) maintenance_bundle ;;
             5) log_integrity_report ;;
+            6) log_cleanup_preset ;;
+            7) kernel_manage_menu ;;
+            8) backup_etc_bundle ;;
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
