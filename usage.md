@@ -34,8 +34,8 @@ Use `--help` for the supported list.
 - Language toggle: `d` switches between English and German labels.
 
 ## Menu at a glance
-- Core: updates (incl. unattended), do-release-upgrade, apt source hygiene, APT/update health, self-update; DNS presets/backups; network views; Speedtest/YABS; security submenus (firewall, Fail2ban, SSH, WireGuard, agents, anti-malware, config backup).
-- Operations: tools/essentials/nvm, containers (Docker/Compose, hardening checks, app installers), monitoring (status dashboard, reports, node exporter), system info, maintenance (cleanup/bundle/log integrity), Proxmox helpers, users/time, system control.
+- Core: updates (incl. unattended), do-release-upgrade, apt source hygiene + proxy toggle, APT/update health, self-update; DNS presets/backups + custom nameserver (append/overwrite); network views (incl. top talkers); Speedtest/YABS; security submenus (firewall, Fail2ban, SSH, WireGuard, agents, anti-malware, config backup).
+- Operations: tools/essentials/nvm, MariaDB server (host install), Node/npm version check, containers (Docker/Compose, hardening checks, prune/scan/compose manager, app installers), monitoring (status dashboard, reports, node exporter), system info, maintenance (cleanup/bundle/log integrity), Proxmox helpers (start/stop/restart, storage, snapshots, backup/restore, resources, services/cluster, community post-install/templates scripts), users/time, system control.
 - Shortcuts: `h` help, `s` dashboard, `l` logs, `c` config/env, `u` self-update, `d` language, `i` install to PATH, `q` quit.
 
 ## Known behaviors & caveats

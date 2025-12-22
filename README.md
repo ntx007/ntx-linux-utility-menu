@@ -2,7 +2,7 @@
 
 A portable, menu-driven Bash utility for common Linux admin tasks. Built for Debian/Ubuntu (and derivatives), it centralizes updates, diagnostics, networking tools, security hardening, and maintenance in a single interactive script.
 
-- Current version: **v1.1.1**.
+- Current version: **v1.2.1-dev**.
 - Self-update URL: `https://raw.githubusercontent.com/ntx007/ntx-linux-utility-menu/main/ntx-utility-menu.sh` (GitHub main). If `realpath`/`readlink -f` are unavailable and you launch via `$PATH`, run the script with its full path (e.g., `/usr/local/bin/ntx-utility-menu`) so the updater replaces the installed file instead of writing into the current directory.
 - UI: grouped main menu (Core / Operations / Shortcuts) with header info (host, threads, RAM, IP) and update notice; language toggle `d` (en/de).
 
@@ -103,22 +103,22 @@ sudo ./ntx-utility-menu.sh --run wireguard_qr
 
 Run `./ntx-utility-menu.sh --help` for the full list.
 
-## Menu map (v1.1.1)
+## Menu map (v1.2.1-dev)
 
 - **Core**
   - System update: upgrade flows, unattended-upgrades, apt source list/remove, APT health/update health, version-aware self-update (release/dev/rollback)
-  - DNS: backups/edit, Netcup presets (46.38.225.230 + 46.38.252.230 + 1.1.1.1), Cloudflare/Google IPv4+IPv6, restore last backup
-  - Network/IP: public IP (fallback), interfaces, routes, connections, ping common endpoints, traceroute
+  - DNS: backups/edit, Netcup presets (46.38.225.230 + 46.38.252.230 + 1.1.1.1), Cloudflare/Google IPv4+IPv6, restore last backup, add custom nameserver (append or overwrite)
+  - Network/IP: public IP (fallback), interfaces, routes, connections, ping common endpoints, traceroute, top talkers (TCP)
   - Speedtest/benchmarks: Speedtest install/update/run, repo/key removal, YABS + presets
   - Security/remote: firewall, Fail2ban, SSH/access, WireGuard, agents (CrowdSec/Netmaker/Tailscale), anti-malware, config backup/restore
 
 - **Operations**
-  - Tools/env: essentials bundle (sudo, nano, curl, net-tools, iproute2, unzip, python3-pip, gcc/python3-dev, psutil via pip, gdown, dos2unix, glances, tmux, zsh, mc, npm), ibramenu, QEMU guest agent, nvm installer
-  - Containers: Docker + Compose plugin, status/info, running/all containers, Compose health, hardening checks (privileged/root/host network/sensitive mounts), installers for Portainer, Nginx Proxy Manager, Pi-hole, Pi-hole+Unbound, Nextcloud AIO, Tactical RMM, Hemmelig.app
+  - Tools/env: essentials bundle (sudo, nano, curl, net-tools, iproute2, unzip, python3-pip, gcc/python3-dev, psutil via pip, gdown, dos2unix, glances, tmux, zsh, mc, npm), ibramenu, QEMU guest agent, nvm installer, MariaDB server (host install), Node/npm version check
+  - Containers: Docker + Compose plugin, status/info, running/all containers, Compose health, hardening checks (privileged/root/host network/sensitive mounts), prune/scan helpers, compose project manager, installers for Portainer, Nginx Proxy Manager, Pi-hole, Pi-hole+Unbound, Nextcloud AIO, Tactical RMM, Hemmelig.app
   - Monitoring: node exporter, top CPU/mem, iostat, SMART, status dashboard, export report (text/JSON)
   - System info: `/etc/os-release`, neofetch, memory info, VM check, display adapters, GitHub link
   - Maintenance/disks: cleanup, disks, largest `/var`, maintenance bundle (update + cleanup + log rotate + status report), log integrity
-  - Proxmox: list LXC, `pct enter <vmid>`, Proxmox SSH config updater (PermitRootLogin yes)
+  - Proxmox: list LXC, enter shell, start/stop/restart, storage status, snapshots (create/list/rollback), backup/restore (vzdump/pct restore), resource tuning, services/cluster status, community post-install and templates scripts, Proxmox SSH config updater (PermitRootLogin yes)
   - Users/time: create sudo user, time sync info, chrony install
   - System control: reboot, power down (SAFE_MODE-aware)
 

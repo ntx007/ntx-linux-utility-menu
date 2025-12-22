@@ -1,5 +1,22 @@
 # Changelog
 
+## Unreleased (v1.2.1-dev)
+- TBD
+- Tools: added Node/npm version check; essentials bundle now installs mariadb-client-core.
+- Tools: MariaDB server installer added (apt install mariadb-server, enable/start, guidance to run mysql_secure_installation).
+  Note: installs MariaDB on the host (not containerized).
+- Proxmox helpers: entering a container now lists VMIDs first, then prompts for the target VMID.
+- DNS: custom nameserver option now prompts to append or overwrite `/etc/resolv.conf`.
+- Proxmox helpers expanded with start/stop/restart, storage view, snapshots (create/list/rollback), backup/restore (vzdump/pct restore), resource tuning, and services/cluster status.
+- Main menu layout cleaned up for better readability (two-column grouping for core/operations/shortcuts).
+- Header/footer styling: unified banner/footer around the menu for a cleaner UI.
+- Proxmox helpers: added community PVE Post Install script launcher.
+- Proxmox helpers: added community PVE All Templates downloader.
+- System update: added APT proxy toggle (set/remove).
+- Network: added “Top talkers (TCP)” view (ss/netstat).
+- Containers: added prune helper, image scan helper (docker scan/trivy), and a simple compose project manager.
+- Known behavior: MariaDB installer expects systemd; enable/start may fail in containerized environments. Docker compose manager requires the compose plugin.
+
 ## v1.1.1
 - Header: fixed RAM detection fallback so systems without awk/PROC parsing quirks no longer show “unknown GiB”.
 - Update check: only surfaces a notice when the remote tag is newer than the current version (prevents downgrades being shown as updates).

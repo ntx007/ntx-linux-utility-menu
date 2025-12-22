@@ -2,7 +2,7 @@
 
 ###############################################################################
 # NTX Command Center - Simple server helper menu
-# Version: v1.1.1
+# Version: v1.2.1-dev
 ###############################################################################
 
 LOG_FILE="/var/log/ntx-menu.log"
@@ -12,7 +12,7 @@ MAX_LOG_SIZE=$((1024 * 1024)) # 1 MiB
 LOG_HISTORY=${LOG_HISTORY:-3}
 DRY_RUN=${DRY_RUN:-false}
 SAFE_MODE=${SAFE_MODE:-false}
-VERSION="v1.1.1"
+VERSION="v1.2.1-dev"
 UPDATE_NOTICE=""
 HEADER_CPU=""
 HEADER_RAM=""
@@ -66,6 +66,23 @@ msgbox() {
 log_line() {
     local message="$1"
     echo "$(date '+%Y-%m-%d %H:%M:%S') | $message" | tee -a "$LOG_FILE"
+}
+
+render_header() {
+    local title="$1"
+    local bar="================================================================"
+    echo "$bar"
+    echo " $title"
+    echo "$bar"
+    echo " Host: ${HEADER_HOST:-unknown} | Threads: ${HEADER_CPU:-?} | RAM: ${HEADER_RAM:-?} GiB | IP: ${HEADER_IP:-unknown}"
+    echo " Repo: https://github.com/ntx007/ntx-linux-utility-menu"
+    [[ -n "$UPDATE_NOTICE" ]] && echo " Notice: $UPDATE_NOTICE"
+    echo "$bar"
+}
+
+render_footer() {
+    local bar="================================================================"
+    echo "$bar"
 }
 
 t() {
@@ -392,6 +409,49 @@ list_private_ips() {
     fi
 }
 
+netstat_top_talkers() {
+    if command -v ss >/dev/null 2>&1; then
+        ss -ntp | awk 'NR>1 {split($5,a,":"); host=a[1]; cnt[host]++} END {for(h in cnt) printf "%-25s %d\n", h, cnt[h]}' | sort -k2 -nr | head
+    elif command -v netstat >/dev/null 2>&1; then
+        netstat -ntp 2>/dev/null | awk 'NR>2 {split($5,a,":"); host=a[1]; cnt[host]++} END {for(h in cnt) printf "%-25s %d\n", h, cnt[h]}' | sort -k2 -nr | head
+    else
+        echo "Neither ss nor netstat available."
+    fi
+}
+
+create_vlan() {
+    read -r -p "Base interface (e.g., eth0): " IFACE
+    read -r -p "VLAN ID: " VID
+    [[ -z "$IFACE" || -z "$VID" ]] && { echo "Interface or VLAN ID missing."; return 1; }
+    run_cmd "Create VLAN ${IFACE}.${VID}" ip link add link "$IFACE" name "${IFACE}.${VID}" type vlan id "$VID"
+    run_cmd "Bring up ${IFACE}.${VID}" ip link set up dev "${IFACE}.${VID}"
+}
+
+delete_vlan() {
+    read -r -p "VLAN interface to delete (e.g., eth0.10): " VIF
+    [[ -z "$VIF" ]] && { echo "No interface provided."; return 1; }
+    run_cmd "Delete VLAN $VIF" ip link delete "$VIF"
+}
+
+create_bond() {
+    read -r -p "Bond name (e.g., bond0): " BOND
+    read -r -p "Mode (default 802.3ad): " MODE
+    MODE=${MODE:-802.3ad}
+    read -r -p "Slave interfaces (space separated, e.g., eth0 eth1): " SLAVES
+    [[ -z "$BOND" || -z "$SLAVES" ]] && { echo "Bond name or slaves missing."; return 1; }
+    run_cmd "Create bond $BOND" ip link add "$BOND" type bond mode "$MODE"
+    for s in $SLAVES; do
+        run_cmd "Set $s master $BOND" ip link set "$s" master "$BOND"
+    done
+    run_cmd "Bring up $BOND" ip link set "$BOND" up
+}
+
+delete_bond() {
+    read -r -p "Bond interface to delete (e.g., bond0): " BOND
+    [[ -z "$BOND" ]] && { echo "No bond provided."; return 1; }
+    run_cmd "Delete bond $BOND" ip link delete "$BOND" type bond
+}
+
 update_cadence_warn() {
     local mode="${1:-prompt}"
     if [[ -f /var/lib/apt/periodic/update-success-stamp ]]; then
@@ -621,6 +681,94 @@ docker_info_short() {
     docker info --format 'Server Version: {{.ServerVersion}}\nStorage Driver: {{.Driver}}\nCgroup Driver: {{.CgroupDriver}}'
 }
 
+docker_prune_safe() {
+    if ! command -v docker >/dev/null 2>&1; then
+        echo "Docker not installed."
+        return 1
+    fi
+    run_cmd "Docker prune unused resources" docker system prune -af --volumes
+}
+
+docker_scan_images() {
+    if ! command -v docker >/dev/null 2>&1; then
+        echo "Docker not installed."
+        return 1
+    fi
+    local scanner=""
+    if docker scan --help >/dev/null 2>&1; then
+        scanner="docker scan"
+    elif command -v trivy >/dev/null 2>&1; then
+        scanner="trivy image"
+    fi
+    if [[ -z "$scanner" ]]; then
+        echo "No scanner found (docker scan or trivy)."
+        return 1
+    fi
+    docker images --format '{{.Repository}}:{{.Tag}}' | while read -r img; do
+        [[ -z "$img" || "$img" == ":" ]] && continue
+        echo "Scanning $img ..."
+        $scanner "$img" || true
+    done
+}
+
+docker_compose_manage() {
+    if ! command -v docker >/dev/null 2>&1; then
+        echo "Docker not installed."
+        return 1
+    fi
+    if ! docker compose version >/dev/null 2>&1; then
+        echo "Docker Compose plugin not found."
+        return 1
+    fi
+    read -r -p "Path to compose project (directory with compose file): " CPATH
+    [[ -z "$CPATH" ]] && { echo "No path provided."; return 1; }
+    if [[ ! -f "$CPATH/docker-compose.yml" && ! -f "$CPATH/compose.yaml" && ! -f "$CPATH/compose.yml" ]]; then
+        echo "No compose file found in $CPATH"
+        return 1
+    fi
+    echo "Actions: 1) up -d  2) down  3) restart"
+    read -r -p "Select: " ACT
+    case "$ACT" in
+        1) (cd "$CPATH" && run_cmd "docker compose up -d ($CPATH)" docker compose up -d) ;;
+        2) (cd "$CPATH" && run_cmd "docker compose down ($CPATH)" docker compose down) ;;
+        3) (cd "$CPATH" && run_cmd "docker compose restart ($CPATH)" docker compose restart) ;;
+        *) echo "Invalid choice." ;;
+    esac
+}
+
+create_vlan() {
+    read -r -p "Base interface (e.g., eth0): " IFACE
+    read -r -p "VLAN ID: " VID
+    [[ -z "$IFACE" || -z "$VID" ]] && { echo "Interface or VLAN ID missing."; return 1; }
+    run_cmd "Create VLAN ${IFACE}.${VID}" ip link add link "$IFACE" name "${IFACE}.${VID}" type vlan id "$VID"
+    run_cmd "Bring up ${IFACE}.${VID}" ip link set up dev "${IFACE}.${VID}"
+}
+
+delete_vlan() {
+    read -r -p "VLAN interface to delete (e.g., eth0.10): " VIF
+    [[ -z "$VIF" ]] && { echo "No interface provided."; return 1; }
+    run_cmd "Delete VLAN $VIF" ip link delete "$VIF"
+}
+
+create_bond() {
+    read -r -p "Bond name (e.g., bond0): " BOND
+    read -r -p "Mode (default 802.3ad): " MODE
+    MODE=${MODE:-802.3ad}
+    read -r -p "Slave interfaces (space separated, e.g., eth0 eth1): " SLAVES
+    [[ -z "$BOND" || -z "$SLAVES" ]] && { echo "Bond name or slaves missing."; return 1; }
+    run_cmd "Create bond $BOND" ip link add "$BOND" type bond mode "$MODE"
+    for s in $SLAVES; do
+        run_cmd "Set $s master $BOND" ip link set "$s" master "$BOND"
+    done
+    run_cmd "Bring up $BOND" ip link set "$BOND" up
+}
+
+delete_bond() {
+    read -r -p "Bond interface to delete (e.g., bond0): " BOND
+    [[ -z "$BOND" ]] && { echo "No bond provided."; return 1; }
+    run_cmd "Delete bond $BOND" ip link delete "$BOND" type bond
+}
+
 wireguard_show_qr() {
     local cfg="${1:-/etc/wireguard/wg0.conf}"
     if [[ ! -f "$cfg" ]]; then
@@ -743,6 +891,27 @@ list_custom_sources() {
     ls -1 /etc/apt/sources.list.d/*.list 2>/dev/null || echo "None found."
 }
 
+toggle_apt_proxy() {
+    local proxy_file="/etc/apt/apt.conf.d/99proxy"
+    if [[ -f "$proxy_file" ]]; then
+        echo "APT proxy currently enabled:"
+        cat "$proxy_file"
+        read -p "Disable and remove proxy file? (y/N): " -n 1 -r
+        echo
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            run_cmd "Remove APT proxy config" rm -f "$proxy_file"
+        fi
+    else
+        read -p "Enter http(s) proxy (e.g., http://user:pass@host:port): " proxy
+        [[ -z "$proxy" ]] && { echo "No proxy provided."; return; }
+        cat <<EOF > "$proxy_file"
+Acquire::http::Proxy "$proxy";
+Acquire::https::Proxy "$proxy";
+EOF
+        echo "Proxy written to $proxy_file"
+    fi
+}
+
 remove_custom_source() {
     read -p "Enter path to .list file to remove: " SRC_FILE
     [[ -z "$SRC_FILE" ]] && { echo "No file provided."; return 1; }
@@ -843,6 +1012,31 @@ add_dns_cloudflare_google_ipv6_append() {
     echo -e "nameserver 2606:4700:4700::1111\nnameserver 2001:4860:4860::8888" | tee -a /etc/resolv.conf > /dev/null
 }
 
+add_custom_dns() {
+    backup_file /etc/resolv.conf
+    read -p "Enter nameserver IP (e.g., 9.9.9.9): " CUSTOM_NS
+    if [[ -z "$CUSTOM_NS" ]]; then
+        echo "No nameserver provided; nothing changed."
+        return 0
+    fi
+    echo "Choose mode:"
+    echo " 1) Append"
+    echo " 2) Overwrite (replace current resolv.conf with only this nameserver)"
+    read -p "Select: " MODE
+    case "$MODE" in
+        2)
+            cat <<EOF > /etc/resolv.conf
+nameserver $CUSTOM_NS
+EOF
+            echo "Overwrote /etc/resolv.conf with $CUSTOM_NS"
+            ;;
+        *)
+            echo "nameserver $CUSTOM_NS" | tee -a /etc/resolv.conf > /dev/null
+            echo "Appended nameserver $CUSTOM_NS to /etc/resolv.conf"
+            ;;
+    esac
+}
+
 restore_dns_backup() {
     restore_backup /etc/resolv.conf
 }
@@ -876,6 +1070,11 @@ show_connections() {
     else
         netstat -tupn
     fi
+}
+
+show_top_talkers() {
+    echo "Top TCP talkers:"
+    netstat_top_talkers
 }
 
 ping_common() {
@@ -1095,6 +1294,32 @@ install_nvm() {
     echo "nvm install script executed. Open a new shell or source ~/.nvm/nvm.sh to use nvm."
 }
 
+install_mariadb_server() {
+    # Based on https://mariadb.com/docs/server/mariadb-quickstart-guides/installing-mariadb-server-guide
+    if ! pidof systemd >/dev/null 2>&1; then
+        echo "Systemd not detected; MariaDB service enable/start may fail in this environment."
+    fi
+    run_cmd "apt update" apt update
+    run_cmd "Install MariaDB server" apt install -y mariadb-server
+    run_cmd "Enable and start MariaDB" systemctl enable --now mariadb
+    echo
+    echo "MariaDB installed (host install, not containerized). For post-install hardening, run: mysql_secure_installation"
+    echo "Default auth on Debian/Ubuntu uses unix_socket; log in as root with: sudo mariadb"
+}
+
+show_node_npm_versions() {
+    if command -v node >/dev/null 2>&1; then
+        echo "Node.js: $(node -v 2>/dev/null)"
+    else
+        echo "Node.js: not installed"
+    fi
+    if command -v npm >/dev/null 2>&1; then
+        echo "npm: $(npm -v 2>/dev/null)"
+    else
+        echo "npm: not installed"
+    fi
+}
+
 install_ntxmenu_path() {
     local url_base="https://raw.githubusercontent.com/ntx007/ntx-linux-utility-menu/main"
     local tmpdir
@@ -1308,6 +1533,15 @@ backup_config_bundle() {
     fi
     log_line "Config backup created: $dest"
     echo "Config backup saved to $dest"
+}
+
+backup_etc_bundle() {
+    local ts
+    ts=$(date '+%Y%m%d-%H%M%S')
+    local dest="$BACKUP_DIR/etc-backup-$ts.tar.gz"
+    tar -czf "$dest" /etc 2>/dev/null || true
+    log_line "Etc backup created: $dest"
+    echo "Etc backup saved to $dest"
 }
 
 restore_config_bundle() {
@@ -1592,9 +1826,172 @@ pct_enter_shell() {
         echo "pct not found (Proxmox tools missing)."
         return 1
     fi
-    read -p "Enter VMID to enter: " VMID
+    echo "Available containers:"
+    pct list || true
+    read -r -p "Enter VMID to enter: " VMID
     [[ -z "$VMID" ]] && { echo "No VMID provided."; return 1; }
     pct enter "$VMID"
+}
+
+pct_start_container() {
+    if ! command -v pct >/dev/null 2>&1; then
+        echo "pct not found (Proxmox tools missing)."
+        return 1
+    fi
+    read -r -p "Enter VMID to start: " VMID
+    [[ -z "$VMID" ]] && { echo "No VMID provided."; return 1; }
+    run_cmd "Start LXC $VMID" pct start "$VMID"
+}
+
+pct_stop_container() {
+    if ! command -v pct >/dev/null 2>&1; then
+        echo "pct not found (Proxmox tools missing)."
+        return 1
+    fi
+    read -r -p "Enter VMID to stop: " VMID
+    [[ -z "$VMID" ]] && { echo "No VMID provided."; return 1; }
+    run_cmd "Stop LXC $VMID" pct stop "$VMID"
+}
+
+pct_restart_container() {
+    if ! command -v pct >/dev/null 2>&1; then
+        echo "pct not found (Proxmox tools missing)."
+        return 1
+    fi
+    read -r -p "Enter VMID to restart: " VMID
+    [[ -z "$VMID" ]] && { echo "No VMID provided."; return 1; }
+    run_cmd "Restart LXC $VMID" pct restart "$VMID"
+}
+
+proxmox_list_storage() {
+    if command -v pvesm >/dev/null 2>&1; then
+        pvesm status
+    else
+        echo "pvesm not found (host may not be Proxmox)."
+    fi
+}
+
+proxmox_snapshot_create() {
+    if ! command -v pct >/dev/null 2>&1; then
+        echo "pct not found (Proxmox tools missing)."
+        return 1
+    fi
+    read -r -p "Enter VMID to snapshot: " VMID
+    [[ -z "$VMID" ]] && { echo "No VMID provided."; return 1; }
+    local SNAP
+    SNAP="snap-$(date +%Y%m%d-%H%M%S)"
+    read -r -p "Snapshot name [${SNAP}]: " USER_SNAP
+    SNAP=${USER_SNAP:-$SNAP}
+    run_cmd "Create snapshot $SNAP on $VMID" pct snapshot "$VMID" "$SNAP"
+}
+
+proxmox_snapshot_list() {
+    if ! command -v pct >/dev/null 2>&1; then
+        echo "pct not found (Proxmox tools missing)."
+        return 1
+    fi
+    read -r -p "Enter VMID to list snapshots: " VMID
+    [[ -z "$VMID" ]] && { echo "No VMID provided."; return 1; }
+    pct listsnapshot "$VMID"
+}
+
+proxmox_snapshot_rollback() {
+    if ! command -v pct >/dev/null 2>&1; then
+        echo "pct not found (Proxmox tools missing)."
+        return 1
+    fi
+    read -r -p "Enter VMID to rollback: " VMID
+    [[ -z "$VMID" ]] && { echo "No VMID provided."; return 1; }
+    read -r -p "Snapshot name to rollback to: " SNAP
+    [[ -z "$SNAP" ]] && { echo "No snapshot provided."; return 1; }
+    run_cmd "Rollback $VMID to snapshot $SNAP" pct rollback "$VMID" "$SNAP"
+}
+
+proxmox_backup_lxc() {
+    if ! command -v vzdump >/dev/null 2>&1; then
+        echo "vzdump not found (Proxmox tools missing)."
+        return 1
+    fi
+    read -r -p "Enter VMID to back up: " VMID
+    [[ -z "$VMID" ]] && { echo "No VMID provided."; return 1; }
+    read -r -p "Backup directory [/var/lib/vz/dump]: " BDIR
+    BDIR=${BDIR:-/var/lib/vz/dump}
+    read -r -p "Mode (snapshot/stop) [snapshot]: " MODE
+    MODE=${MODE:-snapshot}
+    run_cmd "Backup LXC $VMID to $BDIR (mode=$MODE)" vzdump "$VMID" --mode "$MODE" --dumpdir "$BDIR" --compress zstd
+}
+
+proxmox_restore_lxc() {
+    if ! command -v pct >/dev/null 2>&1; then
+        echo "pct not found (Proxmox tools missing)."
+        return 1
+    fi
+    read -r -p "Backup file path (e.g., /var/lib/vz/dump/vzdump-lxc-100-*.tar.zst): " BFILE
+    [[ -z "$BFILE" ]] && { echo "No backup file provided."; return 1; }
+    read -r -p "Target VMID to restore into: " VMID
+    [[ -z "$VMID" ]] && { echo "No VMID provided."; return 1; }
+    read -r -p "Storage (optional, e.g., local-lvm) [leave blank to default]: " STOR
+    if [[ -n "$STOR" ]]; then
+        run_cmd "Restore $BFILE to VMID $VMID (storage $STOR)" pct restore "$VMID" "$BFILE" --storage "$STOR"
+    else
+        run_cmd "Restore $BFILE to VMID $VMID" pct restore "$VMID" "$BFILE"
+    fi
+}
+
+proxmox_tune_resources() {
+    if ! command -v pct >/dev/null 2>&1; then
+        echo "pct not found (Proxmox tools missing)."
+        return 1
+    fi
+    read -r -p "Enter VMID to tune: " VMID
+    [[ -z "$VMID" ]] && { echo "No VMID provided."; return 1; }
+    read -r -p "CPU cores (leave blank to skip): " CORES
+    read -r -p "Memory MB (leave blank to skip): " MEM
+    local args=()
+    [[ -n "$CORES" ]] && args+=("--cores" "$CORES")
+    [[ -n "$MEM" ]] && args+=("--memory" "$MEM")
+    if [[ ${#args[@]} -eq 0 ]]; then
+        echo "No changes provided."
+        return 0
+    fi
+    run_cmd "Set resources for $VMID" pct set "$VMID" "${args[@]}"
+}
+
+proxmox_health() {
+    echo "[Proxmox services]"
+    systemctl status pveproxy --no-pager 2>/dev/null || echo "pveproxy status unavailable."
+    systemctl status pvedaemon --no-pager 2>/dev/null || echo "pvedaemon status unavailable."
+    systemctl status pvescheduler --no-pager 2>/dev/null || echo "pvescheduler status unavailable."
+    echo
+    if command -v pvesm >/dev/null 2>&1; then
+        echo "[Storage status]"
+        pvesm status
+    fi
+    if command -v pvecm >/dev/null 2>&1; then
+        echo
+        echo "[Cluster status]"
+        pvecm status
+    fi
+}
+
+proxmox_post_install() {
+    if ! command -v bash >/dev/null 2>&1; then
+        echo "bash not found; cannot run post-install script."
+        return 1
+    fi
+    echo "Running PVE Post Install script from community-scripts (https://community-scripts.github.io/ProxmoxVE)..."
+    run_cmd "Execute post-pve-install.sh" bash -c "curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/tools/pve/post-pve-install.sh | bash"
+    echo "Post-install script execution finished. Review output above for details."
+}
+
+proxmox_download_templates() {
+    if ! command -v bash >/dev/null 2>&1; then
+        echo "bash not found; cannot run template script."
+        return 1
+    fi
+    echo "Running community 'all-templates' script to download Proxmox templates..."
+    run_cmd "Execute all-templates" bash -c "curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/tools/pve/all-templates.sh | bash"
+    echo "Template script execution finished. Review output above for details."
 }
 
 # --- Maintenance / disks ---
@@ -1733,11 +2130,22 @@ status_dashboard() {
 
 main_menu() {
     if [[ "$LANGUAGE" == "de" ]]; then
-        t "main.title"
-        echo "Host: ${HEADER_HOST:-unknown} | Threads: ${HEADER_CPU:-?} | RAM: ${HEADER_RAM:-?} GiB | IP: ${HEADER_IP:-unknown}"
-        echo "Hilf uns besser zu werden: https://github.com/ntx007/ntx-linux-utility-menu"
-        [[ -n "$UPDATE_NOTICE" ]] && echo "Hinweis: $UPDATE_NOTICE"
-        t "main.opts"
+        render_header "NTX BEFEHLSZENTRALE ($VERSION)"
+        cat <<EOF
+[Kern]
+ 1) Systemupdate        2) DNS-Verwaltung      3) Netzwerk / IP
+ 4) Speedtest & Bench   5) Sicherheit / Remote
+
+[Betrieb]
+ 6) Tools & Umgebung    7) Container / Docker  8) Monitoring
+ 9) Systeminfo         10) Wartung / Disks    11) Benutzer & Zeit
+12) Proxmox-Helfer     13) Systemsteuerung
+
+[Schnellzugriff]
+h) Hilfe / Info       s) Status-Dashboard   l) Logs ansehen
+c) Konfig/Umgebung    u) Self-Update        d) Sprache (en/de)
+i) Installation       q) Beenden
+EOF
     else
         cat <<EOF
 =========================== NTX COMMAND CENTER ($VERSION) ===========================
@@ -1746,28 +2154,21 @@ Help us get better: https://github.com/ntx007/ntx-linux-utility-menu
 $( [[ -n "$UPDATE_NOTICE" ]] && echo "Notice: $UPDATE_NOTICE" )
 
 [Core]
- 1) System update
- 2) DNS management
- 3) Network / IP
- 4) Speedtest & benchmarks
- 5) Security / remote access
+ 1) System update       2) DNS management      3) Network / IP
+ 4) Speedtest & bench   5) Security / remote
 
 [Operations]
- 6) Tools & environment
- 7) Containers / Docker
- 8) Monitoring
- 9) System information
-10) Maintenance / disks
-11) Users & time
-12) Proxmox helpers
-13) System control
+ 6) Tools & environment 7) Containers / Docker 8) Monitoring
+ 9) System info        10) Maintenance / disks 11) Users & time
+12) Proxmox helpers    13) System control
 
 [Shortcuts]
-h) Help / About    s) Status dashboard    l) Tail logs
-c) Config/env      u) Self-update         d) Language (en/de)
-i) Install to PATH q) Quit
+h) Help / About     s) Status dashboard   l) Tail logs
+c) Config/env       u) Self-update        d) Language (en/de)
+i) Install to PATH  q) Quit
 ================================================================
 EOF
+        render_footer
     fi
 }
 
@@ -1846,6 +2247,7 @@ menu_update() {
 10) Benutzerdefinierte apt-Quelle entfernen (.list)
 11) APT-Gesundheit (gehalten/defekt/Security)
 12) Update-Status (Reboot + Zeitstempel)
+13) APT Proxy setzen/entfernen
  0) Zurück
 EOF
         else
@@ -1865,6 +2267,7 @@ EOF
 10) Remove custom apt source (.list)
 11) APT health check (held/broken/security)
 12) Update health (reboot + last update)
+13) APT proxy toggle (set/remove)
  0) Back
 EOF
         fi
@@ -1882,6 +2285,7 @@ EOF
             10) remove_custom_source ;;
             11) apt_health_check ;;
             12) update_health_check ;;
+            13) toggle_apt_proxy ;;
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
@@ -1923,6 +2327,7 @@ EOF
  8) Append IPv6: 2606:4700:4700::1111 + 2001:4860:4860::8888
 
  9) Restore DNS from latest backup
+10) Add custom nameserver (prompt)
  0) Back
 EOF
         fi
@@ -1937,6 +2342,7 @@ EOF
             7) set_dns_cloudflare_google_ipv6 ;;
             8) add_dns_cloudflare_google_ipv6_append ;;
             9) restore_dns_backup ;;
+            10) add_custom_dns ;;
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
@@ -1956,6 +2362,7 @@ menu_network() {
 
  5) Häufige Ziele anpingen
  6) Traceroute zu Host
+ 7) Top-Talkers (TCP)
  0) Zurück
 EOF
         else
@@ -1968,6 +2375,7 @@ EOF
 
  5) Ping common endpoints
  6) Traceroute to host
+ 7) Top talkers (TCP)
  0) Back
 EOF
         fi
@@ -1979,6 +2387,7 @@ EOF
             4) show_connections ;;
             5) ping_common ;;
             6) trace_route ;;
+            7) show_top_talkers ;;
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
@@ -2383,6 +2792,8 @@ menu_tools() {
  2) ibramenu installieren
  3) QEMU Guest Agent installieren
  4) nvm (Node Version Manager) installieren
+ 5) MariaDB Server installieren
+ 6) Node/npm Version anzeigen
  0) Zurück
 EOF
         else
@@ -2393,6 +2804,8 @@ EOF
  2) Install ibramenu
  3) Install QEMU guest agent
  4) Install nvm (Node Version Manager)
+ 5) Install MariaDB Server
+ 6) Show Node/npm versions
  0) Back
 EOF
         fi
@@ -2402,6 +2815,8 @@ EOF
             2) install_ibramenu ;;
             3) install_qemu_guest_agent ;;
             4) install_nvm ;;
+            5) install_mariadb_server ;;
+            6) show_node_npm_versions ;;
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
@@ -2431,13 +2846,17 @@ menu_containers() {
 13) Alle Container starten (compose up -d)
 14) Eigenen Docker-Befehl ausführen
 
-15) Portainer installieren
-16) Nginx Proxy Manager installieren
-17) Pi-hole installieren
-18) Pi-hole + Unbound installieren
-19) Nextcloud All-in-One installieren
-20) Tactical RMM installieren
-21) Hemmelig.app installieren
+15) Docker aufräumen (prune)
+16) Images scannen (docker scan/trivy)
+17) Compose-Projekt verwalten (up/down/restart)
+
+18) Portainer installieren
+19) Nginx Proxy Manager installieren
+20) Pi-hole installieren
+21) Pi-hole + Unbound installieren
+22) Nextcloud All-in-One installieren
+23) Tactical RMM installieren
+24) Hemmelig.app installieren
  0) Zurück
 EOF
         else
@@ -2460,13 +2879,17 @@ EOF
 13) Start all containers (compose up -d)
 14) Run custom docker command
 
-15) Install Portainer (CE)
-16) Install Nginx Proxy Manager
-17) Install Pi-hole
-18) Install Pi-hole + Unbound
-19) Install Nextcloud All-in-One
-20) Install Tactical RMM
-21) Install Hemmelig.app
+15) Docker prune (safe)
+16) Scan images (docker scan/trivy)
+17) Manage Docker Compose project (up/down/restart)
+
+18) Install Portainer (CE)
+19) Install Nginx Proxy Manager
+20) Install Pi-hole
+21) Install Pi-hole + Unbound
+22) Install Nextcloud All-in-One
+23) Install Tactical RMM
+24) Install Hemmelig.app
  0) Back
 EOF
         fi
@@ -2486,13 +2909,16 @@ EOF
             12) docker_stop_all ;;
             13) docker_start_all_compose ;;
             14) docker_run_custom ;;
-            15) install_portainer ;;
-            16) install_nginx_proxy_manager ;;
-            17) install_pihole_only ;;
-            18) install_pihole_unbound ;;
-            19) install_nextcloud_aio ;;
-            20) install_tactical_rmm ;;
-            21) install_hemmelig ;;
+            15) docker_prune_safe ;;
+            16) docker_scan_images ;;
+            17) docker_compose_manage ;;
+            18) install_portainer ;;
+            19) install_nginx_proxy_manager ;;
+            20) install_pihole_only ;;
+            21) install_pihole_unbound ;;
+            22) install_nextcloud_aio ;;
+            23) install_tactical_rmm ;;
+            24) install_hemmelig ;;
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
@@ -2847,6 +3273,19 @@ menu_proxmox() {
  1) Container auflisten (pct list)
  2) Container-Shell betreten (pct enter <vmid>)
  3) SSH-Konfig für Proxmox anpassen (PermitRootLogin yes)
+ 4) Container starten (pct start)
+ 5) Container stoppen (pct stop)
+ 6) Container neu starten (pct restart)
+ 7) Speicher anzeigen (pvesm status)
+ 8) LXC Snapshot erstellen
+ 9) LXC Snapshots anzeigen
+10) LXC Snapshot zurückrollen
+11) LXC Backup (vzdump)
+12) LXC Wiederherstellen (Backup)
+13) LXC Ressourcen anpassen (CPU/Memory)
+14) Proxmox Dienste / Cluster-Status
+15) PVE Post Install Script (community)
+16) PVE All Templates Script (community)
  0) Zurück
 EOF
         else
@@ -2855,6 +3294,19 @@ EOF
  1) List containers (pct list)
  2) Enter container shell (pct enter <vmid>)
  3) Update SSH config for Proxmox (PermitRootLogin yes)
+ 4) Start container (pct start)
+ 5) Stop container (pct stop)
+ 6) Restart container (pct restart)
+ 7) List storage (pvesm status)
+ 8) Create LXC snapshot
+ 9) List LXC snapshots
+10) Rollback LXC snapshot
+11) Backup LXC (vzdump)
+12) Restore LXC from backup
+13) Tune LXC resources (CPU/Memory)
+14) Proxmox services / cluster status
+15) PVE Post Install Script (community)
+16) PVE All Templates Script (community)
  0) Back
 EOF
         fi
@@ -2863,6 +3315,19 @@ EOF
             1) list_pct_containers ;;
             2) pct_enter_shell ;;
             3) change_ssh_proxmox ;;
+            4) pct_start_container ;;
+            5) pct_stop_container ;;
+            6) pct_restart_container ;;
+            7) proxmox_list_storage ;;
+            8) proxmox_snapshot_create ;;
+            9) proxmox_snapshot_list ;;
+            10) proxmox_snapshot_rollback ;;
+            11) proxmox_backup_lxc ;;
+            12) proxmox_restore_lxc ;;
+            13) proxmox_tune_resources ;;
+            14) proxmox_health ;;
+            15) proxmox_post_install ;;
+            16) proxmox_download_templates ;;
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
