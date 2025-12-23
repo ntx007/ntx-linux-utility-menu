@@ -3168,11 +3168,12 @@ EOF
 
 18) Install Portainer (CE)
 19) Install Nginx Proxy Manager
-20) Install Pi-hole
-21) Install Pi-hole + Unbound
-22) Install Nextcloud All-in-One
-23) Install Tactical RMM
-24) Install Hemmelig.app
+20) Install Traefik
+21) Install Pi-hole
+22) Install Pi-hole + Unbound
+23) Install Nextcloud All-in-One
+24) Install Tactical RMM
+25) Install Hemmelig.app
  0) Back
 EOF
         fi
@@ -3197,11 +3198,12 @@ EOF
             17) docker_compose_manage ;;
             18) install_portainer ;;
             19) install_nginx_proxy_manager ;;
-            20) install_pihole_only ;;
-            21) install_pihole_unbound ;;
-            22) install_nextcloud_aio ;;
-            23) install_tactical_rmm ;;
-            24) install_hemmelig ;;
+            20) install_traefik ;;
+            21) install_pihole_only ;;
+            22) install_pihole_unbound ;;
+            23) install_nextcloud_aio ;;
+            24) install_tactical_rmm ;;
+            25) install_hemmelig ;;
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
@@ -3300,6 +3302,96 @@ EOF
     echo "URL   : http://${ip:-<host>}:81"
     echo "User  : admin@example.com"
     echo "Pass  : changeme"
+}
+
+install_traefik() {
+    if ! command -v docker >/dev/null 2>&1; then
+        echo "Docker not installed."
+        return 1
+    fi
+    if ! docker compose version >/dev/null 2>&1; then
+        echo "Docker Compose plugin not found. Install it first (Containers menu option 1)."
+        return 1
+    fi
+    local base="/opt/appdata/traefik"
+    read -p "Docker network to use/create (default traefik_proxy): " dockernet
+    dockernet=${dockernet:-traefik_proxy}
+    read -p "ACME email for certificates (optional): " acme_email
+
+    run_cmd "Create app directory" mkdir -p "$base"
+    cat > "${base}/traefik.yml" <<EOF
+entryPoints:
+  web:
+    address: ":80"
+  websecure:
+    address: ":443"
+
+providers:
+  file:
+    filename: /etc/traefik/dynamic.yml
+  docker:
+    exposedByDefault: false
+
+certificatesResolvers:
+  letsencrypt:
+    acme:
+      email: ${acme_email}
+      storage: /etc/traefik/acme.json
+      httpChallenge:
+        entryPoint: web
+EOF
+    cat > "${base}/dynamic.yml" <<'EOF'
+http:
+  middlewares:
+    https-redirect:
+      redirectScheme:
+        scheme: https
+  routers:
+    api:
+      rule: Host(`traefik.local`)
+      service: api@internal
+      entryPoints: websecure
+      tls: {}
+EOF
+    touch "${base}/acme.json"
+    chmod 600 "${base}/acme.json"
+    cat > "${base}/docker-compose.yml" <<EOF
+services:
+  traefik:
+    image: traefik:latest
+    container_name: traefik
+    restart: unless-stopped
+    command:
+      - --providers.file.filename=/etc/traefik/traefik.yml
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --entrypoints.web.address=:80
+      - --entrypoints.websecure.address=:443
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik.yml:/etc/traefik/traefik.yml:ro
+      - ./dynamic.yml:/etc/traefik/dynamic.yml:ro
+      - ./acme.json:/etc/traefik/acme.json
+    networks:
+      - ${dockernet}
+
+networks:
+  ${dockernet}:
+    external: true
+EOF
+    if ! docker network inspect "$dockernet" >/dev/null 2>&1; then
+        run_cmd "Create Docker network ${dockernet}" docker network create "$dockernet"
+    fi
+    (cd "$base" && run_cmd "Deploy Traefik" docker compose up -d --force-recreate)
+    local ip
+    ip=$(hostname -I 2>/dev/null | awk '{print $1}')
+    echo
+    echo "Traefik deployed."
+    echo "Dashboard (insecure example): http://${ip:-<host>}/dashboard/ (enable via labels as needed)."
+    echo "Default router example uses host rule traefik.local in dynamic.yml; adjust to your domains and add certificates per your needs."
 }
 
 install_pihole_unbound() {
