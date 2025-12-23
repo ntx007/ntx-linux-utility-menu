@@ -70,18 +70,19 @@ log_line() {
 
 render_header() {
     local title="$1"
-    local bar="================================================================"
+    local bar="===============================================================================" 
     echo "$bar"
     echo " $title"
-    echo "$bar"
     echo " Host: ${HEADER_HOST:-unknown} | Threads: ${HEADER_CPU:-?} | RAM: ${HEADER_RAM:-?} GiB | IP: ${HEADER_IP:-unknown}"
     echo " Repo: https://github.com/ntx007/ntx-linux-utility-menu"
-    [[ -n "$UPDATE_NOTICE" ]] && echo " Notice: $UPDATE_NOTICE"
+    [[ -n "$UPDATE_NOTICE" ]] && echo " Update: $UPDATE_NOTICE"
     echo "$bar"
 }
 
 render_footer() {
-    local bar="================================================================"
+    local bar="===============================================================================" 
+    echo "$bar"
+    echo " Shortcuts: h=Help  s=Status  l=Logs  c=Config  u=Update  d=Lang  i=Install  q=Quit"
     echo "$bar"
 }
 
@@ -2431,17 +2432,14 @@ main_menu() {
 12) Proxmox-Helfer     13) Systemsteuerung
 
 [Schnellzugriff]
-h) Hilfe / Info       s) Status-Dashboard   l) Logs ansehen
-c) Konfig/Umgebung    u) Self-Update        d) Sprache (en/de)
-i) Installation       q) Beenden
+h) Hilfe / Info    s) Status-Dashboard    l) Logs ansehen
+c) Konfig/Umgebung u) Self-Update        d) Sprache (en/de)
+i) Installation    q) Beenden
 EOF
+        render_footer
     else
+        render_header "NTX COMMAND CENTER ($VERSION)"
         cat <<EOF
-=========================== NTX COMMAND CENTER ($VERSION) ===========================
-Host: ${HEADER_HOST:-unknown} | Threads: ${HEADER_CPU:-?} | RAM: ${HEADER_RAM:-?} GiB | IP: ${HEADER_IP:-unknown}
-Help us get better: https://github.com/ntx007/ntx-linux-utility-menu
-$( [[ -n "$UPDATE_NOTICE" ]] && echo "Notice: $UPDATE_NOTICE" )
-
 [Core]
  1) System update       2) DNS management      3) Network / IP
  4) Speedtest & bench   5) Security / remote
@@ -2450,12 +2448,6 @@ $( [[ -n "$UPDATE_NOTICE" ]] && echo "Notice: $UPDATE_NOTICE" )
  6) Tools & environment 7) Containers / Docker 8) Monitoring
  9) System info        10) Maintenance / disks 11) Users & time
 12) Proxmox helpers    13) System control
-
-[Shortcuts]
-h) Help / About     s) Status dashboard   l) Tail logs
-c) Config/env       u) Self-update        d) Language (en/de)
-i) Install to PATH  q) Quit
-================================================================
 EOF
         render_footer
     fi
