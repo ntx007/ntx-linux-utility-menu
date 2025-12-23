@@ -11,6 +11,7 @@
 - CLI: expanded `--run` support (status_report_json, apt_health, update_health, clamav_scan) and updated in-script help/usage to list them.
 - Network: added “Top talkers (TCP)” view (ss/netstat).
 - Containers: added prune helper, image scan helper (docker scan/trivy), a simple compose project manager, and Docker installers for Nginx Proxy Manager and Traefik.
+- SSH: submenu now includes start/stop/restart and enable/disable controls for the SSH service.
 - UI: main menu grouped layout with refreshed header/footer styling and German labels updated.
 - Versioning note: v1.2.0 was skipped during development; we moved directly to v1.2.1-dev.
 

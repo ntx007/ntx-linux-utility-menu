@@ -1933,6 +1933,28 @@ visit_project_github() {
     echo "https://github.com/ntx007/ntx-linux-utility-menu"
 }
 
+start_ssh_service() {
+    run_cmd "Start SSH service (${SSH_UNIT})" systemctl start "$SSH_UNIT"
+}
+
+stop_ssh_service() {
+    if ! skip_if_safe "stop SSH service"; then return 1; fi
+    run_cmd "Stop SSH service (${SSH_UNIT})" systemctl stop "$SSH_UNIT"
+}
+
+restart_ssh_service() {
+    run_cmd "Restart SSH service (${SSH_UNIT})" systemctl restart "$SSH_UNIT"
+}
+
+enable_ssh_service() {
+    run_cmd "Enable SSH service (${SSH_UNIT})" systemctl enable --now "$SSH_UNIT"
+}
+
+disable_ssh_service() {
+    if ! skip_if_safe "disable SSH service"; then return 1; fi
+    run_cmd "Disable SSH service (${SSH_UNIT})" systemctl disable --now "$SSH_UNIT"
+}
+
 qm_list_vms() {
     if ! command -v qm >/dev/null 2>&1; then
         echo "qm not found (Proxmox tools missing)."
@@ -2890,6 +2912,11 @@ menu_ssh_access() {
  3) SSH-Konfig für Proxmox (PermitRootLogin yes)
  4) OpenSSH-Server installieren
  5) Google Authenticator (PAM) installieren
+ 6) SSH-Dienst starten
+ 7) SSH-Dienst stoppen
+ 8) SSH-Dienst neu starten
+ 9) SSH-Dienst aktivieren (enable)
+10) SSH-Dienst deaktivieren (disable)
  0) Zurück
 EOF
         else
@@ -2900,6 +2927,11 @@ EOF
  3) Update SSH config for Proxmox (PermitRootLogin yes)
  4) Install OpenSSH server
  5) Install Google Authenticator (PAM)
+ 6) Start SSH service
+ 7) Stop SSH service
+ 8) Restart SSH service
+ 9) Enable SSH service
+10) Disable SSH service
  0) Back
 EOF
         fi
@@ -2910,6 +2942,11 @@ EOF
             3) change_ssh_proxmox ;;
             4) install_openssh ;;
             5) install_google_authenticator ;;
+            6) start_ssh_service ;;
+            7) stop_ssh_service ;;
+            8) restart_ssh_service ;;
+            9) enable_ssh_service ;;
+            10) disable_ssh_service ;;
             0) break ;;
             *) echo "Invalid choice." ;;
         esac

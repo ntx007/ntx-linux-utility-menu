@@ -38,7 +38,7 @@ Use `--help` for the supported list.
 - Language toggle: `d` switches between English and German labels.
 
 ## Menu at a glance 🗺️
-- Core: updates (incl. unattended), do-release-upgrade, apt source hygiene + proxy toggle, APT/update health, self-update; DNS presets/backups + custom nameserver (append/overwrite); network views (incl. top talkers), VLAN/bond helpers, SSH key helper; Speedtest/YABS; security submenus (firewall, Fail2ban, SSH, WireGuard, agents, anti-malware, config backup).
+- Core: updates (incl. unattended), do-release-upgrade, apt source hygiene + proxy toggle, APT/update health, self-update; DNS presets/backups + custom nameserver (append/overwrite); network views (incl. top talkers), VLAN/bond helpers, SSH key helper; Speedtest/YABS; security submenus (firewall, Fail2ban, SSH w/ service controls incl. enable/disable, WireGuard, agents, anti-malware, config backup).
 - Operations: tools/essentials/nvm, MariaDB server (host install, systemd), Node/npm version check, containers (Docker/Compose, hardening checks, prune/scan/compose manager, app installers incl. Nginx Proxy Manager and Traefik), monitoring (status dashboard, reports, node exporter, SMART single/all disks), system info (incl. service uptime and hardware overview), maintenance (cleanup/bundle/log cleanup/log integrity/kernel list/purge,/etc backup), Proxmox helpers (LXC list/enter/start/stop/restart/snapshots/backup/restore, storage/resources/status, QM VM helpers and ISO downloader, community post-install/templates scripts), users/time, system control.
 - Shortcuts: `h` help, `s` dashboard, `l` logs, `c` config/env, `u` self-update, `d` language, `i` install to PATH, `q` quit.
 
