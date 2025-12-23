@@ -2317,6 +2317,15 @@ create_sudo_user() {
     echo "User $NEWUSER created and added to sudo group."
 }
 
+change_user_password() {
+    read -p "Enter username to change password: " TARGETUSER
+    if ! id "$TARGETUSER" &>/dev/null; then
+        echo "User $TARGETUSER does not exist."
+        return 1
+    fi
+    passwd "$TARGETUSER"
+}
+
 show_time_sync() {
     timedatectl
 }
@@ -3880,6 +3889,7 @@ menu_users_time() {
  1) Sudo-Benutzer anlegen
  2) Zeitsynchronisation anzeigen (timedatectl)
  3) Chrony (NTP) installieren und Zeitstatus anzeigen
+ 4) Passwort für Benutzer ändern
  0) Zurück
 EOF
         else
@@ -3888,6 +3898,7 @@ EOF
  1) Create sudo user
  2) Show time sync (timedatectl)
  3) Install chrony (NTP) and show time status
+ 4) Change user password
  0) Back
 EOF
         fi
@@ -3896,6 +3907,7 @@ EOF
             1) create_sudo_user ;;
             2) show_time_sync ;;
             3) install_chrony ;;
+            4) change_user_password ;;
             0) break ;;
             *) echo "Invalid choice." ;;
         esac

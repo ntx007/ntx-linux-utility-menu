@@ -123,8 +123,8 @@ Run `./ntx-utility-menu.sh --help` for the full list.
   - System info: `/etc/os-release`, neofetch, memory info, VM check, display adapters, GitHub link, service uptime summary, hardware overview
   - Maintenance/disks: cleanup, log cleanup preset, disks, largest `/var`, maintenance bundle (update + cleanup + log rotate + status report), log integrity, kernel list/purge helper, /etc backup
   - Proxmox: list LXC, enter shell (lists VMIDs first), start/stop/restart, storage status, snapshots (create/list/rollback), backup/restore (vzdump/pct restore), resource tuning, services/cluster status, community post-install/templates scripts, Proxmox SSH config updater (PermitRootLogin yes), qm VM helpers (list/start/stop/restart/snapshots/backup/restore) and ISO downloader
-  - Users/time: create sudo user, time sync info, chrony install
-  - System control: reboot, power down (SAFE_MODE-aware)
+  - Users/time: create sudo user, change user password, time sync info, chrony install
+- System control: reboot, power down (SAFE_MODE-aware)
 
 - **Shortcuts**
   - `h` Help/About, `s` Status dashboard, `l` Tail log, `c` Config/env
