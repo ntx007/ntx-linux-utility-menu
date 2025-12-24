@@ -14,7 +14,7 @@ A portable, menu-driven Bash utility for common Linux admin tasks. Built for Deb
 - Networking: public IP with fallback, interfaces/routes/connections, DNS backups/restore (option to restart systemd-resolved), custom nameserver append/overwrite, ping/traceroute, top talkers, VLAN/Bond helpers, SSH key generator
 - Security/remote: organized submenus (firewall, Fail2ban, SSH/access, WireGuard, agents, anti-malware, config backup); UFW with snapshots/revert, Fail2ban (summary/list/unban + tuning helper), auditd minimal rules, OpenSSH, Tailscale, Netmaker netclient, CrowdSec + firewall bouncer, WireGuard (client/server, QR, validate/diff, interface choice), SSH hardening and service start/stop/restart/enable/disable, rootkit check, ClamAV improved workflow, Proxmox SSH config updater (PermitRootLogin yes)
   - First-run checklist: install/enable Docker/Compose, SSH, UFW, and Fail2ban in one pass
-- Tools/monitoring: essentials bundle (and dedicated submenu), nvm installer, node exporter, top CPU/mem, iostat summary, SMART checks (single/all disks), status dashboard, exportable status report (text/JSON with optional upload path) including container count/SMART health where available, service uptime + hardware overview
+- Tools/monitoring: essentials bundle (with mariadb-client-core) and dedicated submenu, nvm installer, node exporter, top CPU/mem, iostat summary, SMART checks (single/all disks), status dashboard, exportable status report (text/JSON with optional upload path) including container count/SMART health where available, service uptime + hardware overview
 - Containers: Docker + Compose plugin install, service status/info, running/all containers, Compose health (ls/ps), hardening checks (privileged, root user, host network, sensitive mounts)
 - Maintenance/info: cleanup, daily maintenance bundle (optional pre-update + log rotate + status report), log cleanup preset, kernel list/purge helper, /etc backup, disk usage, largest `/var` dirs, system info (os-release, neofetch, VM check, display adapters, uptime/hardware overview), GitHub link, Proxmox helpers (LXC + VM start/stop/restart, snapshots, backup/restore, ISO download, community scripts)
 - Logging/backups: `/var/log/ntx-menu.log` with rotation/history; `/etc/resolv.conf` backups; config backup/restore with optional Docker Compose includes
@@ -120,7 +120,7 @@ Run `./ntx-utility-menu.sh --help` for the full list.
   - Security/remote: firewall, Fail2ban, SSH/access, WireGuard, agents (CrowdSec/Netmaker/Tailscale), anti-malware, config backup/restore
 
 - **Operations**
-  - Tools/env: essentials bundle (sudo, nano, curl, net-tools, iproute2, unzip, python3-pip, gcc/python3-dev, psutil via pip, gdown, dos2unix, glances, tmux, zsh, mc, npm), ibramenu, QEMU guest agent, nvm installer, MariaDB server (host install, systemd), Node/npm version check
+  - Tools/env: essentials bundle (sudo, nano, curl, net-tools, iproute2, unzip, python3-pip, gcc/python3-dev, mariadb-client-core, psutil via pip, gdown, dos2unix, glances, tmux, zsh, mc, npm), ibramenu, QEMU guest agent, nvm installer, MariaDB server (host install, systemd), Node/npm version check
   - Containers: Docker + Compose plugin, status/info, running/all containers, Compose health, hardening checks (privileged/root/host network/sensitive mounts), prune/scan helpers, compose project manager, installers for Portainer, Nginx Proxy Manager, Traefik, Pi-hole, Pi-hole+Unbound, Nextcloud AIO, Tactical RMM, Hemmelig.app
   - Monitoring: node exporter, top CPU/mem, iostat, SMART (single/all disks), status dashboard, export report (text/JSON)
   - System info: `/etc/os-release`, neofetch, memory info, VM check, display adapters, GitHub link, service uptime summary, hardware overview
@@ -162,6 +162,7 @@ Search tip: in the main menu, type `/keyword` (e.g., `/docker`, `/dns`) to jump 
 - Offline/proxy: `apt-get update` must succeed for upgrades; if blocked, set `http_proxy/https_proxy` or skip update steps (they will now stop early with a hint).
 - Minimal envs: Inode view may be skipped if `df -i` is unsupported; IP listing falls back to `ip addr` or `ifconfig` if `ip` is absent.
 - MariaDB server install assumes a systemd host (not containerized); enable/start may fail inside containers.
+- Speedtest repo helper is pinned to Ubuntu jammy; on other releases it writes jammy entries, so add a distro-appropriate repo if needed.
 
 ## Troubleshooting 🛠️
 - APT blocked by proxy: set `http_proxy`/`https_proxy` and re-run `apt-get update`; use the APT proxy toggle in System update.

@@ -1349,6 +1349,7 @@ install_essentials() {
     apt install unzip -y
     apt install python3-pip -y
     apt-get install gcc python3-dev -y
+    apt-get install mariadb-client-core -y
     pip install --no-binary :all: psutil
     pip3 install gdown
     apt install dos2unix -y
