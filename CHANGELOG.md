@@ -1,6 +1,6 @@
 # Changelog 📝
 
-## Unreleased (v1.2.1-dev) 🚧
+## v1.2.1
 - Network: VLAN and bond helpers (create/delete) plus an SSH key generator utility alongside the existing custom nameserver append/overwrite flow.
 - Security: Fail2ban tuning shortcut (basic jail.local defaults) and auditd minimal ruleset installer.
 - Monitoring: SMART batch check for all disks; new service uptime and hardware overview snapshots.
@@ -20,7 +20,7 @@
 - Header: shows apt index staleness when older than the configured threshold.
 - Compose app installers: prompt for data paths and log post-install summaries to `POST_INSTALL_LOG`.
 - UI: main menu grouped layout with refreshed header/footer styling and German labels updated.
-- Versioning note: v1.2.0 was skipped during development; we moved directly to v1.2.1-dev.
+- Versioning note: v1.2.0 was skipped during development; we moved directly to v1.2.1.
 
 ### Bug fixes 🐛
 - Hemmelig installer now correctly checks for the Docker Compose plugin before deployment.
