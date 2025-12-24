@@ -28,6 +28,8 @@ sudo ./ntx-utility-menu.sh --run wireguard_qr
 sudo ./ntx-utility-menu.sh --run apt_health
 sudo ./ntx-utility-menu.sh --run update_health
 sudo ./ntx-utility-menu.sh --run clamav_scan
+sudo ./ntx-utility-menu.sh --run ssh_start|ssh_stop|ssh_restart|ssh_enable|ssh_disable
+sudo ./ntx-utility-menu.sh --run change_password
 ```
 Use `--help` for the supported list.
 
@@ -38,8 +40,8 @@ Use `--help` for the supported list.
 - Language toggle: `d` switches between English and German labels.
 
 ## Menu at a glance 🗺️
-- Core: updates (incl. unattended), do-release-upgrade, apt source hygiene + proxy toggle, APT/update health, self-update; DNS presets/backups + custom nameserver (append/overwrite); network views (incl. top talkers), VLAN/bond helpers, SSH key helper; Speedtest/YABS; security submenus (firewall, Fail2ban, SSH w/ service controls incl. enable/disable, WireGuard, agents, anti-malware, config backup).
-- Operations: tools/essentials/nvm, MariaDB server (host install, systemd), Node/npm version check, containers (Docker/Compose, hardening checks, prune/scan/compose manager, app installers incl. Nginx Proxy Manager and Traefik), monitoring (status dashboard, reports, node exporter, SMART single/all disks), system info (incl. service uptime and hardware overview), maintenance (cleanup/bundle/log cleanup/log integrity/kernel list/purge,/etc backup), Proxmox helpers (LXC list/enter/start/stop/restart/snapshots/backup/restore, storage/resources/status, QM VM helpers and ISO downloader, community post-install/templates scripts), users/time (create sudo user, change user password, time sync, chrony), system control.
+- Core: updates (incl. unattended), do-release-upgrade, apt source hygiene + proxy toggle, APT/update health, self-update; DNS presets/backups + custom nameserver (append/overwrite) and restore+restart systemd-resolved; network views (incl. top talkers), VLAN/bond helpers, SSH key helper; Speedtest/YABS; security submenus (firewall, Fail2ban, SSH w/ service controls incl. enable/disable, WireGuard, agents, anti-malware, config backup, first-run checklist for Docker/Compose/SSH/UFW/Fail2ban).
+- Operations: tools/essentials/nvm, MariaDB server (host install, systemd), Node/npm version check, containers (Docker/Compose, hardening checks, prune/scan/compose manager, app installers incl. Nginx Proxy Manager and Traefik), monitoring (status dashboard, reports, node exporter, SMART single/all disks, container count/SMART in reports), system info (incl. service uptime and hardware overview), maintenance (cleanup/bundle/log cleanup/log integrity/kernel list/purge,/etc backup), Proxmox helpers (LXC list/enter/start/stop/restart/snapshots/backup/restore, storage/resources/status, tasks/backups view, QM VM helpers and ISO downloader, community post-install/templates scripts), users/time (create sudo user, change user password, time sync, chrony), system control.
 - Shortcuts: `h` help, `s` dashboard, `l` logs, `c` config/env, `u` self-update, `d` language, `i` install to PATH, `q` quit.
 
 ## Known behaviors & caveats ⚠️

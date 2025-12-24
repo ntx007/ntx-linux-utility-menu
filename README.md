@@ -11,9 +11,10 @@ A portable, menu-driven Bash utility for common Linux admin tasks. Built for Deb
 - Interactive nested menu with shortcuts (Help, Status, Logs) and search via `/keyword`; language toggle `d` (en/de)
 - Clean header with host/threads/RAM/IP + update notice, and a grouped main menu (Core / Operations / Shortcuts) for faster navigation
 - Updates: unattended-upgrades enable/disable/status/run; reboot-if-needed flow; apt source hygiene (list/remove); version-aware self-update (pick release/rollback or dev); non-interactive `--run` actions; cadence warning and health checks; APT proxy toggle
-- Networking: public IP with fallback, interfaces/routes/connections, DNS backups/restore, custom nameserver append/overwrite, ping/traceroute, top talkers, VLAN/Bond helpers, SSH key generator
+- Networking: public IP with fallback, interfaces/routes/connections, DNS backups/restore (option to restart systemd-resolved), custom nameserver append/overwrite, ping/traceroute, top talkers, VLAN/Bond helpers, SSH key generator
 - Security/remote: organized submenus (firewall, Fail2ban, SSH/access, WireGuard, agents, anti-malware, config backup); UFW with snapshots/revert, Fail2ban (summary/list/unban + tuning helper), auditd minimal rules, OpenSSH, Tailscale, Netmaker netclient, CrowdSec + firewall bouncer, WireGuard (client/server, QR, validate/diff, interface choice), SSH hardening and service start/stop/restart/enable/disable, rootkit check, ClamAV improved workflow, Proxmox SSH config updater (PermitRootLogin yes)
-- Tools/monitoring: essentials bundle (and dedicated submenu), nvm installer, node exporter, top CPU/mem, iostat summary, SMART checks (single/all disks), status dashboard, exportable status report (text/JSON with optional upload path), service uptime + hardware overview
+  - First-run checklist: install/enable Docker/Compose, SSH, UFW, and Fail2ban in one pass
+- Tools/monitoring: essentials bundle (and dedicated submenu), nvm installer, node exporter, top CPU/mem, iostat summary, SMART checks (single/all disks), status dashboard, exportable status report (text/JSON with optional upload path) including container count/SMART health where available, service uptime + hardware overview
 - Containers: Docker + Compose plugin install, service status/info, running/all containers, Compose health (ls/ps), hardening checks (privileged, root user, host network, sensitive mounts)
 - Maintenance/info: cleanup, daily maintenance bundle (optional pre-update + log rotate + status report), log cleanup preset, kernel list/purge helper, /etc backup, disk usage, largest `/var` dirs, system info (os-release, neofetch, VM check, display adapters, uptime/hardware overview), GitHub link, Proxmox helpers (LXC + VM start/stop/restart, snapshots, backup/restore, ISO download, community scripts)
 - Logging/backups: `/var/log/ntx-menu.log` with rotation/history; `/etc/resolv.conf` backups; config backup/restore with optional Docker Compose includes
@@ -103,6 +104,8 @@ sudo ./ntx-utility-menu.sh --run wireguard_qr
 sudo ./ntx-utility-menu.sh --run apt_health
 sudo ./ntx-utility-menu.sh --run update_health
 sudo ./ntx-utility-menu.sh --run clamav_scan
+sudo ./ntx-utility-menu.sh --run ssh_start|ssh_stop|ssh_restart|ssh_enable|ssh_disable
+sudo ./ntx-utility-menu.sh --run change_password
 ```
 
 Run `./ntx-utility-menu.sh --help` for the full list.
@@ -122,7 +125,7 @@ Run `./ntx-utility-menu.sh --help` for the full list.
   - Monitoring: node exporter, top CPU/mem, iostat, SMART (single/all disks), status dashboard, export report (text/JSON)
   - System info: `/etc/os-release`, neofetch, memory info, VM check, display adapters, GitHub link, service uptime summary, hardware overview
   - Maintenance/disks: cleanup, log cleanup preset, disks, largest `/var`, maintenance bundle (update + cleanup + log rotate + status report), log integrity, kernel list/purge helper, /etc backup
-  - Proxmox: list LXC, enter shell (lists VMIDs first), start/stop/restart, storage status, snapshots (create/list/rollback), backup/restore (vzdump/pct restore), resource tuning, services/cluster status, community post-install/templates scripts, Proxmox SSH config updater (PermitRootLogin yes), qm VM helpers (list/start/stop/restart/snapshots/backup/restore) and ISO downloader
+  - Proxmox: list LXC, enter shell (lists VMIDs first), start/stop/restart, storage status, snapshots (create/list/rollback), backup/restore (vzdump/pct restore), resource tuning, services/cluster status, recent tasks, backup listing, community post-install/templates scripts, Proxmox SSH config updater (PermitRootLogin yes), qm VM helpers (list/start/stop/restart/snapshots/backup/restore) and ISO downloader
   - Users/time: create sudo user, change user password, time sync info, chrony install
 - System control: reboot, power down (SAFE_MODE-aware)
 
@@ -159,6 +162,14 @@ Search tip: in the main menu, type `/keyword` (e.g., `/docker`, `/dns`) to jump 
 - Offline/proxy: `apt-get update` must succeed for upgrades; if blocked, set `http_proxy/https_proxy` or skip update steps (they will now stop early with a hint).
 - Minimal envs: Inode view may be skipped if `df -i` is unsupported; IP listing falls back to `ip addr` or `ifconfig` if `ip` is absent.
 - MariaDB server install assumes a systemd host (not containerized); enable/start may fail inside containers.
+
+## Troubleshooting 🛠️
+- APT blocked by proxy: set `http_proxy`/`https_proxy` and re-run `apt-get update`; use the APT proxy toggle in System update.
+- Docker Compose missing: install via Containers → option 1 (official script) or ensure the compose plugin is available.
+- `qrencode` missing: install `qrencode` for WireGuard QR rendering.
+- `ntxmenu` not found: ensure `/usr/local/bin` is in PATH or re-run the installer (`install_ntxmenu.sh`); a symlink to `/usr/bin` is created when possible.
+- SMART permissions: some environments require `sudo smartctl` or `--device` hints (e.g., `-d scsi` for virtio); the menu uses best-effort defaults but may need manual flags.
+- systemd-resolved: after DNS changes, use the DNS menu’s “restore backup + restart systemd-resolved” if name resolution breaks; on systems without systemd-resolved, it will skip the restart.
 
 ## Quick start 🏁
 

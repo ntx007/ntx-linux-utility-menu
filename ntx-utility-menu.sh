@@ -20,6 +20,7 @@ HEADER_HOST=""
 HEADER_IP=""
 LANGUAGE="${LANGUAGE:-en}"
 UPDATE_WARN_DAYS=${UPDATE_WARN_DAYS:-7}
+POST_INSTALL_LOG="${POST_INSTALL_LOG:-/var/log/ntx-menu-app-installs.log}"
 AUTO_UPDATE_BEFORE_MAINT=${AUTO_UPDATE_BEFORE_MAINT:-false}
 SCRIPT_PATH="$(command -v realpath >/dev/null 2>&1 && realpath "$0")"
 if [[ -z "$SCRIPT_PATH" ]]; then
@@ -211,6 +212,13 @@ gather_header_info() {
     HEADER_HOST=$(hostname 2>/dev/null || echo "unknown")
     HEADER_IP=$(hostname -I 2>/dev/null | awk '{print $1}' | sed 's/[[:space:]]//g')
     HEADER_IP=${HEADER_IP:-unknown}
+    if update_cadence_warn "silent"; then
+        if [[ -n "$UPDATE_NOTICE" ]]; then
+            UPDATE_NOTICE="$UPDATE_NOTICE; ${STALE_APT_MSG}"
+        else
+            UPDATE_NOTICE="$STALE_APT_MSG"
+        fi
+    fi
 }
 
 self_update_script() {
@@ -350,6 +358,13 @@ restore_backup() {
     echo "Restored $target from $latest"
 }
 
+log_app_summary() {
+    mkdir -p "$(dirname "$POST_INSTALL_LOG")"
+    {
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1"
+    } >> "$POST_INSTALL_LOG"
+}
+
 check_environment() {
     if [[ ! -f /etc/os-release ]]; then
         echo "Cannot find /etc/os-release. Unsupported system."
@@ -453,39 +468,6 @@ delete_bond() {
     run_cmd "Delete bond $BOND" ip link delete "$BOND" type bond
 }
 
-create_vlan() {
-    read -r -p "Base interface (e.g., eth0): " IFACE
-    read -r -p "VLAN ID: " VID
-    [[ -z "$IFACE" || -z "$VID" ]] && { echo "Interface or VLAN ID missing."; return 1; }
-    run_cmd "Create VLAN ${IFACE}.${VID}" ip link add link "$IFACE" name "${IFACE}.${VID}" type vlan id "$VID"
-    run_cmd "Bring up ${IFACE}.${VID}" ip link set up dev "${IFACE}.${VID}"
-}
-
-delete_vlan() {
-    read -r -p "VLAN interface to delete (e.g., eth0.10): " VIF
-    [[ -z "$VIF" ]] && { echo "No interface provided."; return 1; }
-    run_cmd "Delete VLAN $VIF" ip link delete "$VIF"
-}
-
-create_bond() {
-    read -r -p "Bond name (e.g., bond0): " BOND
-    read -r -p "Mode (default 802.3ad): " MODE
-    MODE=${MODE:-802.3ad}
-    read -r -p "Slave interfaces (space separated, e.g., eth0 eth1): " SLAVES
-    [[ -z "$BOND" || -z "$SLAVES" ]] && { echo "Bond name or slaves missing."; return 1; }
-    run_cmd "Create bond $BOND" ip link add "$BOND" type bond mode "$MODE"
-    for s in $SLAVES; do
-        run_cmd "Set $s master $BOND" ip link set "$s" master "$BOND"
-    done
-    run_cmd "Bring up $BOND" ip link set "$BOND" up
-}
-
-delete_bond() {
-    read -r -p "Bond interface to delete (e.g., bond0): " BOND
-    [[ -z "$BOND" ]] && { echo "No bond provided."; return 1; }
-    run_cmd "Delete bond $BOND" ip link delete "$BOND" type bond
-}
-
 update_cadence_warn() {
     local mode="${1:-prompt}"
     if [[ -f /var/lib/apt/periodic/update-success-stamp ]]; then
@@ -498,6 +480,7 @@ update_cadence_warn() {
             if [[ "$mode" == "prompt" ]]; then
                 echo "Warning: last apt-get update is ${days} days ago (threshold: ${UPDATE_WARN_DAYS}d)."
             fi
+            STALE_APT_MSG="apt index stale (${days}d old)"
             return 0
         fi
     fi
@@ -533,6 +516,18 @@ status_report_export() {
     local ts
     ts=$(date '+%Y%m%d-%H%M%S')
     local report="$REPORT_DIR/status-$ts.txt"
+    local smart_summary=""
+    if command -v smartctl >/dev/null 2>&1; then
+        local disk
+        disk=$(lsblk -ndo NAME,TYPE | awk '$2=="disk"{print "/dev/"$1; exit}')
+        if [[ -n "$disk" ]]; then
+            smart_summary=$(smartctl -H "$disk" 2>/dev/null | grep -E "SMART overall-health|SMART overall-health self-assessment" || true)
+        fi
+    fi
+    local container_count=""
+    if command -v docker >/dev/null 2>&1; then
+        container_count=$(docker ps -q 2>/dev/null | wc -l | tr -d ' ')
+    fi
 
     # Disable colors for report output
     local SAVED_RED="$C_RED" SAVED_GRN="$C_GRN" SAVED_YLW="$C_YLW" SAVED_CYN="$C_CYN" SAVED_RST="$C_RST"
@@ -568,6 +563,16 @@ status_report_export() {
         echo
         echo "[Disk/Inodes]"
         disk_inode_summary
+        if [[ -n "$smart_summary" ]]; then
+            echo
+            echo "[SMART]"
+            echo "$smart_summary"
+        fi
+        if [[ -n "$container_count" ]]; then
+            echo
+            echo "[Containers]"
+            echo "Running containers: $container_count"
+        fi
     } > "$report"
 
     # Restore colors
@@ -582,6 +587,18 @@ status_report_json() {
     local ts
     ts=$(date '+%Y%m%d-%H%M%S')
     local report="$REPORT_DIR/status-$ts.json"
+    local container_count=""
+    if command -v docker >/dev/null 2>&1; then
+        container_count=$(docker ps -q 2>/dev/null | wc -l | tr -d ' ')
+    fi
+    local smart_disk=""
+    local smart_health=""
+    if command -v smartctl >/dev/null 2>&1; then
+        smart_disk=$(lsblk -ndo NAME,TYPE | awk '$2=="disk"{print "/dev/"$1; exit}')
+        if [[ -n "$smart_disk" ]]; then
+            smart_health=$(smartctl -H "$smart_disk" 2>/dev/null | grep -E "SMART overall-health|SMART overall-health self-assessment" | head -1 | sed 's/.*: //')
+        fi
+    fi
     {
         echo "{"
         echo "  \"version\": \"$VERSION\","
@@ -591,6 +608,10 @@ status_report_json() {
         echo "  \"reboot_required\": \"$( [[ -f /var/run/reboot-required ]] && echo yes || echo no )\","
         echo "  \"pending_updates\": \"$(apt-get -s upgrade 2>/dev/null | grep -c '^Inst ' || echo 0)\","
         echo "  \"kernel_running\": \"$(uname -r)\","
+        echo "  \"containers_running\": \"${container_count:-unknown}\","
+        if [[ -n "$smart_disk" ]]; then
+            echo "  \"smart\": {\"disk\": \"$smart_disk\", \"health\": \"${smart_health:-unknown}\"},"
+        fi
         echo "  \"services\": {"
         echo "    \"ssh\": \"$(systemctl is-active ssh >/dev/null 2>&1 && echo active || echo inactive)\","
         echo "    \"ufw\": \"$(systemctl is-active ufw >/dev/null 2>&1 && echo active || echo inactive)\","
@@ -1095,6 +1116,16 @@ restore_dns_backup() {
     restore_backup /etc/resolv.conf
 }
 
+restore_dns_and_restart() {
+    if restore_backup /etc/resolv.conf; then
+        if systemctl is-active systemd-resolved >/dev/null 2>&1; then
+            run_cmd "Restart systemd-resolved" systemctl restart systemd-resolved
+        else
+            echo "systemd-resolved not active; skipped restart."
+        fi
+    fi
+}
+
 # --- Networking / IP ---
 
 whats_my_ip() {
@@ -1496,6 +1527,64 @@ install_fail2ban() {
     systemctl enable --now fail2ban
 }
 
+first_run_checklist() {
+    echo "First-run checklist: detect core services and offer to install/enable."
+    local missing=()
+    local actions=()
+
+    # Docker / Compose
+    if ! command -v docker >/dev/null 2>&1; then
+        missing+=("Docker + Compose plugin")
+        actions+=("install_docker")
+    else
+        if ! docker compose version >/dev/null 2>&1; then
+            missing+=("Docker Compose plugin")
+            actions+=("install_docker")
+        fi
+    fi
+
+    # SSH
+    if ! systemctl list-unit-files | grep -q ssh.service; then
+        missing+=("OpenSSH server")
+        actions+=("install_openssh")
+    fi
+
+    # UFW
+    if ! command -v ufw >/dev/null 2>&1; then
+        missing+=("UFW firewall")
+        actions+=("install_ufw_basic")
+    fi
+
+    # Fail2ban
+    if ! command -v fail2ban-client >/dev/null 2>&1; then
+        missing+=("Fail2ban")
+        actions+=("install_fail2ban")
+    fi
+
+    if [[ ${#missing[@]} -eq 0 ]]; then
+        echo "Looks good: Docker/Compose, SSH, UFW, and Fail2ban are present."
+        return 0
+    fi
+
+    echo "Missing/needs attention: ${missing[*]}"
+    read -p "Install/enable these now? (y/N): " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        echo "Skipped."
+        return 0
+    fi
+
+    for action in "${actions[@]}"; do
+        case "$action" in
+            install_docker) install_docker ;;
+            install_openssh) install_openssh ;;
+            install_ufw_basic) install_ufw_basic ;;
+            install_fail2ban) install_fail2ban ;;
+        esac
+    done
+    echo "First-run checklist completed."
+}
+
 show_firewall_status() {
     if command -v ufw >/dev/null 2>&1; then
         ufw status
@@ -1852,6 +1941,7 @@ kernel_purge_package() {
     kernel_list_installed
     read -r -p "Package name to purge (exact, e.g., linux-image-5.15.0-88-generic): " KP
     [[ -z "$KP" ]] && { echo "No package provided."; return 1; }
+    warn_if_remote_no_tmux "Purging kernels can impact remote sessions."
     if [[ "$KP" == *"$(uname -r)"* ]]; then
         echo "Refusing to purge the running kernel."
         return 1
@@ -1954,6 +2044,13 @@ enable_ssh_service() {
 disable_ssh_service() {
     if ! skip_if_safe "disable SSH service"; then return 1; fi
     run_cmd "Disable SSH service (${SSH_UNIT})" systemctl disable --now "$SSH_UNIT"
+}
+
+warn_if_remote_no_tmux() {
+    local msg="$1"
+    if [[ -n "$SSH_TTY" ]] && [[ -z "$TMUX" && -z "$STY" ]]; then
+        echo "Note: remote session without tmux/screen. $msg"
+    fi
 }
 
 qm_list_vms() {
@@ -2167,6 +2264,25 @@ proxmox_download_templates() {
     echo "Template script execution finished. Review output above for details."
 }
 
+proxmox_list_tasks() {
+    if command -v pvesh >/dev/null 2>&1; then
+        echo "Recent tasks (pvesh /cluster/tasks --limit 15):"
+        pvesh get /cluster/tasks --limit 15 2>/dev/null | head -n 200 || echo "Unable to list tasks."
+    else
+        echo "pvesh not found; skipping task list."
+    fi
+}
+
+proxmox_list_backups() {
+    local dumpdir="/var/lib/vz/dump"
+    if [[ -d "$dumpdir" ]]; then
+        echo "Backups in $dumpdir:"
+        ls -lh "$dumpdir" 2>/dev/null | tail -n +1
+    else
+        echo "Backup directory $dumpdir not found."
+    fi
+}
+
 qm_start_vm() {
     if ! command -v qm >/dev/null 2>&1; then
         echo "qm not found."
@@ -2342,6 +2458,7 @@ install_chrony() {
 
 system_reboot() {
     if ! skip_if_safe "reboot"; then return 1; fi
+    warn_if_remote_no_tmux "Rebooting over SSH without tmux/screen may drop your session."
     msgbox "System Reboot"
     read -p "Are you sure (y/N)? " -n 1 -r
     echo
@@ -2352,6 +2469,7 @@ system_reboot() {
 
 system_powerdown() {
     if ! skip_if_safe "power down"; then return 1; fi
+    warn_if_remote_no_tmux "Powering down over SSH without tmux/screen may drop your session."
     msgbox "System Power Down"
     read -p "Are you sure (y/N)? " -n 1 -r
     echo
@@ -2486,9 +2604,15 @@ run_action_by_name() {
         apt_health) apt_health_check ;;
         update_health) update_health_check ;;
         clamav_scan) install_and_scan_clamav ;;
+        ssh_start) start_ssh_service ;;
+        ssh_stop) stop_ssh_service ;;
+        ssh_restart) restart_ssh_service ;;
+        ssh_enable) enable_ssh_service ;;
+        ssh_disable) disable_ssh_service ;;
+        change_password) change_user_password ;;
         *)
             echo "Unknown action: $action"
-            echo "Supported: update_all, maintenance_bundle, status_report, status_report_json, status_dashboard, ssh_audit, docker_compose_health, wireguard_qr, apt_health, update_health, clamav_scan"
+            echo "Supported: update_all, maintenance_bundle, status_report, status_report_json, status_dashboard, ssh_audit, docker_compose_health, wireguard_qr, apt_health, update_health, clamav_scan, ssh_start, ssh_stop, ssh_restart, ssh_enable, ssh_disable, change_password"
             return 1
             ;;
     esac
@@ -2510,6 +2634,12 @@ Actions (non-interactive):
   apt_health            Show held/broken/security updates
   update_health         Show reboot requirement + last update timestamp
   clamav_scan           Install ClamAV and run a quick recursive scan
+  ssh_start             Start SSH service
+  ssh_stop              Stop SSH service
+  ssh_restart           Restart SSH service
+  ssh_enable            Enable SSH service (enable --now)
+  ssh_disable           Disable SSH service
+  change_password       Prompt to change a user's password
 EOF
 }
 
@@ -2595,6 +2725,8 @@ menu_dns() {
  8) IPv6 anhängen: 2606:4700:4700::1111 + 2001:4860:4860::8888
 
  9) DNS aus letztem Backup wiederherstellen
+10) Benutzerdefinierten Nameserver hinzufügen
+11) Backup wiederherstellen + systemd-resolved neu starten
  0) Zurück
 EOF
         else
@@ -2613,6 +2745,7 @@ EOF
 
  9) Restore DNS from latest backup
 10) Add custom nameserver (prompt)
+11) Restore DNS backup and restart systemd-resolved
  0) Back
 EOF
         fi
@@ -2628,6 +2761,7 @@ EOF
             8) add_dns_cloudflare_google_ipv6_append ;;
             9) restore_dns_backup ;;
             10) add_custom_dns ;;
+            11) restore_dns_and_restart ;;
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
@@ -2790,6 +2924,7 @@ menu_security() {
  6) Anti-Malware (ClamAV / Rootkit)
  7) Config-Backup/Wiederherstellung
  8) Auditd Minimal-Profile anwenden
+ 9) Erst-Setup-Checkliste (Docker/Compose, SSH, UFW, Fail2ban)
  0) Zurück
 EOF
         else
@@ -2803,6 +2938,7 @@ EOF
  6) Anti-malware (ClamAV / Rootkit)
  7) Config backup/restore submenu
  8) Auditd minimal ruleset
+ 9) First-run checklist (Docker/Compose, SSH, UFW, Fail2ban)
  0) Back
 EOF
         fi
@@ -2816,6 +2952,7 @@ EOF
             6) menu_antimalware ;;
             7) menu_config_backup ;;
             8) auditd_minimal_rules ;;
+            9) first_run_checklist ;;
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
@@ -3284,6 +3421,7 @@ install_portainer() {
     run_cmd "Create Portainer data volume" docker volume create portainer_data
     run_cmd "Run Portainer" docker run -d -p 8000:8000 -p 9443:9443 --name portainer --restart=always -v /var/run/docker.sock:/var/run/docker.sock -v portainer_data:/data portainer/portainer-ce:latest
     echo "Portainer running on https://<host>:9443"
+    log_app_summary "Portainer: https://<host>:9443 (admin setup on first login)"
 }
 
 install_nginx_proxy_manager() {
@@ -3302,6 +3440,8 @@ install_nginx_proxy_manager() {
     dockernet=${dockernet:-npm_proxy}
 
     run_cmd "Create app directory" mkdir -p "$base"
+    read -p "Data path for NPM (default ${base}): " base_override
+    base=${base_override:-$base}
     cat > "${base}/.env" <<EOF
 APP_NAME=${app}
 IMAGE=${image}
@@ -3340,6 +3480,7 @@ EOF
     echo "URL   : http://${ip:-<host>}:81"
     echo "User  : admin@example.com"
     echo "Pass  : changeme"
+    log_app_summary "NPM: http://${ip:-<host>}:81 (admin@example.com / changeme) data=${base}"
 }
 
 install_traefik() {
@@ -3352,6 +3493,8 @@ install_traefik() {
         return 1
     fi
     local base="/opt/appdata/traefik"
+    read -p "Data path for Traefik (default ${base}): " base_override
+    base=${base_override:-$base}
     read -p "Docker network to use/create (default traefik_proxy): " dockernet
     dockernet=${dockernet:-traefik_proxy}
     read -p "ACME email for certificates (optional): " acme_email
@@ -3430,6 +3573,7 @@ EOF
     echo "Traefik deployed."
     echo "Dashboard (insecure example): http://${ip:-<host>}/dashboard/ (enable via labels as needed)."
     echo "Default router example uses host rule traefik.local in dynamic.yml; adjust to your domains and add certificates per your needs."
+    log_app_summary "Traefik: http://${ip:-<host>}:80/443 (configure routers) data=${base} network=${dockernet}"
 }
 
 install_pihole_unbound() {
@@ -3442,6 +3586,8 @@ install_pihole_unbound() {
         return 1
     fi
     local base="/opt/appdata/pihole-unbound"
+    read -p "Data path for Pi-hole+Unbound (default ${base}): " base_override
+    base=${base_override:-$base}
     local tz
     tz=$(cat /etc/timezone 2>/dev/null || echo "UTC")
     read -p "Set Pi-hole WEBPASSWORD (leave blank for default changeme): " webpw
@@ -3492,6 +3638,7 @@ EOF
     echo "Pi-hole + Unbound deployed."
     echo "Pi-hole UI: http://${ip:-<host>}/ (default user: admin, password: ${webpw})"
     echo "DNS: ${ip:-<host>} on port 53"
+    log_app_summary "Pi-hole+Unbound: http://${ip:-<host>}/ (admin/${webpw}) DNS=${ip:-<host>}:53 data=${base}"
 }
 install_pihole_only() {
     if ! command -v docker >/dev/null 2>&1; then
@@ -3503,6 +3650,8 @@ install_pihole_only() {
         return 1
     fi
     local base="/opt/appdata/pihole"
+    read -p "Data path for Pi-hole (default ${base}): " base_override
+    base=${base_override:-$base}
     local tz
     tz=$(cat /etc/timezone 2>/dev/null || echo "UTC")
     read -p "Set Pi-hole WEBPASSWORD (leave blank for default changeme): " webpw
@@ -3537,6 +3686,7 @@ EOF
     echo "Pi-hole deployed."
     echo "Pi-hole UI: http://${ip:-<host>}/ (default user: admin, password: ${webpw})"
     echo "DNS: ${ip:-<host>} on port 53"
+    log_app_summary "Pi-hole: http://${ip:-<host>}/ (admin/${webpw}) DNS=${ip:-<host>}:53 data=${base}"
 }
 
 install_nextcloud_aio() {
@@ -3549,6 +3699,8 @@ install_nextcloud_aio() {
         return 1
     fi
     local base="/opt/appdata/nextcloud-aio"
+    read -p "Data path for Nextcloud AIO (default ${base}): " base_override
+    base=${base_override:-$base}
     run_cmd "Create app directory" mkdir -p "$base"
     cat > "${base}/docker-compose.yml" <<'EOF'
 services:
@@ -3577,6 +3729,7 @@ EOF
     echo
     echo "Nextcloud All-in-One deployed."
     echo "Access the AIO interface: https://${ip:-<host>}:8080"
+    log_app_summary "Nextcloud AIO: https://${ip:-<host>}:8080 data=${base}"
 }
 
 install_tactical_rmm() {
@@ -3597,6 +3750,7 @@ install_tactical_rmm() {
     run_cmd "Download Tactical RMM docker installer" bash -c "curl -fsSL https://raw.githubusercontent.com/amidaware/tacticalrmm/master/docker_install.sh -o /tmp/trmm_install.sh"
     run_cmd "Run Tactical RMM docker installer" bash -c "bash /tmp/trmm_install.sh"
     echo "Tactical RMM installer executed. Review output for URLs and credentials."
+    log_app_summary "Tactical RMM installer executed; check output for URLs/credentials."
 }
 
 install_hemmelig() {
@@ -3631,6 +3785,7 @@ EOF
     echo
     echo "Hemmelig.app deployed."
     echo "URL: http://${ip:-<host>}:3000"
+    log_app_summary "Hemmelig: http://${ip:-<host>}:3000 data=${base}"
 }
 
 menu_monitoring() {
@@ -3712,6 +3867,8 @@ menu_proxmox() {
 24) VM Backup (vzdump)
 25) VM Wiederherstellen (qmrestore)
 26) ISO herunterladen (Templates-Verzeichnis)
+27) Letzte Tasks anzeigen (pvesh)
+28) Backups in /var/lib/vz/dump anzeigen
  0) Zurück
 EOF
         else
@@ -3743,6 +3900,8 @@ EOF
 24) Backup VM (vzdump)
 25) Restore VM (qmrestore)
 26) Download ISO (template dir)
+27) List recent tasks (pvesh)
+28) List backups in /var/lib/vz/dump
  0) Back
 EOF
         fi
@@ -3774,6 +3933,8 @@ EOF
             24) qm_backup_vm ;;
             25) qm_restore_vm ;;
             26) qm_download_iso ;;
+            27) proxmox_list_tasks ;;
+            28) proxmox_list_backups ;;
             0) break ;;
             *) echo "Invalid choice." ;;
         esac

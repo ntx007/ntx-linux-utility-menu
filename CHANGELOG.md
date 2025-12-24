@@ -13,6 +13,12 @@
 - Containers: added prune helper, image scan helper (docker scan/trivy), a simple compose project manager, and Docker installers for Nginx Proxy Manager and Traefik.
 - SSH: submenu now includes start/stop/restart and enable/disable controls for the SSH service.
 - Users: added a menu option to change a user's password via `passwd`.
+- Security: first-run checklist to install/enable Docker/Compose, SSH, UFW, and Fail2ban in one pass.
+- DNS: add “restore backup + restart systemd-resolved.”
+- Status exports: include running container count and SMART health (if available) in text/JSON; JSON gains a minimal schema with SMART/container info.
+- Proxmox: task list (pvesh) and backup listing for quick checks.
+- Header: shows apt index staleness when older than the configured threshold.
+- Compose app installers: prompt for data paths and log post-install summaries to `POST_INSTALL_LOG`.
 - UI: main menu grouped layout with refreshed header/footer styling and German labels updated.
 - Versioning note: v1.2.0 was skipped during development; we moved directly to v1.2.1-dev.
 
