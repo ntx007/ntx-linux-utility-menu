@@ -435,39 +435,6 @@ netstat_top_talkers() {
     fi
 }
 
-create_vlan() {
-    read -r -p "Base interface (e.g., eth0): " IFACE
-    read -r -p "VLAN ID: " VID
-    [[ -z "$IFACE" || -z "$VID" ]] && { echo "Interface or VLAN ID missing."; return 1; }
-    run_cmd "Create VLAN ${IFACE}.${VID}" ip link add link "$IFACE" name "${IFACE}.${VID}" type vlan id "$VID"
-    run_cmd "Bring up ${IFACE}.${VID}" ip link set up dev "${IFACE}.${VID}"
-}
-
-delete_vlan() {
-    read -r -p "VLAN interface to delete (e.g., eth0.10): " VIF
-    [[ -z "$VIF" ]] && { echo "No interface provided."; return 1; }
-    run_cmd "Delete VLAN $VIF" ip link delete "$VIF"
-}
-
-create_bond() {
-    read -r -p "Bond name (e.g., bond0): " BOND
-    read -r -p "Mode (default 802.3ad): " MODE
-    MODE=${MODE:-802.3ad}
-    read -r -p "Slave interfaces (space separated, e.g., eth0 eth1): " SLAVES
-    [[ -z "$BOND" || -z "$SLAVES" ]] && { echo "Bond name or slaves missing."; return 1; }
-    run_cmd "Create bond $BOND" ip link add "$BOND" type bond mode "$MODE"
-    for s in $SLAVES; do
-        run_cmd "Set $s master $BOND" ip link set "$s" master "$BOND"
-    done
-    run_cmd "Bring up $BOND" ip link set "$BOND" up
-}
-
-delete_bond() {
-    read -r -p "Bond interface to delete (e.g., bond0): " BOND
-    [[ -z "$BOND" ]] && { echo "No bond provided."; return 1; }
-    run_cmd "Delete bond $BOND" ip link delete "$BOND" type bond
-}
-
 update_cadence_warn() {
     local mode="${1:-prompt}"
     if [[ -f /var/lib/apt/periodic/update-success-stamp ]]; then
@@ -900,8 +867,14 @@ update_all_with_sudo_reboot() {
 }
 
 update_all_reboot_if_needed() {
-    run_cmd "apt-get update" apt-get update
-    run_cmd "apt-get upgrade" apt-get upgrade -y
+    if ! run_cmd "apt-get update" apt-get update; then
+        echo "Skipping upgrade and reboot check because apt-get update failed."
+        return 1
+    fi
+    if ! run_cmd "apt-get upgrade" apt-get upgrade -y; then
+        echo "Skipping reboot check because apt-get upgrade failed."
+        return 1
+    fi
     if [[ -f /var/run/reboot-required ]]; then
         msgbox "Reboot required after updates."
         read -p "Reboot now (y/N)? " -n 1 -r
