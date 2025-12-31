@@ -145,7 +145,7 @@ If `/usr/local/bin` is not in your PATH, the installer will add a profile snippe
 
 - `DRY_RUN=true ./ntx-utility-menu.sh`: print commands instead of executing them.
 - `SAFE_MODE=true ./ntx-utility-menu.sh`: skip destructive actions (cleanup, reboot, powerdown, apt source removal).
-- Shortcuts in the main menu: `h` Help/About, `s` Status dashboard, `l` Tail log, `c` Config/env, `q` Quit.
+- Shortcuts in the main menu: `h` Help/About, `s` Status dashboard, `l` Tail log, `c` Config/env, `m` CMatrix, `q` Quit.
 
 Note on service status: the dashboard queries systemd unit names like `ssh`, `docker`, etc. If a service uses a non-standard unit name, it may show as “not installed.” Adjust the unit names in `show_service_status` if your distro uses different service names.
 

@@ -3,6 +3,8 @@
 ## Unreleased (v1.3.0-dev) 🚧
 - Version: bumped to v1.3.0-dev to start the next development cycle.
 - Apt: added source validator for mismatched codenames and expanded apt lock waits on update flows.
+- Dependencies: ensure_cmd now waits for dpkg/apt locks before installing missing packages.
+- Containers: stop-all now skips cleanly when no containers are running.
 - Monitoring: new `health_brief` non-interactive summary; added MTR and nmap quick scans in Network; added container log tail helper.
 - Maintenance: journal vacuum with custom window, needrestart summary, and a config template writer.
 - Security: SSH cipher/KEX/MAC audit helper.

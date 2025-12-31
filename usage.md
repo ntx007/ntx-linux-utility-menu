@@ -30,13 +30,15 @@ sudo ./ntx-utility-menu.sh --run update_health
 sudo ./ntx-utility-menu.sh --run clamav_scan
 sudo ./ntx-utility-menu.sh --run ssh_start|ssh_stop|ssh_restart|ssh_enable|ssh_disable
 sudo ./ntx-utility-menu.sh --run change_password
+sudo ./ntx-utility-menu.sh --run health_brief
+sudo ./ntx-utility-menu.sh --run cmatrix
 ```
 Use `--help` for the supported list.
 
 ## Modes & shortcuts ⌨️
 - `DRY_RUN=true ./ntx-utility-menu.sh`: preview commands.
 - `SAFE_MODE=true ./ntx-utility-menu.sh`: skip destructive actions.
-- Shortcuts: `h` Help/About, `s` Status dashboard, `l` Tail logs, `c` Config/env, `u` Self-update, `i` Install to PATH, `q` Quit. `m` launches cmatrix.
+- Shortcuts: `h` Help/About, `s` Status dashboard, `l` Tail logs, `c` Config/env, `u` Self-update, `i` Install to PATH, `m` launches cmatrix, `q` Quit.
 - Language toggle: `d` switches between English and German labels.
 
 ## Menu at a glance 🗺️

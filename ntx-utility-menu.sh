@@ -354,6 +354,9 @@ ensure_cmd() {
     local binary="$1"
     local pkg="${2:-$1}"
     if ! command -v "$binary" >/dev/null 2>&1; then
+        if ! wait_for_dpkg_lock 90; then
+            return 1
+        fi
         run_cmd "Installing missing dependency: $pkg" apt-get install -y "$pkg"
     fi
 }
@@ -1050,7 +1053,7 @@ apt_source_validator() {
                 mismatches=$((mismatches+1))
             fi
         fi
-    done < <(cat /etc/apt/sources.list /etc/apt/sources.list.d/*.list 2>/dev/null || true)
+    done < <(shopt -s nullglob; cat /etc/apt/sources.list /etc/apt/sources.list.d/*.list 2>/dev/null || true)
     if [[ "$mismatches" -eq 0 ]]; then
         echo "No mismatched codenames detected."
     else
@@ -3576,7 +3579,13 @@ docker_stop_all() {
         echo "Docker not installed."
         return 1
     fi
-    run_cmd "Stop all Docker containers" docker stop $(docker ps -q)
+    local ids
+    ids=$(docker ps -q)
+    if [[ -z "$ids" ]]; then
+        echo "No running containers to stop."
+        return 0
+    fi
+    run_cmd "Stop all Docker containers" docker stop $ids
 }
 
 docker_start_all_compose() {
