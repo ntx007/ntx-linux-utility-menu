@@ -1,7 +1,7 @@
 # Changelog 📝
 
-## Unreleased (v1.3.0-dev) 🚧
-- Version: bumped to v1.3.0-dev to start the next development cycle.
+## v1.3.0
+- Version: bumped to v1.3.0.
 - Apt: added source validator for mismatched codenames and expanded apt lock waits on update flows.
 - Dependencies: ensure_cmd now waits for dpkg/apt locks before installing missing packages.
 - Containers: stop-all now skips cleanly when no containers are running.
