@@ -278,25 +278,32 @@ self_update_script() {
             ;;
         3)
             echo "Fetching branches..."
-            mapfile -t branches < <(curl -fsSL "https://api.github.com/repos/ntx007/ntx-linux-utility-menu/branches?per_page=20" 2>/dev/null | grep -o '"name": *"[^"]*"' | cut -d'"' -f4)
-            if [[ ${#branches[@]} -eq 0 ]]; then
-                echo "No branches retrieved; falling back to main."
-                url="https://raw.githubusercontent.com/ntx007/ntx-linux-utility-menu/main/ntx-utility-menu.sh"
-            else
+            mapfile -t branches < <(curl -fsSL "https://api.github.com/repos/ntx007/ntx-linux-utility-menu/branches?per_page=50" 2>/dev/null | grep -o '"name": *"[^"]*"' | cut -d'"' -f4)
+            if [[ ${#branches[@]} -gt 0 ]]; then
                 local i=1
                 for b in "${branches[@]}"; do
                     echo " $i) $b"
                     i=$((i+1))
                 done
-                read -p "Select branch (1-${#branches[@]}): " selb
-                selb=${selb:-1}
-                local branch=${branches[$((selb-1))]}
-                if [[ -z "$branch" ]]; then
-                    echo "Invalid selection; cancelling."
-                    return 1
-                fi
-                url="https://raw.githubusercontent.com/ntx007/ntx-linux-utility-menu/${branch}/ntx-utility-menu.sh"
+            else
+                echo "No branches retrieved from GitHub."
             fi
+            echo " 0) Cancel"
+            echo " M) Manual branch name"
+            read -p "Select branch (1-${#branches[@]} or M): " selb
+            if [[ "$selb" == "M" || "$selb" == "m" ]]; then
+                read -p "Enter branch name: " branch
+            elif [[ "$selb" =~ ^[0-9]+$ && "$selb" -ge 1 && "$selb" -le ${#branches[@]} ]]; then
+                branch=${branches[$((selb-1))]}
+            else
+                echo "Cancelled."
+                return 0
+            fi
+            if [[ -z "$branch" ]]; then
+                echo "Invalid selection; cancelling."
+                return 1
+            fi
+            url="https://raw.githubusercontent.com/ntx007/ntx-linux-utility-menu/${branch}/ntx-utility-menu.sh"
             ;;
         0)
             echo "Update cancelled."
