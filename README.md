@@ -106,6 +106,8 @@ sudo ./ntx-utility-menu.sh --run update_health
 sudo ./ntx-utility-menu.sh --run clamav_scan
 sudo ./ntx-utility-menu.sh --run ssh_start|ssh_stop|ssh_restart|ssh_enable|ssh_disable
 sudo ./ntx-utility-menu.sh --run change_password
+sudo ./ntx-utility-menu.sh --run health_brief
+sudo ./ntx-utility-menu.sh --run cmatrix
 ```
 
 Run `./ntx-utility-menu.sh --help` for the full list.
@@ -113,19 +115,19 @@ Run `./ntx-utility-menu.sh --help` for the full list.
 ## Menu map (v1.3.0-dev) 🗺️
 
 - **Core**
-  - System update: upgrade flows, unattended-upgrades, apt source list/remove, APT health/update health, APT proxy toggle, version-aware self-update (release/dev/rollback)
+  - System update: upgrade flows (wait for apt locks), unattended-upgrades, apt source list/remove, APT health/update health, APT proxy toggle, apt source validator (mismatched codenames), version-aware self-update (release/dev/rollback)
   - DNS: backups/edit, Netcup presets (46.38.225.230 + 46.38.252.230 + 1.1.1.1), Cloudflare/Google IPv4+IPv6, restore last backup, add custom nameserver (append or overwrite)
-  - Network/IP: public IP (fallback), interfaces, routes, connections, ping common endpoints, traceroute, top talkers (TCP), VLAN/bond helpers, SSH key generator
+  - Network/IP: public IP (fallback), interfaces, routes, connections, ping common endpoints, traceroute, MTR quick run, nmap top-50 ports, top talkers (TCP), VLAN/bond helpers, SSH key generator
   - Speedtest/benchmarks: Speedtest install/update/run, repo/key removal, YABS + presets
-  - Security/remote: firewall, Fail2ban, SSH/access, WireGuard, agents (CrowdSec/Netmaker/Tailscale), anti-malware, config backup/restore
+  - Security/remote: firewall, Fail2ban, SSH/access, WireGuard, agents (CrowdSec/Netmaker/Tailscale), anti-malware, config backup/restore, SSH cipher/KEX/MAC audit
 
 - **Operations**
   - Tools/env: essentials bundle (sudo, nano, curl, net-tools, iproute2, unzip, python3-pip, gcc/python3-dev, mariadb-client-core, psutil via pip, gdown, dos2unix, glances, tmux, zsh, mc, npm), ibramenu, QEMU guest agent, nvm installer, MariaDB server (host install, systemd), Node/npm version check
-  - Containers: Docker + Compose plugin, status/info, running/all containers, Compose health, hardening checks (privileged/root/host network/sensitive mounts), prune/scan helpers, compose project manager, installers for Portainer, Nginx Proxy Manager, Traefik, Pi-hole, Pi-hole+Unbound, Nextcloud AIO, Tactical RMM, Hemmelig.app
-  - Monitoring: node exporter, top CPU/mem, iostat, SMART (single/all disks), status dashboard, export report (text/JSON)
+  - Containers: Docker + Compose plugin, status/info, running/all containers, Compose health, hardening checks (privileged/root/host network/sensitive mounts), prune/scan helpers, compose project manager, container log tail/follow, installers for Portainer, Nginx Proxy Manager, Traefik, Pi-hole, Pi-hole+Unbound, Nextcloud AIO, Tactical RMM, Hemmelig.app
+  - Monitoring: node exporter, top CPU/mem, iostat, SMART (single/all disks), status dashboard, export report (text/JSON), headless `health_brief`
   - System info: `/etc/os-release`, neofetch, memory info, VM check, display adapters, GitHub link, service uptime summary, hardware overview
-  - Maintenance/disks: cleanup, log cleanup preset, disks, largest `/var`, maintenance bundle (update + cleanup + log rotate + status report), log integrity, kernel list/purge helper, /etc backup
-  - Proxmox: list LXC, enter shell (lists VMIDs first), start/stop/restart, storage status, snapshots (create/list/rollback), backup/restore (vzdump/pct restore), resource tuning, services/cluster status, recent tasks, backup listing, community post-install/templates scripts, Proxmox SSH config updater (PermitRootLogin yes), qm VM helpers (list/start/stop/restart/snapshots/backup/restore) and ISO downloader
+  - Maintenance/disks: cleanup, log cleanup preset, custom journal vacuum, needrestart summary, disks, largest `/var`, maintenance bundle (update + cleanup + log rotate + status report), log integrity, kernel list/purge helper, /etc backup, config template writer
+  - Proxmox: list LXC, enter shell (lists VMIDs first), start/stop/restart, storage status, snapshots (create/list/rollback), backup/restore/rotate (vzdump/pct restore), resource tuning, services/cluster status, recent tasks, backup listing, community post-install/templates scripts, Proxmox SSH config updater (PermitRootLogin yes), qm VM helpers (list/start/stop/restart/snapshots/backup/restore) and ISO downloader
   - Users/time: create sudo user, change user password, time sync info, chrony install
 - System control: reboot, power down (SAFE_MODE-aware)
 

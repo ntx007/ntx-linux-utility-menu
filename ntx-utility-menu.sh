@@ -573,6 +573,21 @@ status_report_export() {
     echo "Status report saved to $report"
 }
 
+health_brief() {
+    local public_ip reboot_needed updates
+    public_ip=$(whats_my_ip 2>/dev/null | head -n1)
+    updates=$(apt-get -s upgrade 2>/dev/null | grep -c '^Inst ' || echo 0)
+    reboot_needed=$( [[ -f /var/run/reboot-required ]] && echo yes || echo no )
+    echo "Host: $(hostname)"
+    echo "Public IP: ${public_ip:-unknown}"
+    echo "Pending updates: ${updates}"
+    echo "Reboot required: ${reboot_needed}"
+    echo "Services:"
+    printf "  ssh: %s\n" "$(systemctl is-active ssh >/dev/null 2>&1 && echo active || echo inactive)"
+    printf "  docker: %s\n" "$(systemctl is-active docker >/dev/null 2>&1 && echo active || echo inactive)"
+    printf "  ufw: %s\n" "$(systemctl is-active ufw >/dev/null 2>&1 && echo active || echo inactive)"
+}
+
 status_report_json() {
     mkdir -p "$REPORT_DIR"
     local ts
@@ -661,6 +676,23 @@ ssh_hardening_audit() {
     fi
 }
 
+ssh_cipher_audit() {
+    local cfg="/etc/ssh/sshd_config"
+    if [[ ! -f "$cfg" ]]; then
+        echo "sshd_config not found at $cfg"
+        return 1
+    fi
+    echo "SSH ciphers/KEX/MAC audit ($cfg)"
+    local ciphers kex macs
+    ciphers=$(grep -i '^[[:space:]]*Ciphers' "$cfg" | tail -1 | cut -d' ' -f2-)
+    kex=$(grep -i '^[[:space:]]*KexAlgorithms' "$cfg" | tail -1 | cut -d' ' -f2-)
+    macs=$(grep -i '^[[:space:]]*MACs' "$cfg" | tail -1 | cut -d' ' -f2-)
+    echo "Ciphers: ${ciphers:-default (OpenSSH defaults)}"
+    echo "KexAlgorithms: ${kex:-default (OpenSSH defaults)}"
+    echo "MACs: ${macs:-default (OpenSSH defaults)}"
+    echo "Recommendation: prefer modern defaults (chacha20-poly1305, aes256-gcm, curve25519-sha256, sntrup/curve combos on newer OpenSSH)."
+}
+
 generate_ssh_key() {
     local key="${HOME}/.ssh/id_ed25519"
     read -r -p "Key path [${key}]: " KEY_PATH
@@ -728,6 +760,16 @@ docker_ps() {
         return 1
     fi
     docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Image}}"
+}
+
+docker_logs_follow() {
+    if ! command -v docker >/dev/null 2>&1; then
+        echo "Docker not installed."
+        return 1
+    fi
+    read -r -p "Container name/ID: " cname
+    [[ -z "$cname" ]] && { echo "No container provided."; return 1; }
+    docker logs -f --tail 200 "$cname"
 }
 
 docker_list_all() {
@@ -878,6 +920,9 @@ should_pause_after() {
 # --- System update ---
 
 update_all() {
+    if ! wait_for_dpkg_lock 90; then
+        return 1
+    fi
     if ! run_cmd "apt-get update" apt-get update; then
         echo "apt-get update failed (network/proxy?). Skipping upgrade."
         return 1
@@ -891,6 +936,9 @@ update_all_with_sudo_reboot() {
 }
 
 update_all_reboot_if_needed() {
+    if ! wait_for_dpkg_lock 90; then
+        return 1
+    fi
     if ! run_cmd "apt-get update" apt-get update; then
         echo "Skipping upgrade and reboot check because apt-get update failed."
         return 1
@@ -981,6 +1029,32 @@ Acquire::http::Proxy "$proxy";
 Acquire::https::Proxy "$proxy";
 EOF
         echo "Proxy written to $proxy_file"
+    fi
+}
+
+apt_source_validator() {
+    local codename=""
+    if [[ -f /etc/os-release ]]; then
+        # shellcheck disable=SC1091
+        . /etc/os-release
+        codename="${VERSION_CODENAME:-${UBUNTU_CODENAME:-}}"
+    fi
+    echo "Checking /etc/apt/sources.list and /etc/apt/sources.list.d/*.list for mismatched codenames..."
+    local mismatches=0
+    while IFS= read -r line; do
+        [[ -z "$line" || "$line" =~ ^# ]] && continue
+        if [[ -n "$codename" && "$line" =~ [[:space:]](ubuntu|debian)/([[:alnum:]-]+)[[:space:]] ]]; then
+            local seen="${BASH_REMATCH[2]}"
+            if [[ "$seen" != "$codename" ]]; then
+                echo "Possible mismatch: $line"
+                mismatches=$((mismatches+1))
+            fi
+        fi
+    done < <(cat /etc/apt/sources.list /etc/apt/sources.list.d/*.list 2>/dev/null || true)
+    if [[ "$mismatches" -eq 0 ]]; then
+        echo "No mismatched codenames detected."
+    else
+        echo "Found $mismatches potential mismatches. Review above entries."
     fi
 }
 
@@ -1210,6 +1284,20 @@ trace_route() {
     read -p "Enter host/IP to traceroute: " TARGET
     [[ -z "$TARGET" ]] && { echo "No target provided."; return 1; }
     traceroute "$TARGET"
+}
+
+run_mtr_quick() {
+    ensure_cmd mtr mtr
+    read -p "Enter host/IP for MTR: " TARGET
+    [[ -z "$TARGET" ]] && { echo "No target provided."; return 1; }
+    mtr -rwzc 10 "$TARGET"
+}
+
+nmap_top_ports() {
+    ensure_cmd nmap nmap
+    read -p "Enter host/IP to scan: " TARGET
+    [[ -z "$TARGET" ]] && { echo "No target provided."; return 1; }
+    nmap -Pn --top-ports 50 "$TARGET"
 }
 
 # --- Speedtest & benchmarks ---
@@ -1969,6 +2057,22 @@ log_cleanup_preset() {
     find /var/log -type f -printf '%s %p\n' 2>/dev/null | sort -nr | head -n 10 | awk '{printf "%7.1f MiB  %s\n", $1/1024/1024, $2}'
 }
 
+journal_vacuum_custom() {
+    read -r -p "Vacuum journal to time window (e.g., 14d, 1G) [7d]: " JWIN
+    JWIN=${JWIN:-7d}
+    run_cmd "journalctl vacuum-time=${JWIN}" journalctl --vacuum-time="$JWIN"
+}
+
+needrestart_summary() {
+    if ! command -v needrestart >/dev/null 2>&1; then
+        if ! wait_for_dpkg_lock 90; then
+            return 1
+        fi
+        run_cmd "Install needrestart" apt-get install -y needrestart
+    fi
+    needrestart -b || true
+}
+
 kernel_manage_menu() {
     kernel_list_installed
     read -r -p "Purge a kernel package? (leave blank to skip): " DO_PURGE
@@ -2220,6 +2324,26 @@ proxmox_restore_lxc() {
     else
         run_cmd "Restore $BFILE to VMID $VMID" pct restore "$VMID" "$BFILE"
     fi
+}
+
+proxmox_rotate_backups() {
+    local dump_dir="/var/lib/vz/dump"
+    read -r -p "Backup directory [$dump_dir]: " USER_DIR
+    dump_dir=${USER_DIR:-$dump_dir}
+    read -r -p "Keep how many newest backups? [5]: " KEEP
+    KEEP=${KEEP:-5}
+    if [[ ! -d "$dump_dir" ]]; then
+        echo "Directory not found: $dump_dir"
+        return 1
+    fi
+    echo "Rotating backups in $dump_dir (keeping $KEEP newest files)..."
+    local removed=0
+    while IFS= read -r file; do
+        echo "Removing $file"
+        rm -f -- "$file"
+        removed=$((removed+1))
+    done < <(find "$dump_dir" -maxdepth 1 -type f \( -name 'vzdump-*.vma*' -o -name 'vzdump-*.tar.*' \) | sort -r | tail -n +$((KEEP+1)))
+    echo "Removed $removed old backup(s) from $dump_dir"
 }
 
 proxmox_tune_resources() {
@@ -2509,6 +2633,34 @@ Units:          SSH=$SSH_UNIT, UFW=$UFW_UNIT, Fail2ban=$FAIL2BAN_UNIT, Tailscale
 EOF
 }
 
+write_config_template() {
+    local target="${1:-/etc/ntx-menu.conf}"
+    if [[ -f "$target" ]]; then
+        echo "Config already exists at $target"
+        return 0
+    fi
+    cat <<EOF > "$target"
+# ntx-menu config override
+LOG_FILE="${LOG_FILE}"
+BACKUP_DIR="${BACKUP_DIR}"
+REPORT_DIR="${REPORT_DIR}"
+SSH_UNIT="${SSH_UNIT}"
+UFW_UNIT="${UFW_UNIT}"
+FAIL2BAN_UNIT="${FAIL2BAN_UNIT}"
+TAILSCALE_UNIT="${TAILSCALE_UNIT}"
+DOCKER_UNIT="${DOCKER_UNIT}"
+NETMAKER_UNIT="${NETMAKER_UNIT}"
+SCHROOT_UNIT="${SCHROOT_UNIT}"
+CROWDSEC_UNIT="${CROWDSEC_UNIT}"
+CROWDSEC_BOUNCER_UNIT="${CROWDSEC_BOUNCER_UNIT}"
+# Language: en|de
+LANGUAGE="${LANGUAGE}"
+# Update cadence warning (days)
+UPDATE_WARN_DAYS="${UPDATE_WARN_DAYS}"
+EOF
+    echo "Wrote template to $target"
+}
+
 show_help_about() {
     heading "NTX Command Center ($VERSION)"
     cat <<EOF
@@ -2624,9 +2776,11 @@ run_action_by_name() {
         ssh_enable) enable_ssh_service ;;
         ssh_disable) disable_ssh_service ;;
         change_password) change_user_password ;;
+        health_brief) health_brief ;;
+        cmatrix) run_cmatrix ;;
         *)
             echo "Unknown action: $action"
-            echo "Supported: update_all, maintenance_bundle, status_report, status_report_json, status_dashboard, ssh_audit, docker_compose_health, wireguard_qr, apt_health, update_health, clamav_scan, ssh_start, ssh_stop, ssh_restart, ssh_enable, ssh_disable, change_password"
+            echo "Supported: update_all, maintenance_bundle, status_report, status_report_json, status_dashboard, health_brief, ssh_audit, docker_compose_health, wireguard_qr, apt_health, update_health, clamav_scan, ssh_start, ssh_stop, ssh_restart, ssh_enable, ssh_disable, change_password, cmatrix"
             return 1
             ;;
     esac
@@ -2642,6 +2796,7 @@ Actions (non-interactive):
   status_report         Export status report to file
   status_report_json    Export status report to JSON
   status_dashboard      Print status dashboard
+  health_brief          Print a short text-only health summary
   ssh_audit             Run SSH hardening check
   docker_compose_health Show Docker Compose health (ls/ps)
   wireguard_qr          Render /etc/wireguard/wg0.conf as QR (requires qrencode)
@@ -2654,6 +2809,7 @@ Actions (non-interactive):
   ssh_enable            Enable SSH service (enable --now)
   ssh_disable           Disable SSH service
   change_password       Prompt to change a user's password
+  cmatrix               Run cmatrix (installs if missing)
 EOF
 }
 
@@ -2697,6 +2853,7 @@ EOF
 11) APT health check (held/broken/security)
 12) Update health (reboot + last update)
 13) APT proxy toggle (set/remove)
+14) Validate apt sources for mismatched codenames
  0) Back
 EOF
         fi
@@ -2715,6 +2872,7 @@ EOF
             11) apt_health_check ;;
             12) update_health_check ;;
             13) toggle_apt_proxy ;;
+            14) apt_source_validator ;;
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
@@ -2801,6 +2959,8 @@ menu_network() {
 10) Bond anlegen
 11) Bond löschen
 12) SSH-Key erzeugen + optional kopieren
+13) MTR (kurzer Lauf)
+14) Nmap Top Ports (50)
  0) Zurück
 EOF
         else
@@ -2819,6 +2979,8 @@ EOF
 10) Create bond
 11) Delete bond
 12) Generate SSH key (+ optional ssh-copy-id)
+13) Run MTR (short)
+14) Quick nmap top 50 ports
  0) Back
 EOF
         fi
@@ -2836,6 +2998,8 @@ EOF
             10) create_bond ;;
             11) delete_bond ;;
             12) generate_ssh_key ;;
+            13) run_mtr_quick ;;
+            14) nmap_top_ports ;;
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
@@ -2939,6 +3103,7 @@ menu_security() {
  7) Config-Backup/Wiederherstellung
  8) Auditd Minimal-Profile anwenden
  9) Erst-Setup-Checkliste (Docker/Compose, SSH, UFW, Fail2ban)
+10) SSH Cipher/KEX/MAC Audit
  0) Zurück
 EOF
         else
@@ -2953,6 +3118,7 @@ EOF
  7) Config backup/restore submenu
  8) Auditd minimal ruleset
  9) First-run checklist (Docker/Compose, SSH, UFW, Fail2ban)
+10) SSH cipher/KEX/MAC audit
  0) Back
 EOF
         fi
@@ -2967,6 +3133,7 @@ EOF
             7) menu_config_backup ;;
             8) auditd_minimal_rules ;;
             9) first_run_checklist ;;
+            10) ssh_cipher_audit ;;
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
@@ -3324,11 +3491,13 @@ menu_containers() {
 
 18) Portainer installieren
 19) Nginx Proxy Manager installieren
-20) Pi-hole installieren
-21) Pi-hole + Unbound installieren
-22) Nextcloud All-in-One installieren
-23) Tactical RMM installieren
-24) Hemmelig.app installieren
+20) Traefik installieren
+21) Pi-hole installieren
+22) Pi-hole + Unbound installieren
+23) Nextcloud All-in-One installieren
+24) Tactical RMM installieren
+25) Hemmelig.app installieren
+26) Docker-Logs anzeigen (tail -f)
  0) Zurück
 EOF
         else
@@ -3363,6 +3532,7 @@ EOF
 23) Install Nextcloud All-in-One
 24) Install Tactical RMM
 25) Install Hemmelig.app
+26) Tail Docker container logs (follow)
  0) Back
 EOF
         fi
@@ -3393,6 +3563,7 @@ EOF
             23) install_nextcloud_aio ;;
             24) install_tactical_rmm ;;
             25) install_hemmelig ;;
+            26) docker_logs_follow ;;
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
@@ -3883,6 +4054,7 @@ menu_proxmox() {
 26) ISO herunterladen (Templates-Verzeichnis)
 27) Letzte Tasks anzeigen (pvesh)
 28) Backups in /var/lib/vz/dump anzeigen
+29) Backups rotieren (ältere löschen)
  0) Zurück
 EOF
         else
@@ -3916,6 +4088,7 @@ EOF
 26) Download ISO (template dir)
 27) List recent tasks (pvesh)
 28) List backups in /var/lib/vz/dump
+29) Rotate backups (delete older files)
  0) Back
 EOF
         fi
@@ -3949,6 +4122,7 @@ EOF
             26) qm_download_iso ;;
             27) proxmox_list_tasks ;;
             28) proxmox_list_backups ;;
+            29) proxmox_rotate_backups ;;
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
@@ -4028,6 +4202,9 @@ EOF
  6) Log cleanup preset (journal 7d + top /var/log files)
  7) Kernel list / optional purge package
  8) Create /etc backup
+ 9) Write /etc/ntx-menu.conf template
+10) Journal vacuum (custom window)
+11) needrestart summary
  0) Back
 EOF
         fi
@@ -4041,6 +4218,9 @@ EOF
             6) log_cleanup_preset ;;
             7) kernel_manage_menu ;;
             8) backup_etc_bundle ;;
+            9) write_config_template ;;
+            10) journal_vacuum_custom ;;
+            11) needrestart_summary ;;
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
