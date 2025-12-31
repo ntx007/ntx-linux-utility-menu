@@ -26,17 +26,7 @@
 - Hemmelig installer now correctly checks for the Docker Compose plugin before deployment.
 
 ### Known behaviors ⚠️
-- Self-update needs the full script path when realpath/readlink -f is missing or it may write into the current directory.
-- Service status assumes standard systemd unit names (ssh, docker, etc.); adjust unit variables if your distro differs.
-- Pending update count (`apt-get -s upgrade | grep '^Inst'`) can undercount on localized systems.
-- WireGuard enable/disable assumes `/etc/wireguard/wg0.conf`; QR rendering requires `qrencode`.
-- ClamAV `freshclam` may fail if the daemon holds the DB lock; stop/reload `clamav-freshclam` first.
-- SMART on virtio/atypical disks may require manual `smartctl` flags (e.g., `-d scsi`).
-- Rootkit check installs `binutils` for `strings`; install manually if it’s still missing.
-- Offline/proxy: upgrades depend on `apt-get update` succeeding; set `http_proxy/https_proxy` or skip update steps (they stop early on failure).
-- Minimal envs: inode view can be skipped if `df -i` is unsupported; IP listing falls back to `ip addr` or `ifconfig` if `ip` is absent.
-- MariaDB server install expects a systemd host; may fail in containers.
-- Speedtest repo helper is pinned to Ubuntu jammy; on other releases it writes jammy entries, so add a distro-appropriate repo if needed.
+- Same as v1.1.1; MariaDB server install expects systemd (host) and may fail in containers. Compose manager still requires the Docker Compose plugin.
 
 ## v1.1.1
 - Header: fixed RAM detection fallback so systems without awk/PROC parsing quirks no longer show “unknown GiB”.
