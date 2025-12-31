@@ -2,7 +2,7 @@
 
 ###############################################################################
 # NTX Command Center - Simple server helper menu
-# Version: v1.2.1
+# Version: v1.3.0-dev
 ###############################################################################
 
 LOG_FILE="/var/log/ntx-menu.log"
@@ -12,7 +12,7 @@ MAX_LOG_SIZE=$((1024 * 1024)) # 1 MiB
 LOG_HISTORY=${LOG_HISTORY:-3}
 DRY_RUN=${DRY_RUN:-false}
 SAFE_MODE=${SAFE_MODE:-false}
-VERSION="v1.2.1"
+VERSION="v1.3.0-dev"
 UPDATE_NOTICE=""
 HEADER_CPU=""
 HEADER_RAM=""
@@ -83,7 +83,7 @@ render_header() {
 render_footer() {
     local bar="===============================================================================" 
     echo "$bar"
-    echo " Shortcuts: h=Help  s=Status  l=Logs  c=Config  u=Update  d=Lang  i=Install  q=Quit"
+    echo " Shortcuts: h=Help  s=Status  l=Logs  c=Config  u=Update  d=Lang  m=CMatrix  i=Install  q=Quit"
     echo "$bar"
 }
 
@@ -183,6 +183,23 @@ ensure_dirs() {
     touch "$LOG_FILE"
     mkdir -p "$REPORT_DIR"
     rotate_log
+}
+
+wait_for_dpkg_lock() {
+    local timeout="${1:-60}"
+    local start
+    start=$(date +%s)
+    while fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1 || fuser /var/lib/dpkg/lock >/dev/null 2>&1; do
+        local now
+        now=$(date +%s)
+        if (( now - start >= timeout )); then
+            echo "Package manager lock is still held (dpkg/apt busy). Try again shortly."
+            return 1
+        fi
+        echo "Waiting for package manager lock to clear..."
+        sleep 2
+    done
+    return 0
 }
 
 check_updates() {
@@ -1191,6 +1208,9 @@ trace_route() {
 # --- Speedtest & benchmarks ---
 
 install_speedtest_full() {
+    if ! wait_for_dpkg_lock 90; then
+        return 1
+    fi
     apt-get install curl -y
     curl -s https://packagecloud.io/install/repositories/ookla/speedtest-cli/script.deb.sh | bash
     apt-get install speedtest -y
@@ -1207,7 +1227,20 @@ EOF
 }
 
 install_speedtest_after_list() {
+    if ! wait_for_dpkg_lock 90; then
+        return 1
+    fi
     apt-get update && apt-get install speedtest -y
+}
+
+run_cmatrix() {
+    if ! command -v cmatrix >/dev/null 2>&1; then
+        if ! wait_for_dpkg_lock 90; then
+            return 1
+        fi
+        run_cmd "Install cmatrix" apt-get install -y cmatrix
+    fi
+    cmatrix
 }
 
 run_speedtest() {
@@ -2521,7 +2554,7 @@ main_menu() {
 [Betrieb]
  6) Tools & Umgebung    7) Container / Docker  8) Monitoring
  9) Systeminfo         10) Wartung / Disks    11) Benutzer & Zeit
-12) Proxmox-Helfer     13) Systemsteuerung
+12) Proxmox-Helfer     13) Systemsteuerung     m) CMatrix
 
 [Schnellzugriff]
 h) Hilfe / Info    s) Status-Dashboard    l) Logs ansehen
@@ -2539,7 +2572,7 @@ EOF
 [Operations]
  6) Tools & environment 7) Containers / Docker 8) Monitoring
  9) System info        10) Maintenance / disks 11) Users & time
-12) Proxmox helpers    13) System control
+12) Proxmox helpers    13) System control      m) CMatrix
 EOF
         render_footer
     fi
@@ -2547,8 +2580,8 @@ EOF
 
 search_section() {
     local query="$1"
-    local -a names=("system update" "dns" "network" "speedtest" "security" "tools" "containers" "monitoring" "system information" "maintenance" "users" "proxmox" "control" "help" "status" "logs" "config" "update" "language" "install")
-    local -a targets=(1 2 3 4 5 6 7 8 9 10 11 12 13 h s l c u d i)
+    local -a names=("system update" "dns" "network" "speedtest" "security" "tools" "containers" "monitoring" "system information" "maintenance" "users" "proxmox" "control" "cmatrix" "help" "status" "logs" "config" "update" "language" "install")
+    local -a targets=(1 2 3 4 5 6 7 8 9 10 11 12 13 m h s l c u d i)
     local matches=()
     for i in "${!names[@]}"; do
         if [[ "${names[$i]}" == *"$query"* ]]; then
@@ -4143,6 +4176,7 @@ while true; do
         11) menu_users_time ;;
         12) menu_proxmox ;;
         13) menu_control ;;
+        m|M) run_cmatrix ;;
         u|U) self_update_script ;;
         d|D) toggle_language ;;
         h|H) show_help_about ;;
