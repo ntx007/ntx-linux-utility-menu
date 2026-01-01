@@ -18,6 +18,7 @@ HEADER_CPU=""
 HEADER_RAM=""
 HEADER_HOST=""
 HEADER_IP=""
+HEADER_PUBLIC_IP=""
 LANGUAGE="${LANGUAGE:-en}"
 UPDATE_WARN_DAYS=${UPDATE_WARN_DAYS:-7}
 POST_INSTALL_LOG="${POST_INSTALL_LOG:-/var/log/ntx-menu-app-installs.log}"
@@ -74,7 +75,7 @@ render_header() {
     local bar="===============================================================================" 
     echo "$bar"
     echo " $title"
-    echo " Host: ${HEADER_HOST:-unknown} | Threads: ${HEADER_CPU:-?} | RAM: ${HEADER_RAM:-?} GiB | IP: ${HEADER_IP:-unknown}"
+    echo " Host: ${HEADER_HOST:-unknown} | Threads: ${HEADER_CPU:-?} | RAM: ${HEADER_RAM:-?} GiB | LAN: ${HEADER_IP:-unknown} | WAN: ${HEADER_PUBLIC_IP:-unknown}"
     echo " Repo: https://github.com/ntx007/ntx-linux-utility-menu"
     [[ -n "$UPDATE_NOTICE" ]] && echo " Update: $UPDATE_NOTICE"
     echo "$bar"
@@ -229,6 +230,8 @@ gather_header_info() {
     HEADER_HOST=$(hostname 2>/dev/null || echo "unknown")
     HEADER_IP=$(hostname -I 2>/dev/null | awk '{print $1}' | sed 's/[[:space:]]//g')
     HEADER_IP=${HEADER_IP:-unknown}
+    HEADER_PUBLIC_IP=$(dig +short myip.opendns.com @resolver1.opendns.com 2>/dev/null | head -n1)
+    HEADER_PUBLIC_IP=${HEADER_PUBLIC_IP:-unknown}
     if update_cadence_warn "silent"; then
         if [[ -n "$UPDATE_NOTICE" ]]; then
             UPDATE_NOTICE="$UPDATE_NOTICE; ${STALE_APT_MSG}"

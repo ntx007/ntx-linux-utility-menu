@@ -9,6 +9,7 @@
 - Maintenance: journal vacuum with custom window, needrestart summary, and a config template writer.
 - Security: SSH cipher/KEX/MAC audit helper.
 - Proxmox: backup rotation helper for /var/lib/vz/dump.
+- UI: header shows LAN/WAN IPs alongside host/threads/RAM and update notice.
 
 ### Known behaviors ⚠️
 - Self-update needs the full script path when realpath/readlink -f is missing or it may write into the current directory.
