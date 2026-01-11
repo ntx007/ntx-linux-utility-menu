@@ -2,9 +2,9 @@
 
 A portable, menu-driven Bash utility for common Linux admin tasks. Built for Debian/Ubuntu (and derivatives), it centralizes updates, diagnostics, networking tools, security hardening, and maintenance in a single interactive script.
 
-- Current version: **v1.3.1**.
+- Current version: **v1.3.2-dev**.
 - Self-update URL: `https://raw.githubusercontent.com/ntx007/ntx-linux-utility-menu/main/ntx-utility-menu.sh` (GitHub main). If `realpath`/`readlink -f` are unavailable and you launch via `$PATH`, run the script with its full path (e.g., `/usr/local/bin/ntx-utility-menu`) so the updater replaces the installed file instead of writing into the current directory.
-- UI: grouped main menu (Core / Operations / Shortcuts) with header info (host, threads, RAM, LAN/WAN IP) and update notice; language toggle `d` (en/de).
+- UI: grouped main menu (Core / Operations / Shortcuts) with header info (host, threads, RAM, LAN/WAN IP with a quick timeout) and update notice; language toggle `d` (en/de).
 
 ## Highlights ✨
 
@@ -110,9 +110,17 @@ sudo ./ntx-utility-menu.sh --run health_brief
 sudo ./ntx-utility-menu.sh --run cmatrix
 ```
 
+If installed in PATH, you can run the same actions via the wrapper:
+
+```bash
+sudo ntxmenu --run update_all
+sudo ntxmenu --run health_brief
+sudo ntxmenu --help
+```
+
 Run `./ntx-utility-menu.sh --help` for the full list.
 
-## Menu map (v1.3.1) 🗺️
+## Menu map (v1.3.2-dev) 🗺️
 
 - **Core**
   - System update: upgrade flows (wait for apt locks), unattended-upgrades, apt source list/remove, APT health/update health, APT proxy toggle, apt source validator (mismatched codenames), version-aware self-update (release/dev/rollback)
@@ -127,7 +135,7 @@ Run `./ntx-utility-menu.sh --help` for the full list.
   - Monitoring: node exporter, top CPU/mem, iostat, SMART (single/all disks), status dashboard, export report (text/JSON), headless `health_brief`
   - System info: `/etc/os-release`, neofetch, memory info, VM check, display adapters, GitHub link, service uptime summary, hardware overview
   - Maintenance/disks: cleanup, log cleanup preset, custom journal vacuum, needrestart summary, disks, largest `/var`, maintenance bundle (update + cleanup + log rotate + status report), log integrity, kernel list/purge helper, /etc backup, config template writer
-  - Proxmox: list LXC, enter shell (lists VMIDs first), start/stop/restart, storage status, snapshots (create/list/rollback), backup/restore/rotate (vzdump/pct restore), resource tuning, services/cluster status, recent tasks, backup listing, community post-install/templates scripts, Proxmox SSH config updater (PermitRootLogin yes), qm VM helpers (list/start/stop/restart/snapshots/backup/restore) and ISO downloader
+  - Proxmox: LXC/VM/backups/tools submenus covering list/enter/start/stop/restart, storage status, snapshots (create/list/rollback), backup/restore/rotate (vzdump/pct restore), resource tuning, services/cluster status, recent tasks, backup listing, community post-install/templates scripts, Proxmox SSH config updater (PermitRootLogin yes), qm VM helpers (list/start/stop/restart/snapshots/backup/restore) and ISO downloader
   - Users/time: create sudo user, change user password, time sync info, chrony install
 - System control: reboot, power down (SAFE_MODE-aware)
 
@@ -165,6 +173,7 @@ Search tip: in the main menu, type `/keyword` (e.g., `/docker`, `/dns`) to jump 
 - Minimal envs: Inode view may be skipped if `df -i` is unsupported; IP listing falls back to `ip addr` or `ifconfig` if `ip` is absent.
 - MariaDB server install assumes a systemd host (not containerized); enable/start may fail inside containers.
 - Speedtest repo helper is pinned to Ubuntu jammy; on other releases it writes jammy entries, so add a distro-appropriate repo if needed.
+- Public IP lookup in the header uses OpenDNS with a short timeout; set `HEADER_PUBLIC_TIMEOUT` to adjust or expect `unknown` when offline.
 
 ## Troubleshooting 🛠️
 - APT blocked by proxy: set `http_proxy`/`https_proxy` and re-run `apt-get update`; use the APT proxy toggle in System update.

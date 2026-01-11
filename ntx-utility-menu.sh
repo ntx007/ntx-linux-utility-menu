@@ -2,7 +2,7 @@
 
 ###############################################################################
 # NTX Command Center - Simple server helper menu
-# Version: v1.3.1
+# Version: v1.3.2-dev
 ###############################################################################
 
 LOG_FILE="/var/log/ntx-menu.log"
@@ -12,13 +12,14 @@ MAX_LOG_SIZE=$((1024 * 1024)) # 1 MiB
 LOG_HISTORY=${LOG_HISTORY:-3}
 DRY_RUN=${DRY_RUN:-false}
 SAFE_MODE=${SAFE_MODE:-false}
-VERSION="v1.3.1"
+VERSION="v1.3.2-dev"
 UPDATE_NOTICE=""
 HEADER_CPU=""
 HEADER_RAM=""
 HEADER_HOST=""
 HEADER_IP=""
 HEADER_PUBLIC_IP=""
+HEADER_PUBLIC_TIMEOUT="${HEADER_PUBLIC_TIMEOUT:-3}"
 LANGUAGE="${LANGUAGE:-en}"
 UPDATE_WARN_DAYS=${UPDATE_WARN_DAYS:-7}
 POST_INSTALL_LOG="${POST_INSTALL_LOG:-/var/log/ntx-menu-app-installs.log}"
@@ -230,7 +231,12 @@ gather_header_info() {
     HEADER_HOST=$(hostname 2>/dev/null || echo "unknown")
     HEADER_IP=$(hostname -I 2>/dev/null | awk '{print $1}' | sed 's/[[:space:]]//g')
     HEADER_IP=${HEADER_IP:-unknown}
-    HEADER_PUBLIC_IP=$(dig +short myip.opendns.com @resolver1.opendns.com 2>/dev/null | head -n1)
+    # Public IP lookup with timeout to avoid hanging on slow/offline links
+    if command -v dig >/dev/null 2>&1; then
+        HEADER_PUBLIC_IP=$(timeout "${HEADER_PUBLIC_TIMEOUT}" dig +short myip.opendns.com @resolver1.opendns.com 2>/dev/null | head -n1)
+    else
+        HEADER_PUBLIC_IP="dig missing"
+    fi
     HEADER_PUBLIC_IP=${HEADER_PUBLIC_IP:-unknown}
     if update_cadence_warn "silent"; then
         if [[ -n "$UPDATE_NOTICE" ]]; then
@@ -261,7 +267,7 @@ self_update_script() {
             echo "Fetching recent releases..."
             mapfile -t tags < <(curl -fsSL "https://api.github.com/repos/ntx007/ntx-linux-utility-menu/releases?per_page=15" 2>/dev/null | grep -o '"tag_name": *"[^"]*"' | cut -d'"' -f4)
             if [[ ${#tags[@]} -eq 0 ]]; then
-                echo "No tags retrieved; falling back to main."
+                echo "No tags retrieved (rate limit or network). Try again or pick main/dev manually."
                 url="https://ntx-menu.re-vent.de"
             else
                 local i=1
@@ -289,7 +295,7 @@ self_update_script() {
                     i=$((i+1))
                 done
             else
-                echo "No branches retrieved from GitHub."
+                echo "No branches retrieved from GitHub (rate limit or network). Enter one manually or retry."
             fi
             echo " 0) Cancel"
             echo " M) Manual branch name"
@@ -486,7 +492,7 @@ update_cadence_warn() {
 
 pending_updates_count() {
     local count
-    count=$(apt-get -s upgrade 2>/dev/null | grep -c '^Inst ' || echo 0)
+    count=$(apt-get -s upgrade 2>/dev/null | grep -c '^Inst ')
     echo "Pending upgrades: ${count}"
 }
 
@@ -582,16 +588,16 @@ status_report_export() {
 health_brief() {
     local public_ip reboot_needed updates
     public_ip=$(whats_my_ip 2>/dev/null | head -n1)
-    updates=$(apt-get -s upgrade 2>/dev/null | grep -c '^Inst ' || echo 0)
+    updates=$(apt-get -s upgrade 2>/dev/null | grep -c '^Inst ')
     reboot_needed=$( [[ -f /var/run/reboot-required ]] && echo yes || echo no )
     echo "Host: $(hostname)"
     echo "Public IP: ${public_ip:-unknown}"
     echo "Pending updates: ${updates}"
     echo "Reboot required: ${reboot_needed}"
     echo "Services:"
-    printf "  ssh: %s\n" "$(systemctl is-active ssh >/dev/null 2>&1 && echo active || echo inactive)"
-    printf "  docker: %s\n" "$(systemctl is-active docker >/dev/null 2>&1 && echo active || echo inactive)"
-    printf "  ufw: %s\n" "$(systemctl is-active ufw >/dev/null 2>&1 && echo active || echo inactive)"
+    printf "  ssh: %s\n" "$(systemctl is-active "$SSH_UNIT" >/dev/null 2>&1 && echo active || echo inactive)"
+    printf "  docker: %s\n" "$(systemctl is-active "$DOCKER_UNIT" >/dev/null 2>&1 && echo active || echo inactive)"
+    printf "  ufw: %s\n" "$(systemctl is-active "$UFW_UNIT" >/dev/null 2>&1 && echo active || echo inactive)"
 }
 
 status_report_json() {
@@ -618,18 +624,18 @@ status_report_json() {
         echo "  \"host\": \"$(hostname)\","
         echo "  \"uptime\": \"$(uptime -p 2>/dev/null || uptime)\","
         echo "  \"reboot_required\": \"$( [[ -f /var/run/reboot-required ]] && echo yes || echo no )\","
-        echo "  \"pending_updates\": \"$(apt-get -s upgrade 2>/dev/null | grep -c '^Inst ' || echo 0)\","
+        echo "  \"pending_updates\": \"$(apt-get -s upgrade 2>/dev/null | grep -c '^Inst ')\","
         echo "  \"kernel_running\": \"$(uname -r)\","
         echo "  \"containers_running\": \"${container_count:-unknown}\","
         if [[ -n "$smart_disk" ]]; then
             echo "  \"smart\": {\"disk\": \"$smart_disk\", \"health\": \"${smart_health:-unknown}\"},"
         fi
         echo "  \"services\": {"
-        echo "    \"ssh\": \"$(systemctl is-active ssh >/dev/null 2>&1 && echo active || echo inactive)\","
-        echo "    \"ufw\": \"$(systemctl is-active ufw >/dev/null 2>&1 && echo active || echo inactive)\","
-        echo "    \"fail2ban\": \"$(systemctl is-active fail2ban >/dev/null 2>&1 && echo active || echo inactive)\","
-        echo "    \"tailscale\": \"$(systemctl is-active tailscaled >/dev/null 2>&1 && echo active || echo inactive)\","
-        echo "    \"docker\": \"$(systemctl is-active docker >/dev/null 2>&1 && echo active || echo inactive)\""
+        printf '    "ssh": "%s",\n' "$(systemctl is-active "$SSH_UNIT" >/dev/null 2>&1 && echo active || echo inactive)"
+        printf '    "ufw": "%s",\n' "$(systemctl is-active "$UFW_UNIT" >/dev/null 2>&1 && echo active || echo inactive)"
+        printf '    "fail2ban": "%s",\n' "$(systemctl is-active "$FAIL2BAN_UNIT" >/dev/null 2>&1 && echo active || echo inactive)"
+        printf '    "tailscale": "%s",\n' "$(systemctl is-active "$TAILSCALE_UNIT" >/dev/null 2>&1 && echo active || echo inactive)"
+        printf '    "docker": "%s"\n' "$(systemctl is-active "$DOCKER_UNIT" >/dev/null 2>&1 && echo active || echo inactive)"
         echo "  }"
         echo "}"
     } > "$report"
@@ -1049,13 +1055,24 @@ apt_source_validator() {
     local mismatches=0
     while IFS= read -r line; do
         [[ -z "$line" || "$line" =~ ^# ]] && continue
-        if [[ -n "$codename" && "$line" =~ [[:space:]](ubuntu|debian)/([[:alnum:]-]+)[[:space:]] ]]; then
-            local seen="${BASH_REMATCH[2]}"
-            if [[ "$seen" != "$codename" ]]; then
+        [[ "$line" =~ ^[[:space:]]*deb[[:space:]] ]] || continue
+        local trimmed="${line%%#*}"
+        local dist=""
+        set -- $trimmed
+        if [[ "$2" == \[* ]]; then
+            dist="$4"
+        else
+            dist="$3"
+        fi
+        [[ -z "$dist" || -z "$codename" ]] && continue
+        case "$dist" in
+            "$codename"|"$codename"-*) ;;
+            stable|stable-*|testing|testing-*|unstable|unstable-*|sid|oldstable|oldstable-*) ;;
+            *)
                 echo "Possible mismatch: $line"
                 mismatches=$((mismatches+1))
-            fi
-        fi
+                ;;
+        esac
     done < <(shopt -s nullglob; cat /etc/apt/sources.list /etc/apt/sources.list.d/*.list 2>/dev/null || true)
     if [[ "$mismatches" -eq 0 ]]; then
         echo "No mismatched codenames detected."
@@ -4038,69 +4055,67 @@ menu_proxmox() {
         if [[ "$LANGUAGE" == "de" ]]; then
             cat <<EOF
 [Proxmox-Helfer]
- 1) Container auflisten (pct list)
- 2) Container-Shell betreten (pct enter <vmid>)
- 3) SSH-Konfig für Proxmox anpassen (PermitRootLogin yes)
- 4) Container starten (pct start)
- 5) Container stoppen (pct stop)
- 6) Container neu starten (pct restart)
- 7) Speicher anzeigen (pvesm status)
- 8) LXC Snapshot erstellen
- 9) LXC Snapshots anzeigen
-10) LXC Snapshot zurückrollen
-11) LXC Backup (vzdump)
-12) LXC Wiederherstellen (Backup)
-13) LXC Ressourcen anpassen (CPU/Memory)
-14) Proxmox Dienste / Cluster-Status
-15) PVE Post Install Script (community)
-16) PVE All Templates Script (community)
-17) VMs auflisten (qm list)
-18) VM starten (qm start)
-19) VM stoppen (qm stop)
-20) VM neu starten (qm reset)
-21) VM Snapshot erstellen
-22) VM Snapshots anzeigen
-23) VM Snapshot zurückrollen
-24) VM Backup (vzdump)
-25) VM Wiederherstellen (qmrestore)
-26) ISO herunterladen (Templates-Verzeichnis)
-27) Letzte Tasks anzeigen (pvesh)
-28) Backups in /var/lib/vz/dump anzeigen
-29) Backups rotieren (ältere löschen)
+ 1) LXC Untermenü
+ 2) VM Untermenü
+ 3) Backups/Storage/Tasks
+ 4) Tools & Skripte
  0) Zurück
 EOF
         else
             cat <<EOF
 [Proxmox helpers]
+ 1) LXC submenu
+ 2) VM submenu
+ 3) Backups / storage / tasks
+ 4) Tools & scripts
+ 0) Back
+EOF
+        fi
+        read -p "Select: " c
+        case "$c" in
+            1) proxmox_menu_lxc ;;
+            2) proxmox_menu_vm ;;
+            3) proxmox_menu_backups ;;
+            4) proxmox_menu_tools ;;
+            0) break ;;
+            *) echo "Invalid choice." ;;
+        esac
+        should_pause_after "$c" && pause_prompt
+    done
+}
+
+proxmox_menu_lxc() {
+    while true; do
+        if [[ "$LANGUAGE" == "de" ]]; then
+            cat <<EOF
+[Proxmox LXC]
+ 1) Container auflisten (pct list)
+ 2) Container-Shell betreten (pct enter <vmid>)
+ 3) Container starten (pct start)
+ 4) Container stoppen (pct stop)
+ 5) Container neu starten (pct restart)
+ 6) LXC Snapshot erstellen
+ 7) LXC Snapshots anzeigen
+ 8) LXC Snapshot zurückrollen
+ 9) LXC Backup (vzdump)
+10) LXC Wiederherstellen (Backup)
+11) LXC Ressourcen anpassen (CPU/Memory)
+ 0) Zurück
+EOF
+        else
+            cat <<EOF
+[Proxmox LXC]
  1) List containers (pct list)
  2) Enter container shell (pct enter <vmid>)
- 3) Update SSH config for Proxmox (PermitRootLogin yes)
- 4) Start container (pct start)
- 5) Stop container (pct stop)
- 6) Restart container (pct restart)
- 7) List storage (pvesm status)
- 8) Create LXC snapshot
- 9) List LXC snapshots
-10) Rollback LXC snapshot
-11) Backup LXC (vzdump)
-12) Restore LXC from backup
-13) Tune LXC resources (CPU/Memory)
-14) Proxmox services / cluster status
-15) PVE Post Install Script (community)
-16) PVE All Templates Script (community)
-17) List VMs (qm list)
-18) Start VM (qm start)
-19) Stop VM (qm stop)
-20) Restart VM (qm reset)
-21) Create VM snapshot
-22) List VM snapshots
-23) Rollback VM snapshot
-24) Backup VM (vzdump)
-25) Restore VM (qmrestore)
-26) Download ISO (template dir)
-27) List recent tasks (pvesh)
-28) List backups in /var/lib/vz/dump
-29) Rotate backups (delete older files)
+ 3) Start container (pct start)
+ 4) Stop container (pct stop)
+ 5) Restart container (pct restart)
+ 6) Create LXC snapshot
+ 7) List LXC snapshots
+ 8) Rollback LXC snapshot
+ 9) Backup LXC (vzdump)
+10) Restore LXC from backup
+11) Tune LXC resources (CPU/Memory)
  0) Back
 EOF
         fi
@@ -4108,33 +4123,135 @@ EOF
         case "$c" in
             1) list_pct_containers ;;
             2) pct_enter_shell ;;
-            3) change_ssh_proxmox ;;
-            4) pct_start_container ;;
-            5) pct_stop_container ;;
-            6) pct_restart_container ;;
-            7) proxmox_list_storage ;;
-            8) proxmox_snapshot_create ;;
-            9) proxmox_snapshot_list ;;
-            10) proxmox_snapshot_rollback ;;
-            11) proxmox_backup_lxc ;;
-            12) proxmox_restore_lxc ;;
-            13) proxmox_tune_resources ;;
-            14) proxmox_health ;;
-            15) proxmox_post_install ;;
-            16) proxmox_download_templates ;;
-            17) qm_list_vms ;;
-            18) qm_start_vm ;;
-            19) qm_stop_vm ;;
-            20) qm_restart_vm ;;
-            21) qm_snapshot_create ;;
-            22) qm_snapshot_list ;;
-            23) qm_snapshot_rollback ;;
-            24) qm_backup_vm ;;
-            25) qm_restore_vm ;;
-            26) qm_download_iso ;;
-            27) proxmox_list_tasks ;;
-            28) proxmox_list_backups ;;
-            29) proxmox_rotate_backups ;;
+            3) pct_start_container ;;
+            4) pct_stop_container ;;
+            5) pct_restart_container ;;
+            6) proxmox_snapshot_create ;;
+            7) proxmox_snapshot_list ;;
+            8) proxmox_snapshot_rollback ;;
+            9) proxmox_backup_lxc ;;
+            10) proxmox_restore_lxc ;;
+            11) proxmox_tune_resources ;;
+            0) break ;;
+            *) echo "Invalid choice." ;;
+        esac
+        should_pause_after "$c" && pause_prompt
+    done
+}
+
+proxmox_menu_vm() {
+    while true; do
+        if [[ "$LANGUAGE" == "de" ]]; then
+            cat <<EOF
+[Proxmox VMs]
+ 1) VMs auflisten (qm list)
+ 2) VM starten (qm start)
+ 3) VM stoppen (qm stop)
+ 4) VM neu starten (qm reset)
+ 5) VM Snapshot erstellen
+ 6) VM Snapshots anzeigen
+ 7) VM Snapshot zurückrollen
+ 8) VM Backup (vzdump)
+ 9) VM Wiederherstellen (qmrestore)
+10) ISO herunterladen (Templates-Verzeichnis)
+ 0) Zurück
+EOF
+        else
+            cat <<EOF
+[Proxmox VMs]
+ 1) List VMs (qm list)
+ 2) Start VM (qm start)
+ 3) Stop VM (qm stop)
+ 4) Restart VM (qm reset)
+ 5) Create VM snapshot
+ 6) List VM snapshots
+ 7) Rollback VM snapshot
+ 8) Backup VM (vzdump)
+ 9) Restore VM (qmrestore)
+10) Download ISO (template dir)
+ 0) Back
+EOF
+        fi
+        read -p "Select: " c
+        case "$c" in
+            1) qm_list_vms ;;
+            2) qm_start_vm ;;
+            3) qm_stop_vm ;;
+            4) qm_restart_vm ;;
+            5) qm_snapshot_create ;;
+            6) qm_snapshot_list ;;
+            7) qm_snapshot_rollback ;;
+            8) qm_backup_vm ;;
+            9) qm_restore_vm ;;
+            10) qm_download_iso ;;
+            0) break ;;
+            *) echo "Invalid choice." ;;
+        esac
+        should_pause_after "$c" && pause_prompt
+    done
+}
+
+proxmox_menu_backups() {
+    while true; do
+        if [[ "$LANGUAGE" == "de" ]]; then
+            cat <<EOF
+[Backups / Storage / Tasks]
+ 1) Speicher anzeigen (pvesm status)
+ 2) Backups in /var/lib/vz/dump anzeigen
+ 3) Backups rotieren (ältere löschen)
+ 4) Letzte Tasks anzeigen (pvesh)
+ 5) Proxmox Dienste / Cluster-Status
+ 0) Zurück
+EOF
+        else
+            cat <<EOF
+[Backups / Storage / Tasks]
+ 1) List storage (pvesm status)
+ 2) List backups in /var/lib/vz/dump
+ 3) Rotate backups (delete older files)
+ 4) List recent tasks (pvesh)
+ 5) Proxmox services / cluster status
+ 0) Back
+EOF
+        fi
+        read -p "Select: " c
+        case "$c" in
+            1) proxmox_list_storage ;;
+            2) proxmox_list_backups ;;
+            3) proxmox_rotate_backups ;;
+            4) proxmox_list_tasks ;;
+            5) proxmox_health ;;
+            0) break ;;
+            *) echo "Invalid choice." ;;
+        esac
+        should_pause_after "$c" && pause_prompt
+    done
+}
+
+proxmox_menu_tools() {
+    while true; do
+        if [[ "$LANGUAGE" == "de" ]]; then
+            cat <<EOF
+[Proxmox Tools & Skripte]
+ 1) SSH-Konfig anpassen (PermitRootLogin yes)
+ 2) PVE Post Install Script (community)
+ 3) PVE All Templates Script (community)
+ 0) Zurück
+EOF
+        else
+            cat <<EOF
+[Proxmox Tools & Scripts]
+ 1) Update SSH config (PermitRootLogin yes)
+ 2) PVE Post Install Script (community)
+ 3) PVE All Templates Script (community)
+ 0) Back
+EOF
+        fi
+        read -p "Select: " c
+        case "$c" in
+            1) change_ssh_proxmox ;;
+            2) proxmox_post_install ;;
+            3) proxmox_download_templates ;;
             0) break ;;
             *) echo "Invalid choice." ;;
         esac

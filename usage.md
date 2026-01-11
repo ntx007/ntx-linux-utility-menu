@@ -35,6 +35,14 @@ sudo ./ntx-utility-menu.sh --run cmatrix
 ```
 Use `--help` for the supported list.
 
+If installed in PATH, you can also use the wrapper:
+
+```bash
+sudo ntxmenu --run update_all
+sudo ntxmenu --run health_brief
+sudo ntxmenu --help
+```
+
 ## Modes & shortcuts ⌨️
 - `DRY_RUN=true ./ntx-utility-menu.sh`: preview commands.
 - `SAFE_MODE=true ./ntx-utility-menu.sh`: skip destructive actions.
@@ -43,7 +51,7 @@ Use `--help` for the supported list.
 
 ## Menu at a glance 🗺️
 - Core: updates (incl. unattended, apt lock wait, apt source validator), do-release-upgrade, apt source hygiene + proxy toggle, APT/update health, self-update; DNS presets/backups + custom nameserver (append/overwrite) and restore+restart systemd-resolved; network views (incl. top talkers), MTR and nmap quick scans, VLAN/bond helpers, SSH key helper; Speedtest/YABS; security submenus (firewall, Fail2ban, SSH w/ service controls incl. enable/disable, WireGuard, agents, anti-malware, config backup, first-run checklist for Docker/Compose/SSH/UFW/Fail2ban, SSH cipher/KEX/MAC audit).
-- Operations: tools/essentials/nvm (includes mariadb-client-core), MariaDB server (host install, systemd), Node/npm version check, containers (Docker/Compose, hardening checks, prune/scan/compose manager, container log tail/follow, app installers incl. Nginx Proxy Manager and Traefik), monitoring (status dashboard, reports, node exporter, SMART single/all disks, container count/SMART in reports, headless `health_brief`), system info (incl. service uptime and hardware overview), maintenance (cleanup/bundle/log cleanup/log integrity/kernel list/purge,/etc backup, config template writer, custom journal vacuum, needrestart summary), Proxmox helpers (LXC list/enter/start/stop/restart/snapshots/backup/restore/rotate, storage/resources/status, tasks/backups view, QM VM helpers and ISO downloader, community post-install/templates scripts), users/time (create sudo user, change user password, time sync, chrony), system control.
+- Operations: tools/essentials/nvm (includes mariadb-client-core), MariaDB server (host install, systemd), Node/npm version check, containers (Docker/Compose, hardening checks, prune/scan/compose manager, container log tail/follow, app installers incl. Nginx Proxy Manager and Traefik), monitoring (status dashboard, reports, node exporter, SMART single/all disks, container count/SMART in reports, headless `health_brief`), system info (incl. service uptime and hardware overview), maintenance (cleanup/bundle/log cleanup/log integrity/kernel list/purge,/etc backup, config template writer, custom journal vacuum, needrestart summary), Proxmox helpers (submenus for LXC, VMs, backups/storage/tasks, tools/scripts covering list/enter/start/stop/restart/snapshots/backup/restore/rotate, storage/resources/status, tasks/backups view, QM VM helpers and ISO downloader, community post-install/templates scripts), users/time (create sudo user, change user password, time sync, chrony), system control.
 - Shortcuts: `h` help, `s` dashboard, `l` logs, `c` config/env, `u` self-update, `d` language, `i` install to PATH, `q` quit.
 
 ## Known behaviors & caveats ⚠️
@@ -59,3 +67,4 @@ Use `--help` for the supported list.
 - Minimal envs: Inode view may be skipped if `df -i` is unsupported; IP listing falls back to `ip addr` or `ifconfig` if `ip` is absent.
 - MariaDB server install assumes a systemd host (not containerized); enable/start may fail inside containers.
 - Speedtest repo helper is pinned to Ubuntu jammy; on other releases it writes jammy entries, so add a distro-appropriate repo if needed.
+- Public IP lookup in the header uses OpenDNS with a short timeout; set `HEADER_PUBLIC_TIMEOUT` to adjust or expect `unknown` when offline.
