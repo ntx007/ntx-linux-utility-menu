@@ -1,4 +1,4 @@
-# Installation 🛠️
+# Installation (v1.3.2) 🛠️
 
 ## Prerequisites 📋
 - Debian/Ubuntu-based system with `apt`

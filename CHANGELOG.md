@@ -1,7 +1,7 @@
 # Changelog 📝
 
-## Unreleased (v1.3.2-dev) 🚧
-- Version: bumped to v1.3.2-dev to start the next development cycle.
+## v1.3.2
+- Version: bumped to v1.3.2.
 - Wrapper: `ntxmenu` now forwards CLI arguments correctly (e.g., `--run`, `--help`).
 - Status: pending update counts no longer render as `0\n0` when no upgrades are available.
 - Status: health/status JSON now respects configured systemd unit names.
