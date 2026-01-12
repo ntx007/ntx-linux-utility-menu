@@ -50,7 +50,7 @@ sudo ntxmenu --help
 - `CONFIRM=false ./ntx-utility-menu.sh`: skip confirmation prompts.
 - Shortcuts: `h` Help/About, `s` Status dashboard, `l` Tail logs, `c` Config/env, `u` Self-update, `i` Install to PATH, `m` launches cmatrix, `q` Quit.
 - Language toggle: `d` switches between English and German labels.
-- Header now shows distro and detected package manager.
+- Header now shows distro, OS version, and detected package manager.
 
 ## Logs 🧾
 - Main log: `/var/log/ntx-menu.log`

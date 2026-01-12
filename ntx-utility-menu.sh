@@ -37,6 +37,8 @@ STATUS_UPLOAD_PATH="${STATUS_UPLOAD_PATH:-}"
 AUTO_UPDATE_BEFORE_MAINT=${AUTO_UPDATE_BEFORE_MAINT:-false}
 PKG_MGR=""
 DISTRO_ID=""
+OS_VERSION=""
+OS_PRETTY_NAME=""
 SCRIPT_PATH="$(command -v realpath >/dev/null 2>&1 && realpath "$0")"
 if [[ -z "$SCRIPT_PATH" ]]; then
     SCRIPT_PATH="$(command -v readlink >/dev/null 2>&1 && readlink -f "$0")"
@@ -113,7 +115,7 @@ render_header() {
     echo "$bar"
     echo " $title"
     echo " Host: ${HEADER_HOST:-unknown} | Threads: ${HEADER_CPU:-?} | RAM: ${HEADER_RAM:-?} GiB | LAN: ${HEADER_IP:-unknown} | WAN: ${HEADER_PUBLIC_IP:-unknown}"
-    echo " Distro: ${DISTRO_ID:-unknown} | Package mgr: ${PKG_MGR:-unknown}"
+    echo " OS: ${OS_PRETTY_NAME:-unknown} (${DISTRO_ID:-unknown} ${OS_VERSION:-unknown}) | Package mgr: ${PKG_MGR:-unknown}"
     echo " Repo: https://github.com/ntx007/ntx-linux-utility-menu"
     [[ -n "$UPDATE_NOTICE" ]] && echo " Update: $UPDATE_NOTICE"
     echo "$bar"
@@ -595,9 +597,13 @@ check_environment() {
         echo "Cannot find /etc/os-release. Unsupported system."
         exit 1
     fi
+    local script_version="$VERSION"
     # shellcheck disable=SC1091
     . /etc/os-release
+    VERSION="$script_version"
     DISTRO_ID="${ID:-unknown}"
+    OS_VERSION="${VERSION_ID:-${VERSION_CODENAME:-unknown}}"
+    OS_PRETTY_NAME="${PRETTY_NAME:-${DISTRO_ID} ${OS_VERSION}}"
     if ! detect_package_manager; then
         echo "No supported package manager detected (apt, dnf, pacman). Aborting."
         exit 1
@@ -2995,6 +3001,8 @@ SAFE_MODE:      $SAFE_MODE
 CONFIRM:        $CONFIRM
 PKG_MGR:        ${PKG_MGR:-unknown}
 DISTRO_ID:      ${DISTRO_ID:-unknown}
+OS_VERSION:     ${OS_VERSION:-unknown}
+OS_PRETTY:      ${OS_PRETTY_NAME:-unknown}
 Units:          SSH=$SSH_UNIT, UFW=$UFW_UNIT, Fail2ban=$FAIL2BAN_UNIT, Tailscale=$TAILSCALE_UNIT, Docker=$DOCKER_UNIT, Netmaker=$NETMAKER_UNIT, CrowdSec=$CROWDSEC_UNIT, Bouncer=$CROWDSEC_BOUNCER_UNIT
 EOF
 }
@@ -3013,6 +3021,8 @@ config_json() {
     printf '  "confirm": "%s",\n' "$CONFIRM"
     printf '  "pkg_mgr": "%s",\n' "${PKG_MGR:-unknown}"
     printf '  "distro_id": "%s",\n' "${DISTRO_ID:-unknown}"
+    printf '  "os_version": "%s",\n' "${OS_VERSION:-unknown}"
+    printf '  "os_pretty": "%s",\n' "${OS_PRETTY_NAME:-unknown}"
     printf '  "units": {"ssh": "%s", "ufw": "%s", "fail2ban": "%s", "tailscale": "%s", "docker": "%s", "netmaker": "%s", "crowdsec": "%s", "bouncer": "%s"}\n' \
         "$SSH_UNIT" "$UFW_UNIT" "$FAIL2BAN_UNIT" "$TAILSCALE_UNIT" "$DOCKER_UNIT" "$NETMAKER_UNIT" "$CROWDSEC_UNIT" "$CROWDSEC_BOUNCER_UNIT"
     echo "}"

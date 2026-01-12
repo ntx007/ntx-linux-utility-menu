@@ -4,6 +4,7 @@
 - Version: bumped to v1.4.0-dev to start the next development cycle.
 - Distro check: detect apt/dnf/pacman and show a note when apt-only features are unavailable.
 - UI: header now shows distro and detected package manager.
+- UI: header now shows OS version.
 - UI: apt-only options are labeled in menus when on non-apt systems.
 - Controls: added CONFIRM toggle for skipping confirmation prompts.
 - Package installs: more installers now use the package-manager helpers for non-apt support.
