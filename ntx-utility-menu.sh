@@ -1,18 +1,28 @@
 #!/bin/bash
+set -eEuo pipefail
+
+if [[ $EUID -ne 0 ]]; then
+   echo "Dieses Skript muss als Root ausgeführt werden (sudo)."
+   exit 1
+fi
 
 ###############################################################################
 # NTX Command Center - Simple server helper menu
-# Version: v1.3.2
+# Version: v1.4.0-dev
 ###############################################################################
 
 LOG_FILE="/var/log/ntx-menu.log"
+ERROR_LOG="/var/log/ntx-utility.log"
 BACKUP_DIR="/var/backups/ntx-menu"
 REPORT_DIR="/var/log/ntx-menu-reports"
 MAX_LOG_SIZE=$((1024 * 1024)) # 1 MiB
 LOG_HISTORY=${LOG_HISTORY:-3}
+BACKUP_COMPRESS=${BACKUP_COMPRESS:-gzip}
+BACKUP_KEEP=${BACKUP_KEEP:-5}
 DRY_RUN=${DRY_RUN:-false}
 SAFE_MODE=${SAFE_MODE:-false}
-VERSION="v1.3.2"
+CONFIRM=${CONFIRM:-true}
+VERSION="v1.4.0-dev"
 UPDATE_NOTICE=""
 HEADER_CPU=""
 HEADER_RAM=""
@@ -23,7 +33,10 @@ HEADER_PUBLIC_TIMEOUT="${HEADER_PUBLIC_TIMEOUT:-3}"
 LANGUAGE="${LANGUAGE:-en}"
 UPDATE_WARN_DAYS=${UPDATE_WARN_DAYS:-7}
 POST_INSTALL_LOG="${POST_INSTALL_LOG:-/var/log/ntx-menu-app-installs.log}"
+STATUS_UPLOAD_PATH="${STATUS_UPLOAD_PATH:-}"
 AUTO_UPDATE_BEFORE_MAINT=${AUTO_UPDATE_BEFORE_MAINT:-false}
+PKG_MGR=""
+DISTRO_ID=""
 SCRIPT_PATH="$(command -v realpath >/dev/null 2>&1 && realpath "$0")"
 if [[ -z "$SCRIPT_PATH" ]]; then
     SCRIPT_PATH="$(command -v readlink >/dev/null 2>&1 && readlink -f "$0")"
@@ -37,7 +50,8 @@ SCRIPT_PATH="${SCRIPT_PATH:-$0}"
 # - Pending update count uses `apt-get -s upgrade | grep '^Inst'` and can undercount on localized systems.
 # - WireGuard enable/disable assumes /etc/wireguard/wg0.conf exists.
 # Service unit map (adjust if your distro uses different names)
-SSH_UNIT="${SSH_UNIT:-ssh}"
+SSH_UNIT_DEFAULT="ssh"
+SSH_UNIT="${SSH_UNIT:-$SSH_UNIT_DEFAULT}"
 UFW_UNIT="${UFW_UNIT:-ufw}"
 FAIL2BAN_UNIT="${FAIL2BAN_UNIT:-fail2ban}"
 TAILSCALE_UNIT="${TAILSCALE_UNIT:-tailscaled}"
@@ -66,10 +80,32 @@ msgbox() {
     echo
 }
 
+confirm_prompt() {
+    local prompt="$1"
+    local default_no="${2:-true}"
+    if [[ "$CONFIRM" != "true" ]]; then
+        return 0
+    fi
+    if [[ "$default_no" == "true" ]]; then
+        read -p "$prompt (y/N): " -n 1 -r
+    else
+        read -p "$prompt (Y/n): " -n 1 -r
+    fi
+    echo
+    [[ $REPLY =~ ^[Yy]$ ]]
+}
+
 log_line() {
     local message="$1"
     echo "$(date '+%Y-%m-%d %H:%M:%S') | $message" | tee -a "$LOG_FILE"
 }
+
+log_error() {
+    local message="$1"
+    echo "$(date '+%Y-%m-%d %H:%M:%S') | ERROR | $message" >> "$ERROR_LOG" 2>/dev/null || true
+}
+
+trap 'rc=$?; log_error "line $LINENO: $BASH_COMMAND (exit $rc)"' ERR
 
 render_header() {
     local title="$1"
@@ -77,6 +113,7 @@ render_header() {
     echo "$bar"
     echo " $title"
     echo " Host: ${HEADER_HOST:-unknown} | Threads: ${HEADER_CPU:-?} | RAM: ${HEADER_RAM:-?} GiB | LAN: ${HEADER_IP:-unknown} | WAN: ${HEADER_PUBLIC_IP:-unknown}"
+    echo " Distro: ${DISTRO_ID:-unknown} | Package mgr: ${PKG_MGR:-unknown}"
     echo " Repo: https://github.com/ntx007/ntx-linux-utility-menu"
     [[ -n "$UPDATE_NOTICE" ]] && echo " Update: $UPDATE_NOTICE"
     echo "$bar"
@@ -183,11 +220,15 @@ run_cmd() {
 ensure_dirs() {
     mkdir -p "$BACKUP_DIR"
     touch "$LOG_FILE"
+    touch "$ERROR_LOG"
     mkdir -p "$REPORT_DIR"
     rotate_log
 }
 
 wait_for_dpkg_lock() {
+    if [[ "$PKG_MGR" != "apt" ]]; then
+        return 0
+    fi
     local timeout="${1:-60}"
     local start
     start=$(date +%s)
@@ -204,9 +245,85 @@ wait_for_dpkg_lock() {
     return 0
 }
 
+detect_package_manager() {
+    if command -v apt-get >/dev/null 2>&1; then
+        PKG_MGR="apt"
+    elif command -v dnf >/dev/null 2>&1; then
+        PKG_MGR="dnf"
+    elif command -v pacman >/dev/null 2>&1; then
+        PKG_MGR="pacman"
+    else
+        PKG_MGR=""
+    fi
+    [[ -n "$PKG_MGR" ]]
+}
+
+map_pkg_name() {
+    local pkg="$1"
+    case "$PKG_MGR:$pkg" in
+        pacman:openssh-server) echo "openssh" ;;
+        dnf:prometheus-node-exporter) echo "node_exporter" ;;
+        pacman:prometheus-node-exporter) echo "prometheus-node-exporter" ;;
+        dnf:gnupg) echo "gnupg2" ;;
+        pacman:dnsutils) echo "bind" ;;
+        dnf:dnsutils) echo "bind-utils" ;;
+        pacman:procps) echo "procps-ng" ;;
+        dnf:procps) echo "procps-ng" ;;
+        dnf:iproute2) echo "iproute" ;;
+        dnf:python3-dev) echo "python3-devel" ;;
+        pacman:python3-dev) echo "python" ;;
+        pacman:python3-pip) echo "python-pip" ;;
+        dnf:mariadb-client-core) echo "mariadb" ;;
+        pacman:mariadb-client-core) echo "mariadb" ;;
+        dnf:mariadb-server) echo "mariadb-server" ;;
+        pacman:mariadb-server) echo "mariadb" ;;
+        dnf:clamav-daemon) echo "clamav" ;;
+        pacman:clamav-daemon) echo "clamav" ;;
+        dnf:libpam-google-authenticator) echo "google-authenticator" ;;
+        pacman:libpam-google-authenticator) echo "google-authenticator-libpam" ;;
+        *) echo "$pkg" ;;
+    esac
+}
+
+require_pkg_mgr() {
+    local needed="$1"
+    if [[ "$PKG_MGR" != "$needed" ]]; then
+        echo "This action requires $needed (current: ${PKG_MGR:-unknown})."
+        return 1
+    fi
+    return 0
+}
+
+pkg_update() {
+    case "$PKG_MGR" in
+        apt) apt-get update ;;
+        dnf) dnf -y makecache ;;
+        pacman) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
+pkg_upgrade() {
+    case "$PKG_MGR" in
+        apt) apt-get upgrade -y ;;
+        dnf) dnf -y upgrade ;;
+        pacman) pacman -Syu --noconfirm ;;
+        *) return 1 ;;
+    esac
+}
+
+pkg_install() {
+    case "$PKG_MGR" in
+        apt) apt-get install -y "$@" ;;
+        dnf) dnf -y install "$@" ;;
+        pacman) pacman -S --noconfirm --needed "$@" ;;
+        *) return 1 ;;
+    esac
+}
+
 check_updates() {
     local latest
-    latest=$(curl -fsSL "https://api.github.com/repos/ntx007/ntx-linux-utility-menu/releases?per_page=1" 2>/dev/null | grep -o '"tag_name": *"[^"]*"' | head -n1 | cut -d'"' -f4)
+    latest=$(curl -fsSL "https://api.github.com/repos/ntx007/ntx-linux-utility-menu/releases?per_page=1" 2>/dev/null | grep -o '"tag_name": *"[^"]*"' | head -n1 | cut -d'"' -f4 || true)
     if [[ -n "$latest" ]]; then
         local latest_clean="${latest#v}"
         local current_clean="${VERSION#v}"
@@ -250,12 +367,13 @@ gather_header_info() {
 self_update_script() {
     local target="$SCRIPT_PATH"
     local tmp="${target}.tmp"
-    local choice tag url
+    local choice tag url branch
 
     echo "[Self-update] Choose source:"
     echo " 1) Update from main branch"
     echo " 2) Latest release"
     echo " 3) Select from branches"
+    echo " 4) Update via git pull (if repo)"
     echo " 0) Cancel"
     read -p "Select: " choice
 
@@ -265,7 +383,7 @@ self_update_script() {
             ;;
         2)
             echo "Fetching recent releases..."
-            mapfile -t tags < <(curl -fsSL "https://api.github.com/repos/ntx007/ntx-linux-utility-menu/releases?per_page=15" 2>/dev/null | grep -o '"tag_name": *"[^"]*"' | cut -d'"' -f4)
+            mapfile -t tags < <(curl -fsSL "https://api.github.com/repos/ntx007/ntx-linux-utility-menu/releases?per_page=15" 2>/dev/null | grep -o '"tag_name": *"[^"]*"' | cut -d'"' -f4 || true)
             if [[ ${#tags[@]} -eq 0 ]]; then
                 echo "No tags retrieved (rate limit or network). Try again or pick main/dev manually."
                 url="https://ntx-menu.re-vent.de"
@@ -287,7 +405,7 @@ self_update_script() {
             ;;
         3)
             echo "Fetching branches..."
-            mapfile -t branches < <(curl -fsSL "https://api.github.com/repos/ntx007/ntx-linux-utility-menu/branches?per_page=50" 2>/dev/null | grep -o '"name": *"[^"]*"' | cut -d'"' -f4)
+            mapfile -t branches < <(curl -fsSL "https://api.github.com/repos/ntx007/ntx-linux-utility-menu/branches?per_page=50" 2>/dev/null | grep -o '"name": *"[^"]*"' | cut -d'"' -f4 || true)
             if [[ ${#branches[@]} -gt 0 ]]; then
                 local i=1
                 for b in "${branches[@]}"; do
@@ -313,6 +431,10 @@ self_update_script() {
                 return 1
             fi
             url="https://raw.githubusercontent.com/ntx007/ntx-linux-utility-menu/${branch}/ntx-utility-menu.sh"
+            ;;
+        4)
+            self_update_git
+            return $?
             ;;
         0)
             echo "Update cancelled."
@@ -359,15 +481,82 @@ self_update_script() {
     fi
 }
 
+self_update_git() {
+    local repo_dir
+    repo_dir="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
+    if [[ ! -d "$repo_dir/.git" ]]; then
+        echo "No git repository found at $repo_dir."
+        return 1
+    fi
+    if [[ "$DRY_RUN" == "true" ]]; then
+        echo "[DRY RUN] git -C \"$repo_dir\" pull --ff-only"
+        log_line "OK : git pull (dry run)"
+        return 0
+    fi
+    log_line "RUN: git pull in $repo_dir"
+    if git -C "$repo_dir" pull --ff-only; then
+        log_line "OK : git pull in $repo_dir"
+        echo "Updated repository in $repo_dir."
+    else
+        log_line "FAIL: git pull in $repo_dir"
+        echo "Failed to update repository in $repo_dir."
+        return 1
+    fi
+}
+
 ensure_cmd() {
     local binary="$1"
     local pkg="${2:-$1}"
     if ! command -v "$binary" >/dev/null 2>&1; then
-        if ! wait_for_dpkg_lock 90; then
-            return 1
+        if [[ "$PKG_MGR" == "apt" ]]; then
+            if ! wait_for_dpkg_lock 90; then
+                return 1
+            fi
         fi
-        run_cmd "Installing missing dependency: $pkg" apt-get install -y "$pkg"
+        local mapped_pkg
+        mapped_pkg=$(map_pkg_name "$pkg")
+        run_cmd "Installing missing dependency: $mapped_pkg" pkg_install "$mapped_pkg"
     fi
+}
+
+backup_finalize() {
+    local tarfile="$1"
+    local base="${tarfile%.tar}"
+    local outfile=""
+    case "$BACKUP_COMPRESS" in
+        zstd)
+            if command -v zstd >/dev/null 2>&1; then
+                zstd -T0 -q -f "$tarfile"
+                outfile="${base}.tar.zst"
+                mv "${tarfile}.zst" "$outfile" 2>/dev/null || true
+            else
+                if command -v gzip >/dev/null 2>&1; then
+                    gzip -f "$tarfile"
+                    outfile="${base}.tar.gz"
+                else
+                    outfile="$tarfile"
+                fi
+            fi
+            ;;
+        gzip|*)
+            if command -v gzip >/dev/null 2>&1; then
+                gzip -f "$tarfile"
+                outfile="${base}.tar.gz"
+            else
+                outfile="$tarfile"
+            fi
+            ;;
+    esac
+    echo "$outfile"
+}
+
+backup_cleanup() {
+    local pattern="$1"
+    local keep="${BACKUP_KEEP:-0}"
+    if [[ "$keep" -le 0 ]]; then
+        return 0
+    fi
+    ls -1t $pattern 2>/dev/null | tail -n +$((keep+1)) | xargs -r rm -f || true
 }
 
 backup_file() {
@@ -406,13 +595,18 @@ check_environment() {
         echo "Cannot find /etc/os-release. Unsupported system."
         exit 1
     fi
-    if ! grep -qiE 'debian|ubuntu|mint|pop' /etc/os-release; then
-        echo "This script targets Debian/Ubuntu systems. Aborting."
+    # shellcheck disable=SC1091
+    . /etc/os-release
+    DISTRO_ID="${ID:-unknown}"
+    if ! detect_package_manager; then
+        echo "No supported package manager detected (apt, dnf, pacman). Aborting."
         exit 1
     fi
-    if ! command -v apt-get >/dev/null 2>&1; then
-        echo "apt-get not found. Aborting."
-        exit 1
+    if [[ "$PKG_MGR" != "apt" && "$SSH_UNIT" == "$SSH_UNIT_DEFAULT" ]]; then
+        SSH_UNIT="sshd"
+    fi
+    if [[ "$PKG_MGR" != "apt" ]]; then
+        echo "Note: detected $PKG_MGR on ${DISTRO_ID}; some apt-only features are unavailable."
     fi
 }
 
@@ -472,6 +666,9 @@ netstat_top_talkers() {
 }
 
 update_cadence_warn() {
+    if [[ "$PKG_MGR" != "apt" ]]; then
+        return 1
+    fi
     local mode="${1:-prompt}"
     if [[ -f /var/lib/apt/periodic/update-success-stamp ]]; then
         local last
@@ -492,14 +689,32 @@ update_cadence_warn() {
 
 pending_updates_count() {
     local count
-    count=$(apt-get -s upgrade 2>/dev/null | grep -c '^Inst ')
+    case "$PKG_MGR" in
+        apt)
+            count=$(apt-get -s upgrade 2>/dev/null | grep -c '^Inst ' || true)
+            count=${count:-0}
+            ;;
+        pacman)
+            count=$(pacman -Qu 2>/dev/null | wc -l | tr -d ' ')
+            ;;
+        dnf)
+            count=$(dnf -q check-update 2>/dev/null | awk 'NF && $1 !~ /^Last/ {c++} END{print c+0}' || true)
+            ;;
+        *)
+            count=0
+            ;;
+    esac
     echo "Pending upgrades: ${count}"
 }
 
 kernel_version_summary() {
     local running latest
     running=$(uname -r)
-    latest=$(dpkg -l 'linux-image-*' 2>/dev/null | awk '/^ii/{print $2,$3}' | sort | tail -1)
+    if [[ "$PKG_MGR" == "apt" ]]; then
+        latest=$(dpkg -l 'linux-image-*' 2>/dev/null | awk '/^ii/{print $2,$3}' | sort | tail -1)
+    else
+        latest=""
+    fi
     echo "Kernel running: $running"
     echo "Kernel latest (installed): ${latest:-unknown}"
 }
@@ -588,8 +803,13 @@ status_report_export() {
 health_brief() {
     local public_ip reboot_needed updates
     public_ip=$(whats_my_ip 2>/dev/null | head -n1)
-    updates=$(apt-get -s upgrade 2>/dev/null | grep -c '^Inst ')
-    reboot_needed=$( [[ -f /var/run/reboot-required ]] && echo yes || echo no )
+    updates=$(pending_updates_count | awk '{print $3}')
+    updates=${updates:-0}
+    if [[ "$PKG_MGR" == "apt" ]]; then
+        reboot_needed=$( [[ -f /var/run/reboot-required ]] && echo yes || echo no )
+    else
+        reboot_needed="unknown"
+    fi
     echo "Host: $(hostname)"
     echo "Public IP: ${public_ip:-unknown}"
     echo "Pending updates: ${updates}"
@@ -614,7 +834,7 @@ status_report_json() {
     if command -v smartctl >/dev/null 2>&1; then
         smart_disk=$(lsblk -ndo NAME,TYPE | awk '$2=="disk"{print "/dev/"$1; exit}')
         if [[ -n "$smart_disk" ]]; then
-            smart_health=$(smartctl -H "$smart_disk" 2>/dev/null | grep -E "SMART overall-health|SMART overall-health self-assessment" | head -1 | sed 's/.*: //')
+            smart_health=$(smartctl -H "$smart_disk" 2>/dev/null | grep -E "SMART overall-health|SMART overall-health self-assessment" | head -1 | sed 's/.*: //' || true)
         fi
     fi
     {
@@ -624,7 +844,7 @@ status_report_json() {
         echo "  \"host\": \"$(hostname)\","
         echo "  \"uptime\": \"$(uptime -p 2>/dev/null || uptime)\","
         echo "  \"reboot_required\": \"$( [[ -f /var/run/reboot-required ]] && echo yes || echo no )\","
-        echo "  \"pending_updates\": \"$(apt-get -s upgrade 2>/dev/null | grep -c '^Inst ')\","
+        echo "  \"pending_updates\": \"$(pending_updates_count | awk '{print $3}' || true)\","
         echo "  \"kernel_running\": \"$(uname -r)\","
         echo "  \"containers_running\": \"${container_count:-unknown}\","
         if [[ -n "$smart_disk" ]]; then
@@ -651,8 +871,8 @@ maintenance_bundle() {
     echo "Running maintenance bundle (updates, cleanup, log rotate, status report)..."
     if update_cadence_warn "silent"; then
         if [[ "$AUTO_UPDATE_BEFORE_MAINT" == "true" ]]; then
-            echo "AUTO_UPDATE_BEFORE_MAINT=true, running apt-get update..."
-            run_cmd "apt-get update (maintenance bundle)" apt-get update
+            echo "AUTO_UPDATE_BEFORE_MAINT=true, running package update..."
+            run_cmd "Package update (maintenance bundle)" pkg_update
         fi
     fi
     update_all
@@ -669,9 +889,9 @@ ssh_hardening_audit() {
     fi
     echo "SSH hardening check ($cfg)"
     local pri par pwa
-    pri=$(grep -Ei '^\s*PermitRootLogin' "$cfg" | tail -1 | awk '{print $2}')
-    par=$(grep -Ei '^\s*PasswordAuthentication' "$cfg" | tail -1 | awk '{print $2}')
-    pwa=$(grep -Ei '^\s*PubkeyAuthentication' "$cfg" | tail -1 | awk '{print $2}')
+    pri=$(grep -Ei '^\s*PermitRootLogin' "$cfg" | tail -1 | awk '{print $2}' || true)
+    par=$(grep -Ei '^\s*PasswordAuthentication' "$cfg" | tail -1 | awk '{print $2}' || true)
+    pwa=$(grep -Ei '^\s*PubkeyAuthentication' "$cfg" | tail -1 | awk '{print $2}' || true)
     echo "PermitRootLogin: ${pri:-default (yes on many distros)}"
     echo "PasswordAuthentication: ${par:-default (yes on many distros)}"
     echo "PubkeyAuthentication: ${pwa:-default (yes)}"
@@ -696,9 +916,9 @@ ssh_cipher_audit() {
     fi
     echo "SSH ciphers/KEX/MAC audit ($cfg)"
     local ciphers kex macs
-    ciphers=$(grep -i '^[[:space:]]*Ciphers' "$cfg" | tail -1 | cut -d' ' -f2-)
-    kex=$(grep -i '^[[:space:]]*KexAlgorithms' "$cfg" | tail -1 | cut -d' ' -f2-)
-    macs=$(grep -i '^[[:space:]]*MACs' "$cfg" | tail -1 | cut -d' ' -f2-)
+    ciphers=$(grep -i '^[[:space:]]*Ciphers' "$cfg" | tail -1 | cut -d' ' -f2- || true)
+    kex=$(grep -i '^[[:space:]]*KexAlgorithms' "$cfg" | tail -1 | cut -d' ' -f2- || true)
+    macs=$(grep -i '^[[:space:]]*MACs' "$cfg" | tail -1 | cut -d' ' -f2- || true)
     echo "Ciphers: ${ciphers:-default (OpenSSH defaults)}"
     echo "KexAlgorithms: ${kex:-default (OpenSSH defaults)}"
     echo "MACs: ${macs:-default (OpenSSH defaults)}"
@@ -749,9 +969,9 @@ install_docker() {
         echo "Docker installation failed (docker not found)."
         return 1
     fi
-    # Ensure compose plugin is present; try apt package first, then binary fallback from GitHub Compose releases.
+    # Ensure compose plugin is present; try package manager first, then binary fallback from GitHub Compose releases.
     if ! docker compose version >/dev/null 2>&1; then
-        if ! run_cmd "Install docker-compose-plugin (apt)" apt-get install -y docker-compose-plugin; then
+        if ! run_cmd "Install docker compose plugin" pkg_install docker-compose-plugin; then
             local plugin_dir="/usr/local/lib/docker/cli-plugins"
             local compose_bin="${plugin_dir}/docker-compose"
             mkdir -p "$plugin_dir"
@@ -932,47 +1152,59 @@ should_pause_after() {
 # --- System update ---
 
 update_all() {
-    if ! wait_for_dpkg_lock 90; then
+    if [[ "$PKG_MGR" == "apt" ]]; then
+        if ! wait_for_dpkg_lock 90; then
+            return 1
+        fi
+    fi
+    if ! run_cmd "Package update" pkg_update; then
+        echo "Package update failed (network/proxy?). Skipping upgrade."
         return 1
     fi
-    if ! run_cmd "apt-get update" apt-get update; then
-        echo "apt-get update failed (network/proxy?). Skipping upgrade."
-        return 1
-    fi
-    run_cmd "apt-get upgrade" apt-get upgrade -y
+    run_cmd "Package upgrade" pkg_upgrade
 }
 
 update_all_with_sudo_reboot() {
     # keep sudo at the beginning as requested
+    if ! require_pkg_mgr apt; then
+        return 1
+    fi
     sudo apt install sudo && sudo apt-get update && sudo apt-get upgrade -y && sudo reboot
 }
 
 update_all_reboot_if_needed() {
-    if ! wait_for_dpkg_lock 90; then
+    if [[ "$PKG_MGR" == "apt" ]]; then
+        if ! wait_for_dpkg_lock 90; then
+            return 1
+        fi
+    fi
+    if ! run_cmd "Package update" pkg_update; then
+        echo "Skipping upgrade and reboot check because package update failed."
         return 1
     fi
-    if ! run_cmd "apt-get update" apt-get update; then
-        echo "Skipping upgrade and reboot check because apt-get update failed."
+    if ! run_cmd "Package upgrade" pkg_upgrade; then
+        echo "Skipping reboot check because package upgrade failed."
         return 1
     fi
-    if ! run_cmd "apt-get upgrade" apt-get upgrade -y; then
-        echo "Skipping reboot check because apt-get upgrade failed."
-        return 1
-    fi
-    if [[ -f /var/run/reboot-required ]]; then
-        msgbox "Reboot required after updates."
-        read -p "Reboot now (y/N)? " -n 1 -r
-        echo
-        if [[ $REPLY =~ ^[Yy]$ ]]; then
-            log_line "Reboot requested after updates."
-            reboot
+    if [[ "$PKG_MGR" == "apt" ]]; then
+        if [[ -f /var/run/reboot-required ]]; then
+            msgbox "Reboot required after updates."
+            if confirm_prompt "Reboot now?"; then
+                log_line "Reboot requested after updates."
+                reboot
+            fi
+        else
+            echo "No reboot required."
         fi
     else
-        echo "No reboot required."
+        echo "Reboot check not available for ${PKG_MGR}."
     fi
 }
 
 do_release_upgrade() {
+    if ! require_pkg_mgr apt; then
+        return 1
+    fi
     echo "Ubuntu release upgrade: checks performed per https://wiki.ubuntuusers.de/Upgrade/"
     run_cmd "Install update-manager-core" apt-get install -y update-manager-core
     run_cmd "List held packages" apt-mark showhold
@@ -981,12 +1213,18 @@ do_release_upgrade() {
 }
 
 enable_unattended_upgrades() {
+    if ! require_pkg_mgr apt; then
+        return 1
+    fi
     run_cmd "Install unattended-upgrades" apt-get install unattended-upgrades -y
     run_cmd "Enable unattended-upgrades service" systemctl enable --now unattended-upgrades
     echo "Unattended upgrades enabled."
 }
 
 disable_unattended_upgrades() {
+    if ! require_pkg_mgr apt; then
+        return 1
+    fi
     if ! dpkg -s unattended-upgrades >/dev/null 2>&1; then
         echo "unattended-upgrades is not installed."
         return 0
@@ -996,6 +1234,9 @@ disable_unattended_upgrades() {
 }
 
 check_unattended_status() {
+    if ! require_pkg_mgr apt; then
+        return 1
+    fi
     if ! dpkg -s unattended-upgrades >/dev/null 2>&1; then
         echo "unattended-upgrades is not installed. Please enable it first."
         return 1
@@ -1011,6 +1252,9 @@ check_unattended_status() {
 }
 
 run_unattended_upgrade_now() {
+    if ! require_pkg_mgr apt; then
+        return 1
+    fi
     if ! dpkg -s unattended-upgrades >/dev/null 2>&1; then
         echo "unattended-upgrades is not installed. Please enable it first."
         return 1
@@ -1019,18 +1263,22 @@ run_unattended_upgrade_now() {
 }
 
 list_custom_sources() {
+    if ! require_pkg_mgr apt; then
+        return 1
+    fi
     echo "Custom sources (.list) in /etc/apt/sources.list.d:"
     ls -1 /etc/apt/sources.list.d/*.list 2>/dev/null || echo "None found."
 }
 
 toggle_apt_proxy() {
+    if ! require_pkg_mgr apt; then
+        return 1
+    fi
     local proxy_file="/etc/apt/apt.conf.d/99proxy"
     if [[ -f "$proxy_file" ]]; then
         echo "APT proxy currently enabled:"
         cat "$proxy_file"
-        read -p "Disable and remove proxy file? (y/N): " -n 1 -r
-        echo
-        if [[ $REPLY =~ ^[Yy]$ ]]; then
+        if confirm_prompt "Disable and remove proxy file?"; then
             run_cmd "Remove APT proxy config" rm -f "$proxy_file"
         fi
     else
@@ -1045,6 +1293,9 @@ EOF
 }
 
 apt_source_validator() {
+    if ! require_pkg_mgr apt; then
+        return 1
+    fi
     local codename=""
     if [[ -f /etc/os-release ]]; then
         # shellcheck disable=SC1091
@@ -1058,12 +1309,21 @@ apt_source_validator() {
         [[ "$line" =~ ^[[:space:]]*deb[[:space:]] ]] || continue
         local trimmed="${line%%#*}"
         local dist=""
-        set -- $trimmed
-        if [[ "$2" == \[* ]]; then
-            dist="$4"
-        else
-            dist="$3"
+        read -r -a tokens <<< "$trimmed"
+        if [[ ${#tokens[@]} -lt 3 ]]; then
+            continue
         fi
+        local idx=0
+        if [[ "${tokens[0]}" == "deb" ]]; then
+            idx=1
+        fi
+        if [[ "${tokens[$idx]}" == \[* ]]; then
+            while [[ $idx -lt ${#tokens[@]} && "${tokens[$idx]}" != *"]" ]]; do
+                idx=$((idx+1))
+            done
+            idx=$((idx+1))
+        fi
+        dist="${tokens[$((idx+1))]}"
         [[ -z "$dist" || -z "$codename" ]] && continue
         case "$dist" in
             "$codename"|"$codename"-*) ;;
@@ -1082,6 +1342,9 @@ apt_source_validator() {
 }
 
 remove_custom_source() {
+    if ! require_pkg_mgr apt; then
+        return 1
+    fi
     read -p "Enter path to .list file to remove: " SRC_FILE
     [[ -z "$SRC_FILE" ]] && { echo "No file provided."; return 1; }
     if [[ ! -f "$SRC_FILE" ]]; then
@@ -1089,17 +1352,18 @@ remove_custom_source() {
         return 1
     fi
     if ! skip_if_safe "removing $SRC_FILE"; then return 1; fi
-    read -p "Remove $SRC_FILE? (y/N): " -n 1 -r
-    echo
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
+    if confirm_prompt "Remove $SRC_FILE?"; then
         run_cmd "Remove custom source $SRC_FILE" rm -f "$SRC_FILE"
-        run_cmd "apt-get update after source removal" apt-get update
+        run_cmd "Package update after source removal" pkg_update
     else
         echo "Cancelled."
     fi
 }
 
 apt_health_check() {
+    if ! require_pkg_mgr apt; then
+        return 1
+    fi
     msgbox "APT health check"
     echo "[Held packages]"
     apt-mark showhold || true
@@ -1112,6 +1376,9 @@ apt_health_check() {
 }
 
 update_health_check() {
+    if ! require_pkg_mgr apt; then
+        return 1
+    fi
     echo "[Reboot required]"
     if [[ -f /var/run/reboot-required ]]; then
         echo "Yes"
@@ -1282,7 +1549,7 @@ hardware_overview() {
 }
 
 auditd_minimal_rules() {
-    run_cmd "Install auditd" apt-get install -y auditd
+    run_cmd "Install auditd" pkg_install auditd
     cat <<'EOF' > /etc/audit/rules.d/99-minimal.rules
 -w /etc/passwd -p wa -k passwd_changes
 -w /etc/shadow -p wa -k shadow_changes
@@ -1326,15 +1593,21 @@ nmap_top_ports() {
 # --- Speedtest & benchmarks ---
 
 install_speedtest_full() {
+    if ! require_pkg_mgr apt; then
+        return 1
+    fi
     if ! wait_for_dpkg_lock 90; then
         return 1
     fi
-    apt-get install curl -y
+    run_cmd "Install curl" pkg_install curl
     curl -s https://packagecloud.io/install/repositories/ookla/speedtest-cli/script.deb.sh | bash
-    apt-get install speedtest -y
+    pkg_install speedtest
 }
 
 change_speedtest_apt_list() {
+    if ! require_pkg_mgr apt; then
+        return 1
+    fi
     cat <<EOF > /etc/apt/sources.list.d/ookla_speedtest-cli.list
 # this file was generated by packagecloud.io for
 # the repository at https://packagecloud.io/ookla/speedtest-cli
@@ -1345,10 +1618,14 @@ EOF
 }
 
 install_speedtest_after_list() {
+    if ! require_pkg_mgr apt; then
+        return 1
+    fi
     if ! wait_for_dpkg_lock 90; then
         return 1
     fi
-    apt-get update && apt-get install speedtest -y
+    run_cmd "Package update" pkg_update
+    run_cmd "Install speedtest" pkg_install speedtest
 }
 
 run_cmatrix() {
@@ -1356,7 +1633,7 @@ run_cmatrix() {
         if ! wait_for_dpkg_lock 90; then
             return 1
         fi
-        run_cmd "Install cmatrix" apt-get install -y cmatrix
+        run_cmd "Install cmatrix" pkg_install cmatrix
     fi
     cmatrix
 }
@@ -1395,13 +1672,16 @@ run_yabs_system() {
 }
 
 remove_speedtest_repo() {
+    if ! require_pkg_mgr apt; then
+        return 1
+    fi
     if [[ -f /etc/apt/sources.list.d/ookla_speedtest-cli.list ]]; then
         run_cmd "Remove Speedtest repo list" rm -f /etc/apt/sources.list.d/ookla_speedtest-cli.list
     fi
     if [[ -f /etc/apt/keyrings/ookla_speedtest-cli-archive-keyring.gpg ]]; then
         run_cmd "Remove Speedtest keyring" rm -f /etc/apt/keyrings/ookla_speedtest-cli-archive-keyring.gpg
     fi
-    run_cmd "apt-get update after Speedtest repo removal" apt-get update
+    run_cmd "Package update after Speedtest repo removal" pkg_update
 }
 
 # --- Security / remote access ---
@@ -1415,14 +1695,14 @@ change_ssh_proxmox() {
     fi
     sed -i 's/^#PermitRootLogin.*/PermitRootLogin yes/' "$file"
     sed -i 's/^PermitRootLogin.*/PermitRootLogin yes/' "$file"
-    systemctl reload sshd 2>/dev/null || systemctl restart sshd
+    systemctl reload "$SSH_UNIT" 2>/dev/null || systemctl restart "$SSH_UNIT"
     echo "sshd_config adjusted. Backup: ${file}.bak"
 }
 
 install_openssh() {
-    apt update
-    apt install openssh-server -y
-    systemctl enable --now ssh
+    run_cmd "Package update" pkg_update
+    run_cmd "Install OpenSSH server" pkg_install openssh-server
+    systemctl enable --now "$SSH_UNIT"
 }
 
 tailscale_install() {
@@ -1434,31 +1714,37 @@ tailscale_up_qr() {
 }
 
 install_netclient() {
+    if ! require_pkg_mgr apt; then
+        return 1
+    fi
     # Based on https://docs.netmaker.io/docs/client-installation/netclient#installation
-    run_cmd "Install dependencies for netclient" apt-get install -y curl gpg
+    run_cmd "Install dependencies for netclient" pkg_install curl gpg
     run_cmd "Add Netmaker GPG key" bash -c "curl -fsSL 'https://apt.netmaker.org/gpg.key' | gpg --dearmor -o /usr/share/keyrings/netmaker-keyring.gpg"
     run_cmd "Add Netmaker apt repository" bash -c "echo \"deb [signed-by=/usr/share/keyrings/netmaker-keyring.gpg] https://apt.netmaker.org stable main\" > /etc/apt/sources.list.d/netclient.list"
     run_cmd "apt-get update (netclient)" apt-get update
-    run_cmd "Install netclient" apt-get install -y netclient
+    run_cmd "Install netclient" pkg_install netclient
     echo "Netmaker netclient installed. Join commands per https://docs.netmaker.io/docs/client-installation/netclient#installation"
 }
 
 remove_netclient_repo() {
+    if ! require_pkg_mgr apt; then
+        return 1
+    fi
     if [[ -f /etc/apt/sources.list.d/netclient.list ]]; then
         run_cmd "Remove Netmaker repo list" rm -f /etc/apt/sources.list.d/netclient.list
     fi
     if [[ -f /usr/share/keyrings/netmaker-keyring.gpg ]]; then
         run_cmd "Remove Netmaker keyring" rm -f /usr/share/keyrings/netmaker-keyring.gpg
     fi
-    run_cmd "apt-get update after Netmaker repo removal" apt-get update
+    run_cmd "Package update after Netmaker repo removal" pkg_update
 }
 
 install_wireguard_client() {
-    run_cmd "Install WireGuard (client)" apt-get install -y wireguard wireguard-tools
+    run_cmd "Install WireGuard (client)" pkg_install wireguard wireguard-tools
 }
 
 install_wireguard_server() {
-    run_cmd "Install WireGuard (server)" apt-get install -y wireguard wireguard-tools
+    run_cmd "Install WireGuard (server)" pkg_install wireguard wireguard-tools
     echo "Remember to configure /etc/wireguard/wg0.conf and enable via: systemctl enable --now wg-quick@wg0"
 }
 
@@ -1485,35 +1771,27 @@ disable_wg_quick() {
 }
 
 install_crowdsec() {
+    if ! require_pkg_mgr apt; then
+        return 1
+    fi
     run_cmd "Install CrowdSec repo" bash -c "curl -s https://packagecloud.io/install/repositories/crowdsec/crowdsec/script.deb.sh | bash"
-    run_cmd "Install crowdsec" apt-get install -y crowdsec
+    run_cmd "Install crowdsec" pkg_install crowdsec
     show_service_status crowdsec
 }
 
 install_crowdsec_firewall_bouncer() {
-    run_cmd "Install CrowdSec firewall bouncer (iptables)" apt-get install -y crowdsec-firewall-bouncer-iptables
+    if ! require_pkg_mgr apt; then
+        return 1
+    fi
+    run_cmd "Install CrowdSec firewall bouncer (iptables)" pkg_install crowdsec-firewall-bouncer-iptables
     show_service_status crowdsec-firewall-bouncer
 }
 
 install_essentials() {
-    apt update
-    apt install unzip -y
-    apt install python3-pip -y
-    apt-get install gcc python3-dev -y
-    apt-get install mariadb-client-core -y
+    run_cmd "Package update" pkg_update
+    run_cmd "Install essentials bundle" pkg_install unzip python3-pip gcc python3-dev mariadb-client-core dos2unix glances tmux zsh mc iproute2 npm sudo nano curl net-tools
     pip install --no-binary :all: psutil
     pip3 install gdown
-    apt install dos2unix -y
-    apt install glances -y
-    apt install tmux -y
-    apt install zsh -y
-    apt install mc -y
-    apt install iproute2 -y
-    apt install npm -y
-    apt-get install sudo -y
-    apt-get install nano -y
-    apt-get install curl -y
-    apt-get install net-tools -y
 }
 
 install_ibramenu() {
@@ -1523,8 +1801,8 @@ install_ibramenu() {
 }
 
 install_qemu_guest_agent() {
-    apt update
-    apt install qemu-guest-agent -y
+    run_cmd "Package update" pkg_update
+    run_cmd "Install QEMU guest agent" pkg_install qemu-guest-agent
     systemctl enable --now qemu-guest-agent
 }
 
@@ -1546,8 +1824,8 @@ install_mariadb_server() {
     if ! pidof systemd >/dev/null 2>&1; then
         echo "Systemd not detected; MariaDB service enable/start may fail in this environment."
     fi
-    run_cmd "apt update" apt update
-    run_cmd "Install MariaDB server" apt install -y mariadb-server
+    run_cmd "Package update" pkg_update
+    run_cmd "Install MariaDB server" pkg_install mariadb-server
     run_cmd "Enable and start MariaDB" systemctl enable --now mariadb
     echo
     echo "MariaDB installed (host install, not containerized). For post-install hardening, run: mysql_secure_installation"
@@ -1568,7 +1846,8 @@ show_node_npm_versions() {
 }
 
 install_ntxmenu_path() {
-    local url_base="https://raw.githubusercontent.com/ntx007/ntx-linux-utility-menu/main"
+    local ref="${NTX_VERSION:-main}"
+    local url_base="https://raw.githubusercontent.com/ntx007/ntx-linux-utility-menu/${ref}"
     local tmpdir
     tmpdir=$(mktemp -d)
     local script_path="${tmpdir}/ntx-utility-menu.sh"
@@ -1639,16 +1918,16 @@ EOF
 }
 
 install_ufw_basic() {
-    apt update
-    apt install ufw -y
+    run_cmd "Package update" pkg_update
+    run_cmd "Install UFW" pkg_install ufw
     ufw allow 22/tcp
     echo "y" | ufw enable
     ufw status
 }
 
 install_fail2ban() {
-    apt update
-    apt install fail2ban -y
+    run_cmd "Package update" pkg_update
+    run_cmd "Install Fail2ban" pkg_install fail2ban
     systemctl enable --now fail2ban
 }
 
@@ -1728,8 +2007,8 @@ show_ssh_status() {
 
 install_and_scan_clamav() {
     msgbox "Installing ClamAV"
-    apt update
-    apt install clamav clamav-daemon -y
+    run_cmd "Package update" pkg_update
+    run_cmd "Install ClamAV" pkg_install clamav clamav-daemon
     msgbox "Virus definitions"
     echo "1) Stop freshclam, update, restart"
     echo "2) Update without touching daemon"
@@ -1794,8 +2073,8 @@ firewall_preset_deny_all_except_ssh() {
 
 install_google_authenticator() {
     msgbox "Installing Google Authenticator PAM"
-    apt update
-    apt install libpam-google-authenticator -y
+    run_cmd "Package update" pkg_update
+    run_cmd "Install Google Authenticator PAM" pkg_install libpam-google-authenticator
     echo "Run 'google-authenticator' as the target user to configure; update /etc/pam.d/sshd and /etc/ssh/sshd_config per your policy."
 }
 
@@ -1831,43 +2110,66 @@ backup_config_bundle() {
     local ts
     ts=$(date '+%Y%m%d-%H%M%S')
     read -p "Optional: path to Docker Compose files to include (leave blank to skip): " COMPOSE_PATH
-    local dest="$BACKUP_DIR/config-backup-$ts.tar.gz"
-    tar -czf "$dest" /etc/ssh/sshd_config /etc/wireguard 2>/dev/null /etc/fail2ban /etc/ufw/applications.d 2>/dev/null || true
+    local base="$BACKUP_DIR/config-backup-$ts"
+    local tarfile="${base}.tar"
+    tar -cf "$tarfile" /etc/ssh/sshd_config /etc/wireguard 2>/dev/null /etc/fail2ban /etc/ufw/applications.d 2>/dev/null || true
     if [[ -n "$COMPOSE_PATH" && -d "$COMPOSE_PATH" ]]; then
-        tar -rf "$dest" -C "$COMPOSE_PATH" . 2>/dev/null || true
+        tar -rf "$tarfile" -C "$COMPOSE_PATH" . 2>/dev/null || true
     fi
+    local dest
+    dest=$(backup_finalize "$tarfile")
     log_line "Config backup created: $dest"
     echo "Config backup saved to $dest"
+    backup_cleanup "$BACKUP_DIR/config-backup-*.tar.*"
 }
 
 backup_etc_bundle() {
     local ts
     ts=$(date '+%Y%m%d-%H%M%S')
-    local dest="$BACKUP_DIR/etc-backup-$ts.tar.gz"
-    tar -czf "$dest" /etc 2>/dev/null || true
+    local base="$BACKUP_DIR/etc-backup-$ts"
+    local tarfile="${base}.tar"
+    tar -cf "$tarfile" /etc 2>/dev/null || true
+    local dest
+    dest=$(backup_finalize "$tarfile")
     log_line "Etc backup created: $dest"
     echo "Etc backup saved to $dest"
+    backup_cleanup "$BACKUP_DIR/etc-backup-*.tar.*"
+}
+
+backup_routine_quick() {
+    msgbox "Backup routine (etc + config)"
+    backup_etc_bundle
+    backup_config_bundle
 }
 
 restore_config_bundle() {
     local latest
-    latest=$(ls -1t "$BACKUP_DIR"/config-backup-*.tar.gz 2>/dev/null | head -n 1)
+    latest=$(ls -1t "$BACKUP_DIR"/config-backup-*.tar.* 2>/dev/null | head -n 1)
     if [[ -z "$latest" ]]; then
         echo "No config backup found in $BACKUP_DIR"
         return 1
     fi
     echo "Available backups:"
-    ls -1t "$BACKUP_DIR"/config-backup-*.tar.gz 2>/dev/null | nl
+    ls -1t "$BACKUP_DIR"/config-backup-*.tar.* 2>/dev/null | nl
     read -p "Select backup number (default 1): " sel
     sel=${sel:-1}
     local chosen
-    chosen=$(ls -1t "$BACKUP_DIR"/config-backup-*.tar.gz 2>/dev/null | sed -n "${sel}p")
+    chosen=$(ls -1t "$BACKUP_DIR"/config-backup-*.tar.* 2>/dev/null | sed -n "${sel}p")
     if [[ -z "$chosen" ]]; then
         echo "Invalid selection."
         return 1
     fi
     msgbox "Restoring config backup: $chosen"
-    tar -xzf "$chosen" -C / || { echo "Restore failed"; return 1; }
+    if [[ "$chosen" == *.tar.zst ]]; then
+        if command -v zstd >/dev/null 2>&1; then
+            zstd -dc "$chosen" | tar -xf - -C / || { echo "Restore failed"; return 1; }
+        else
+            echo "zstd not available to extract $chosen"
+            return 1
+        fi
+    else
+        tar -xzf "$chosen" -C / || { echo "Restore failed"; return 1; }
+    fi
     echo "Restore completed from $chosen"
 }
 
@@ -1883,7 +2185,7 @@ fail2ban_summary() {
     echo
     echo "Top offenders (auth.log):"
     if [[ -f /var/log/auth.log ]]; then
-        grep 'Ban ' /var/log/auth.log | awk '{print $NF}' | sort | uniq -c | sort -nr | head
+        grep 'Ban ' /var/log/auth.log | awk '{print $NF}' | sort | uniq -c | sort -nr | head || true
     else
         echo "auth.log not found."
     fi
@@ -2041,6 +2343,19 @@ docker_sensitive_mounts() {
     done
 }
 
+docker_socket_warning() {
+    if ! command -v docker >/dev/null 2>&1; then
+        return 0
+    fi
+    local id
+    for id in $(docker ps -q 2>/dev/null || true); do
+        if docker inspect --format '{{range .Mounts}}{{println .Source}}{{end}}' "$id" 2>/dev/null | grep -q "/var/run/docker.sock"; then
+            echo "Warning: /var/run/docker.sock is mounted in a container. Consider a socket proxy."
+            return 0
+        fi
+    done
+}
+
 log_integrity_report() {
     local size sha
     if [[ -f "$LOG_FILE" ]]; then
@@ -2057,12 +2372,18 @@ log_integrity_report() {
 }
 
 kernel_list_installed() {
+    if ! require_pkg_mgr apt; then
+        return 1
+    fi
     echo "Running kernel: $(uname -r)"
     echo "Installed kernel packages (linux-image):"
     dpkg -l 'linux-image-*' 2>/dev/null | awk '/^ii/{print $2,$3}' | column -t
 }
 
 kernel_purge_package() {
+    if ! require_pkg_mgr apt; then
+        return 1
+    fi
     kernel_list_installed
     read -r -p "Package name to purge (exact, e.g., linux-image-5.15.0-88-generic): " KP
     [[ -z "$KP" ]] && { echo "No package provided."; return 1; }
@@ -2087,11 +2408,14 @@ journal_vacuum_custom() {
 }
 
 needrestart_summary() {
+    if ! require_pkg_mgr apt; then
+        return 1
+    fi
     if ! command -v needrestart >/dev/null 2>&1; then
         if ! wait_for_dpkg_lock 90; then
             return 1
         fi
-        run_cmd "Install needrestart" apt-get install -y needrestart
+        run_cmd "Install needrestart" pkg_install needrestart
     fi
     needrestart -b || true
 }
@@ -2107,8 +2431,8 @@ kernel_manage_menu() {
 # --- Monitoring ---
 
 install_node_exporter() {
-    apt update
-    apt install prometheus-node-exporter -y
+    run_cmd "Package update" pkg_update
+    run_cmd "Install node exporter" pkg_install prometheus-node-exporter
     systemctl enable --now prometheus-node-exporter
 }
 
@@ -2145,7 +2469,7 @@ smart_health_check() {
 
 rootkit_check() {
     msgbox "Installing/Preparing Rootkit Check"
-    run_cmd "Install chkrootkit" apt install chkrootkit binutils -y
+    run_cmd "Install chkrootkit" pkg_install chkrootkit binutils
     ibralogo
     msgbox "Rootkit Check"
     if ! command -v strings >/dev/null 2>&1; then
@@ -2189,7 +2513,7 @@ disable_ssh_service() {
 
 warn_if_remote_no_tmux() {
     local msg="$1"
-    if [[ -n "$SSH_TTY" ]] && [[ -z "$TMUX" && -z "$STY" ]]; then
+    if [[ -n "${SSH_TTY:-}" ]] && [[ -z "${TMUX:-}" && -z "${STY:-}" ]]; then
         echo "Note: remote session without tmux/screen. $msg"
     fi
 }
@@ -2203,7 +2527,7 @@ qm_list_vms() {
 }
 
 general_information() {
-    apt install neofetch -y
+    run_cmd "Install neofetch" pkg_install neofetch
     msgbox "Neofetch"
     neofetch
 }
@@ -2221,7 +2545,7 @@ vm_check() {
 
 check_display() {
     ensure_cmd lshw lshw
-    sudo lshw -c display
+    lshw -c display
 }
 
 list_pct_containers() {
@@ -2555,6 +2879,9 @@ qm_download_iso() {
 # --- Maintenance / disks ---
 
 system_cleanup() {
+    if ! require_pkg_mgr apt; then
+        return 1
+    fi
     if ! skip_if_safe "system cleanup"; then return 1; fi
     apt-get autoremove -y
     apt-get autoclean -y
@@ -2609,8 +2936,8 @@ show_time_sync() {
 }
 
 install_chrony() {
-    apt update
-    apt install chrony -y
+    run_cmd "Package update" pkg_update
+    run_cmd "Install chrony" pkg_install chrony
     systemctl enable --now chrony
     timedatectl
 }
@@ -2621,9 +2948,7 @@ system_reboot() {
     if ! skip_if_safe "reboot"; then return 1; fi
     warn_if_remote_no_tmux "Rebooting over SSH without tmux/screen may drop your session."
     msgbox "System Reboot"
-    read -p "Are you sure (y/N)? " -n 1 -r
-    echo
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
+    if confirm_prompt "Are you sure?"; then
         reboot
     fi
 }
@@ -2632,9 +2957,7 @@ system_powerdown() {
     if ! skip_if_safe "power down"; then return 1; fi
     warn_if_remote_no_tmux "Powering down over SSH without tmux/screen may drop your session."
     msgbox "System Power Down"
-    read -p "Are you sure (y/N)? " -n 1 -r
-    echo
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
+    if confirm_prompt "Are you sure?"; then
         /sbin/shutdown -h now
     fi
 }
@@ -2649,11 +2972,36 @@ show_config() {
     cat <<EOF
 Version:        $VERSION
 Log file:       $LOG_FILE
+Error log:      $ERROR_LOG
 Backup dir:     $BACKUP_DIR
+Backup keep:    $BACKUP_KEEP
+Backup comp:    $BACKUP_COMPRESS
 DRY_RUN:        $DRY_RUN
 SAFE_MODE:      $SAFE_MODE
+CONFIRM:        $CONFIRM
+PKG_MGR:        ${PKG_MGR:-unknown}
+DISTRO_ID:      ${DISTRO_ID:-unknown}
 Units:          SSH=$SSH_UNIT, UFW=$UFW_UNIT, Fail2ban=$FAIL2BAN_UNIT, Tailscale=$TAILSCALE_UNIT, Docker=$DOCKER_UNIT, Netmaker=$NETMAKER_UNIT, CrowdSec=$CROWDSEC_UNIT, Bouncer=$CROWDSEC_BOUNCER_UNIT
 EOF
+}
+
+config_json() {
+    echo "{"
+    printf '  "version": "%s",\n' "$VERSION"
+    printf '  "log_file": "%s",\n' "$LOG_FILE"
+    printf '  "error_log": "%s",\n' "$ERROR_LOG"
+    printf '  "backup_dir": "%s",\n' "$BACKUP_DIR"
+    printf '  "backup_keep": "%s",\n' "$BACKUP_KEEP"
+    printf '  "backup_compress": "%s",\n' "$BACKUP_COMPRESS"
+    printf '  "report_dir": "%s",\n' "$REPORT_DIR"
+    printf '  "dry_run": "%s",\n' "$DRY_RUN"
+    printf '  "safe_mode": "%s",\n' "$SAFE_MODE"
+    printf '  "confirm": "%s",\n' "$CONFIRM"
+    printf '  "pkg_mgr": "%s",\n' "${PKG_MGR:-unknown}"
+    printf '  "distro_id": "%s",\n' "${DISTRO_ID:-unknown}"
+    printf '  "units": {"ssh": "%s", "ufw": "%s", "fail2ban": "%s", "tailscale": "%s", "docker": "%s", "netmaker": "%s", "crowdsec": "%s", "bouncer": "%s"}\n' \
+        "$SSH_UNIT" "$UFW_UNIT" "$FAIL2BAN_UNIT" "$TAILSCALE_UNIT" "$DOCKER_UNIT" "$NETMAKER_UNIT" "$CROWDSEC_UNIT" "$CROWDSEC_BOUNCER_UNIT"
+    echo "}"
 }
 
 write_config_template() {
@@ -2801,9 +3149,10 @@ run_action_by_name() {
         change_password) change_user_password ;;
         health_brief) health_brief ;;
         cmatrix) run_cmatrix ;;
+        config_json) config_json ;;
         *)
             echo "Unknown action: $action"
-            echo "Supported: update_all, maintenance_bundle, status_report, status_report_json, status_dashboard, health_brief, ssh_audit, docker_compose_health, wireguard_qr, apt_health, update_health, clamav_scan, ssh_start, ssh_stop, ssh_restart, ssh_enable, ssh_disable, change_password, cmatrix"
+            echo "Supported: update_all, maintenance_bundle, status_report, status_report_json, status_dashboard, health_brief, ssh_audit, docker_compose_health, wireguard_qr, apt_health, update_health, clamav_scan, ssh_start, ssh_stop, ssh_restart, ssh_enable, ssh_disable, change_password, cmatrix, config_json"
             return 1
             ;;
     esac
@@ -2818,6 +3167,7 @@ Actions (non-interactive):
   maintenance_bundle    Update, cleanup, rotate log, export status report
   status_report         Export status report to file
   status_report_json    Export status report to JSON
+  config_json           Print config/environment as JSON
   status_dashboard      Print status dashboard
   health_brief          Print a short text-only health summary
   ssh_audit             Run SSH hardening check
@@ -2843,19 +3193,20 @@ menu_update() {
 [Systemupdate]
  1) Alles aktualisieren (apt-get update && upgrade)
  2) Aktualisieren und bei Bedarf neu starten
- 3) Aktualisieren mit sudo und neu starten
- 4) do-release-upgrade (Ubuntu)
+ 3) Aktualisieren mit sudo und neu starten (nur apt)
+ 4) do-release-upgrade (Ubuntu, nur apt)
 
- 5) Automatische Updates aktivieren
- 6) Automatische Updates deaktivieren
- 7) Automatische Updates: Status
- 8) Automatische Updates jetzt ausführen
+ 5) Automatische Updates aktivieren (nur apt)
+ 6) Automatische Updates deaktivieren (nur apt)
+ 7) Automatische Updates: Status (nur apt)
+ 8) Automatische Updates jetzt ausführen (nur apt)
 
- 9) Benutzerdefinierte apt-Quellen auflisten
-10) Benutzerdefinierte apt-Quelle entfernen (.list)
-11) APT-Gesundheit (gehalten/defekt/Security)
-12) Update-Status (Reboot + Zeitstempel)
-13) APT Proxy setzen/entfernen
+ 9) Benutzerdefinierte apt-Quellen auflisten (nur apt)
+10) Benutzerdefinierte apt-Quelle entfernen (.list, nur apt)
+11) APT-Gesundheit (gehalten/defekt/Security, nur apt)
+12) Update-Status (Reboot + Zeitstempel, nur apt)
+13) APT Proxy setzen/entfernen (nur apt)
+14) APT-Quellen auf mismatched Codenames prüfen (nur apt)
  0) Zurück
 EOF
         else
@@ -2863,22 +3214,29 @@ EOF
 [System update]
  1) Update all (apt-get update && upgrade)
  2) Update all and reboot if required
- 3) Update all with sudo and reboot
- 4) do-release-upgrade (Ubuntu)
+ 3) Update all with sudo and reboot (apt-only)
+ 4) do-release-upgrade (Ubuntu, apt-only)
 
- 5) Unattended upgrades: enable
- 6) Unattended upgrades: disable
- 7) Unattended upgrades: status
- 8) Unattended upgrades: run now
+ 5) Unattended upgrades: enable (apt-only)
+ 6) Unattended upgrades: disable (apt-only)
+ 7) Unattended upgrades: status (apt-only)
+ 8) Unattended upgrades: run now (apt-only)
 
- 9) List custom apt sources
-10) Remove custom apt source (.list)
-11) APT health check (held/broken/security)
-12) Update health (reboot + last update)
-13) APT proxy toggle (set/remove)
-14) Validate apt sources for mismatched codenames
+ 9) List custom apt sources (apt-only)
+10) Remove custom apt source (.list, apt-only)
+11) APT health check (held/broken/security, apt-only)
+12) Update health (reboot + last update, apt-only)
+13) APT proxy toggle (set/remove, apt-only)
+14) Validate apt sources for mismatched codenames (apt-only)
  0) Back
 EOF
+        fi
+        if [[ "$PKG_MGR" != "apt" ]]; then
+            if [[ "$LANGUAGE" == "de" ]]; then
+                echo "Hinweis: Optionen mit 'nur apt' sind markiert und auf ${PKG_MGR} nicht verfugbar."
+            else
+                echo "Note: apt-only options are labeled and unavailable on ${PKG_MGR}."
+            fi
         fi
         read -p "Select: " c
         case "$c" in
@@ -3035,29 +3393,36 @@ menu_bench() {
         if [[ "$LANGUAGE" == "de" ]]; then
             cat <<EOF
 [Speedtest & Benchmarks]
- 1) Speedtest installieren (Repo + Paket)
- 2) Speedtest-Repo-Liste aktualisieren (jammy)
- 3) Speedtest nach Repo-Update installieren
+ 1) Speedtest installieren (Repo + Paket, nur apt)
+ 2) Speedtest-Repo-Liste aktualisieren (jammy, nur apt)
+ 3) Speedtest nach Repo-Update installieren (nur apt)
  4) Speedtest ausführen
 
  5) YABS ausführen
- 6) Speedtest Repo/Key entfernen
+ 6) Speedtest Repo/Key entfernen (nur apt)
  7) Benchmark-Presets (YABS Untermenü)
  0) Zurück
 EOF
         else
             cat <<EOF
 [Speedtest & benchmarks]
- 1) Install Speedtest (repo + package)
- 2) Update Speedtest repo list (jammy)
- 3) Install Speedtest after repo update
+ 1) Install Speedtest (repo + package, apt-only)
+ 2) Update Speedtest repo list (jammy, apt-only)
+ 3) Install Speedtest after repo update (apt-only)
  4) Run Speedtest
 
  5) Run YABS
- 6) Remove Speedtest repo/key
+ 6) Remove Speedtest repo/key (apt-only)
  7) Benchmark presets (YABS submenu)
  0) Back
 EOF
+        fi
+        if [[ "$PKG_MGR" != "apt" ]]; then
+            if [[ "$LANGUAGE" == "de" ]]; then
+                echo "Hinweis: Optionen mit 'nur apt' sind markiert und auf ${PKG_MGR} nicht verfugbar."
+            else
+                echo "Note: apt-only options are labeled and unavailable on ${PKG_MGR}."
+            fi
         fi
         read -p "Select: " c
         case "$c" in
@@ -3355,10 +3720,10 @@ menu_agents() {
 [CrowdSec / Netmaker / Tailscale]
  1) Tailscale installieren
  2) Tailscale up (QR-Modus)
- 3) Netmaker netclient installieren
- 4) Netmaker Repo/Key entfernen
- 5) CrowdSec installieren
- 6) CrowdSec Firewall Bouncer (iptables) installieren
+ 3) Netmaker netclient installieren (nur apt)
+ 4) Netmaker Repo/Key entfernen (nur apt)
+ 5) CrowdSec installieren (nur apt)
+ 6) CrowdSec Firewall Bouncer (iptables) installieren (nur apt)
  0) Zurück
 EOF
         else
@@ -3366,12 +3731,19 @@ EOF
 [CrowdSec / Netmaker / Tailscale]
  1) Install Tailscale
  2) Tailscale up (QR mode)
- 3) Install Netmaker netclient
- 4) Remove Netmaker repo/key
- 5) Install CrowdSec
- 6) Install CrowdSec firewall bouncer (iptables)
+ 3) Install Netmaker netclient (apt-only)
+ 4) Remove Netmaker repo/key (apt-only)
+ 5) Install CrowdSec (apt-only)
+ 6) Install CrowdSec firewall bouncer (iptables) (apt-only)
  0) Back
 EOF
+        fi
+        if [[ "$PKG_MGR" != "apt" ]]; then
+            if [[ "$LANGUAGE" == "de" ]]; then
+                echo "Hinweis: Optionen mit 'nur apt' sind markiert und auf ${PKG_MGR} nicht verfugbar."
+            else
+                echo "Note: apt-only options are labeled and unavailable on ${PKG_MGR}."
+            fi
         fi
         read -p "Select: " c
         case "$c" in
@@ -3488,6 +3860,7 @@ EOF
 
 menu_containers() {
     while true; do
+        docker_socket_warning
         if [[ "$LANGUAGE" == "de" ]]; then
             cat <<EOF
 [Container / Docker]
@@ -3506,21 +3879,27 @@ menu_containers() {
 
 12) Alle Container stoppen
 13) Alle Container starten (compose up -d)
-14) Eigenen Docker-Befehl ausführen
+14) Einzelnen Container stoppen
+15) Container entfernen (rm -f)
+16) Image entfernen (rmi -f)
+17) Eigenen Docker-Befehl ausführen
 
-15) Docker aufräumen (prune)
-16) Images scannen (docker scan/trivy)
-17) Compose-Projekt verwalten (up/down/restart)
+18) Docker aufräumen (prune)
+19) Images scannen (docker scan/trivy)
+20) Compose-Projekt verwalten (up/down/restart)
 
-18) Portainer installieren
-19) Nginx Proxy Manager installieren
-20) Traefik installieren
-21) Pi-hole installieren
-22) Pi-hole + Unbound installieren
-23) Nextcloud All-in-One installieren
-24) Tactical RMM installieren
-25) Hemmelig.app installieren
-26) Docker-Logs anzeigen (tail -f)
+21) Portainer installieren
+22) Nginx Proxy Manager installieren
+23) Traefik installieren
+24) Pi-hole installieren
+25) Pi-hole + Unbound installieren
+26) Nextcloud All-in-One installieren
+27) Tactical RMM installieren
+28) Hemmelig.app installieren
+29) Pangolin installieren (native installer)
+30) Arcane installieren (Installer)
+31) Arcane installieren (Docker Compose)
+32) Docker-Logs anzeigen (tail -f)
  0) Zurück
 EOF
         else
@@ -3541,21 +3920,27 @@ EOF
 
 12) Stop all Docker containers
 13) Start all containers (compose up -d)
-14) Run custom docker command
+14) Stop one container
+15) Remove container (rm -f)
+16) Remove image (rmi -f)
+17) Run custom docker command
 
-15) Docker prune (safe)
-16) Scan images (docker scan/trivy)
-17) Manage Docker Compose project (up/down/restart)
+18) Docker prune (safe)
+19) Scan images (docker scan/trivy)
+20) Manage Docker Compose project (up/down/restart)
 
-18) Install Portainer (CE)
-19) Install Nginx Proxy Manager
-20) Install Traefik
-21) Install Pi-hole
-22) Install Pi-hole + Unbound
-23) Install Nextcloud All-in-One
-24) Install Tactical RMM
-25) Install Hemmelig.app
-26) Tail Docker container logs (follow)
+21) Install Portainer (CE)
+22) Install Nginx Proxy Manager
+23) Install Traefik
+24) Install Pi-hole
+25) Install Pi-hole + Unbound
+26) Install Nextcloud All-in-One
+27) Install Tactical RMM
+28) Install Hemmelig.app
+29) Install Pangolin (native installer)
+30) Install Arcane (installer script)
+31) Install Arcane (Docker Compose)
+32) Tail Docker container logs (follow)
  0) Back
 EOF
         fi
@@ -3574,19 +3959,25 @@ EOF
             11) dockers_with_host_network ;;
             12) docker_stop_all ;;
             13) docker_start_all_compose ;;
-            14) docker_run_custom ;;
-            15) docker_prune_safe ;;
-            16) docker_scan_images ;;
-            17) docker_compose_manage ;;
-            18) install_portainer ;;
-            19) install_nginx_proxy_manager ;;
-            20) install_traefik ;;
-            21) install_pihole_only ;;
-            22) install_pihole_unbound ;;
-            23) install_nextcloud_aio ;;
-            24) install_tactical_rmm ;;
-            25) install_hemmelig ;;
-            26) docker_logs_follow ;;
+            14) docker_stop_one ;;
+            15) docker_remove_container ;;
+            16) docker_remove_image ;;
+            17) docker_run_custom ;;
+            18) docker_prune_safe ;;
+            19) docker_scan_images ;;
+            20) docker_compose_manage ;;
+            21) install_portainer ;;
+            22) install_nginx_proxy_manager ;;
+            23) install_traefik ;;
+            24) install_pihole_only ;;
+            25) install_pihole_unbound ;;
+            26) install_nextcloud_aio ;;
+            27) install_tactical_rmm ;;
+            28) install_hemmelig ;;
+            29) install_pangolin_native ;;
+            30) install_arcane_script ;;
+            31) install_arcane_compose ;;
+            32) docker_logs_follow ;;
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
@@ -3606,6 +3997,36 @@ docker_stop_all() {
         return 0
     fi
     run_cmd "Stop all Docker containers" docker stop $ids
+}
+
+docker_stop_one() {
+    if ! command -v docker >/dev/null 2>&1; then
+        echo "Docker not installed."
+        return 1
+    fi
+    read -r -p "Container name/ID to stop: " cname
+    [[ -z "$cname" ]] && { echo "No container provided."; return 1; }
+    run_cmd "Stop Docker container $cname" docker stop "$cname"
+}
+
+docker_remove_container() {
+    if ! command -v docker >/dev/null 2>&1; then
+        echo "Docker not installed."
+        return 1
+    fi
+    read -r -p "Container name/ID to remove: " cname
+    [[ -z "$cname" ]] && { echo "No container provided."; return 1; }
+    run_cmd "Remove Docker container $cname" docker rm -f "$cname"
+}
+
+docker_remove_image() {
+    if ! command -v docker >/dev/null 2>&1; then
+        echo "Docker not installed."
+        return 1
+    fi
+    read -r -p "Image name/ID to remove: " img
+    [[ -z "$img" ]] && { echo "No image provided."; return 1; }
+    run_cmd "Remove Docker image $img" docker rmi -f "$img"
 }
 
 docker_start_all_compose() {
@@ -4002,6 +4423,126 @@ EOF
     log_app_summary "Hemmelig: http://${ip:-<host>}:3000 data=${base}"
 }
 
+install_pangolin_native() {
+    if ! command -v curl >/dev/null 2>&1; then
+        echo "curl not installed."
+        return 1
+    fi
+    if ! command -v docker >/dev/null 2>&1; then
+        echo "Docker not installed (required by Pangolin installer)."
+        return 1
+    fi
+    local base="/opt/pangolin"
+    read -r -p "Install directory for Pangolin [${base}]: " base_override
+    base=${base_override:-$base}
+    run_cmd "Create Pangolin directory" mkdir -p "$base"
+    if [[ "$DRY_RUN" == "true" ]]; then
+        echo "[DRY RUN] curl -fsSL https://static.pangolin.net/get-installer.sh | bash"
+        echo "[DRY RUN] (cd \"$base\" && ./installer)"
+        log_line "OK : Pangolin installer (dry run)"
+        return 0
+    fi
+    run_cmd "Download Pangolin installer" bash -c "cd \"$base\" && curl -fsSL https://static.pangolin.net/get-installer.sh | bash"
+    if [[ ! -x "$base/installer" ]]; then
+        echo "Installer not found at $base/installer."
+        return 1
+    fi
+    run_cmd "Run Pangolin installer" bash -c "cd \"$base\" && ./installer"
+    log_app_summary "Pangolin: installer run in ${base}"
+}
+
+install_arcane_script() {
+    if ! command -v curl >/dev/null 2>&1; then
+        echo "curl not installed."
+        return 1
+    fi
+    echo "Arcane installer will set up dependencies (Docker, Node.js, Go)."
+    if [[ "$DRY_RUN" == "true" ]]; then
+        echo "[DRY RUN] curl -fsSL https://getarcane.app/install.sh | bash"
+        log_line "OK : Arcane installer (dry run)"
+        return 0
+    fi
+    run_cmd "Run Arcane installer" bash -c "curl -fsSL https://getarcane.app/install.sh | bash"
+    log_app_summary "Arcane: installer script executed"
+}
+
+install_arcane_compose() {
+    if ! command -v docker >/dev/null 2>&1; then
+        echo "Docker not installed."
+        return 1
+    fi
+    if ! docker compose version >/dev/null 2>&1; then
+        echo "Docker Compose plugin not found."
+        return 1
+    fi
+    local base="/opt/appdata/arcane"
+    read -r -p "Install directory for Arcane [${base}]: " base_override
+    base=${base_override:-$base}
+    local projects_dir="/opt/docker"
+    read -r -p "Projects directory to mount (absolute path) [${projects_dir}]: " projects_override
+    projects_dir=${projects_override:-$projects_dir}
+    if [[ "$projects_dir" != /* ]]; then
+        echo "Projects directory must be an absolute path."
+        return 1
+    fi
+    local app_url="http://localhost:3552"
+    read -r -p "APP_URL [${app_url}]: " app_url_override
+    app_url=${app_url_override:-$app_url}
+    local puid="${PUID:-$(id -u)}"
+    local pgid="${PGID:-$(id -g)}"
+    read -r -p "PUID [${puid}]: " puid_override
+    read -r -p "PGID [${pgid}]: " pgid_override
+    puid=${puid_override:-$puid}
+    pgid=${pgid_override:-$pgid}
+    local enc_key=""
+    local jwt_secret=""
+    if command -v openssl >/dev/null 2>&1; then
+        enc_key=$(openssl rand -base64 32 | tr -d '\n' 2>/dev/null || true)
+        jwt_secret=$(openssl rand -base64 32 | tr -d '\n' 2>/dev/null || true)
+    fi
+    read -r -p "ENCRYPTION_KEY (32 bytes, base64 ok) [auto-generate]: " enc_override
+    read -r -p "JWT_SECRET (32 bytes, base64 ok) [auto-generate]: " jwt_override
+    enc_key=${enc_override:-$enc_key}
+    jwt_secret=${jwt_override:-$jwt_secret}
+    if [[ -z "$enc_key" || -z "$jwt_secret" ]]; then
+        echo "Missing ENCRYPTION_KEY or JWT_SECRET. Generate via:"
+        echo "  docker run --rm ghcr.io/getarcaneapp/arcane:latest /app/arcane generate secret"
+        echo "  or: openssl rand -base64 32"
+        return 1
+    fi
+    run_cmd "Create Arcane directory" mkdir -p "$base"
+    cat > "${base}/compose.yaml" <<EOF
+services:
+  arcane:
+    image: ghcr.io/getarcaneapp/arcane:latest
+    container_name: arcane
+    ports:
+      - "3552:3552"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - arcane-data:/app/data
+      - ${projects_dir}:${projects_dir}
+    environment:
+      - APP_URL=${app_url}
+      - PUID=${puid}
+      - PGID=${pgid}
+      - ENCRYPTION_KEY=${enc_key}
+      - JWT_SECRET=${jwt_secret}
+      - PROJECTS_DIRECTORY=${projects_dir}
+    restart: unless-stopped
+
+volumes:
+  arcane-data:
+EOF
+    (cd "$base" && run_cmd "Deploy Arcane" docker compose up -d --force-recreate)
+    local ip
+    ip=$(hostname -I 2>/dev/null | awk '{print $1}')
+    echo "Arcane deployed."
+    echo "URL: ${app_url} (default: http://${ip:-<host>}:3552)"
+    echo "Default login: arcane / arcane-admin (change on first login)."
+    log_app_summary "Arcane: ${app_url} data=${base}"
+}
+
 menu_monitoring() {
     while true; do
         if [[ "$LANGUAGE" == "de" ]]; then
@@ -4316,8 +4857,9 @@ menu_maintenance() {
  4) Wartungspaket ausführen (Update + Cleanup + Logrotate + Statusreport)
  5) Log-Integrität (Größe + SHA256)
  6) Log-Cleanup (Journal 7d + größte /var/log)
- 7) Kernel-Liste / optional Paket entfernen
- 8) /etc Backup erstellen
+ 7) Kernel-Liste / optional Paket entfernen (nur apt)
+ 8) Backup-Routine (etc + config)
+ 9) /etc Backup erstellen
  0) Zurück
 EOF
         else
@@ -4329,13 +4871,21 @@ EOF
  4) Run maintenance bundle (update + cleanup + log rotate + status report)
  5) Log integrity (size + SHA256)
  6) Log cleanup preset (journal 7d + top /var/log files)
- 7) Kernel list / optional purge package
- 8) Create /etc backup
- 9) Write /etc/ntx-menu.conf template
-10) Journal vacuum (custom window)
-11) needrestart summary
+ 7) Kernel list / optional purge package (apt-only)
+ 8) Backup routine (etc + config)
+ 9) Create /etc backup
+10) Write /etc/ntx-menu.conf template
+11) Journal vacuum (custom window)
+12) needrestart summary (apt-only)
  0) Back
 EOF
+        fi
+        if [[ "$PKG_MGR" != "apt" ]]; then
+            if [[ "$LANGUAGE" == "de" ]]; then
+                echo "Hinweis: Optionen mit 'nur apt' sind markiert und auf ${PKG_MGR} nicht verfugbar."
+            else
+                echo "Note: apt-only options are labeled and unavailable on ${PKG_MGR}."
+            fi
         fi
         read -p "Select: " c
         case "$c" in
@@ -4346,10 +4896,11 @@ EOF
             5) log_integrity_report ;;
             6) log_cleanup_preset ;;
             7) kernel_manage_menu ;;
-            8) backup_etc_bundle ;;
-            9) write_config_template ;;
-            10) journal_vacuum_custom ;;
-            11) needrestart_summary ;;
+            8) backup_routine_quick ;;
+            9) backup_etc_bundle ;;
+            10) write_config_template ;;
+            11) journal_vacuum_custom ;;
+            12) needrestart_summary ;;
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
@@ -4440,11 +4991,6 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# Root check
-if [[ $EUID -ne 0 ]]; then
-   echo "Please run as root (e.g. sudo bash $0)."
-   exit 1
-fi
 load_config
 
 check_environment

@@ -1,10 +1,10 @@
 # NTX Command Center 🚀
 
-A portable, menu-driven Bash utility for common Linux admin tasks. Built for Debian/Ubuntu (and derivatives), it centralizes updates, diagnostics, networking tools, security hardening, and maintenance in a single interactive script.
+A portable, menu-driven Bash utility for common Linux admin tasks. Built for Debian/Ubuntu (and derivatives) with best-effort dnf/pacman support, it centralizes updates, diagnostics, networking tools, security hardening, and maintenance in a single interactive script.
 
-- Current version: **v1.3.2**.
+- Current version: **v1.4.0-dev**.
 - Self-update URL: `https://raw.githubusercontent.com/ntx007/ntx-linux-utility-menu/main/ntx-utility-menu.sh` (GitHub main). If `realpath`/`readlink -f` are unavailable and you launch via `$PATH`, run the script with its full path (e.g., `/usr/local/bin/ntx-utility-menu`) so the updater replaces the installed file instead of writing into the current directory.
-- UI: grouped main menu (Core / Operations / Shortcuts) with header info (host, threads, RAM, LAN/WAN IP with a quick timeout) and update notice; language toggle `d` (en/de).
+- UI: grouped main menu (Core / Operations / Shortcuts) with header info (host, threads, RAM, LAN/WAN IP with a quick timeout, distro/package manager) and update notice; language toggle `d` (en/de).
 
 ## Highlights ✨
 
@@ -15,16 +15,36 @@ A portable, menu-driven Bash utility for common Linux admin tasks. Built for Deb
 - Security/remote: organized submenus (firewall, Fail2ban, SSH/access, WireGuard, agents, anti-malware, config backup); UFW with snapshots/revert, Fail2ban (summary/list/unban + tuning helper), auditd minimal rules, OpenSSH, Tailscale, Netmaker netclient, CrowdSec + firewall bouncer, WireGuard (client/server, QR, validate/diff, interface choice), SSH hardening and service start/stop/restart/enable/disable, rootkit check, ClamAV improved workflow, Proxmox SSH config updater (PermitRootLogin yes)
   - First-run checklist: install/enable Docker/Compose, SSH, UFW, and Fail2ban in one pass
 - Tools/monitoring: essentials bundle (with mariadb-client-core) and dedicated submenu, nvm installer, node exporter, top CPU/mem, iostat summary, SMART checks (single/all disks), status dashboard, exportable status report (text/JSON with optional upload path) including container count/SMART health where available, service uptime + hardware overview
-- Containers: Docker + Compose plugin install, service status/info, running/all containers, Compose health (ls/ps), hardening checks (privileged, root user, host network, sensitive mounts)
-- Maintenance/info: cleanup, daily maintenance bundle (optional pre-update + log rotate + status report), log cleanup preset, kernel list/purge helper, /etc backup, disk usage, largest `/var` dirs, system info (os-release, neofetch, VM check, display adapters, uptime/hardware overview), GitHub link, Proxmox helpers (LXC + VM start/stop/restart, snapshots, backup/restore, ISO download, community scripts)
-- Logging/backups: `/var/log/ntx-menu.log` with rotation/history; `/etc/resolv.conf` backups; config backup/restore with optional Docker Compose includes
-- Modes: `DRY_RUN=true` to preview commands; `SAFE_MODE=true` to skip destructive actions
+- Containers: Docker + Compose plugin install, service status/info, running/all containers, Compose health (ls/ps), quick stop/remove helpers, hardening checks (privileged, root user, host network, sensitive mounts)
+- Maintenance/info: cleanup, daily maintenance bundle (optional pre-update + log rotate + status report), log cleanup preset, kernel list/purge helper, backup routine (etc + config), /etc backup, disk usage, largest `/var` dirs, system info (os-release, neofetch, VM check, display adapters, uptime/hardware overview), GitHub link, Proxmox helpers (LXC + VM start/stop/restart, snapshots, backup/restore, ISO download, community scripts)
+- Logging/backups: `/var/log/ntx-menu.log` with rotation/history; `/var/log/ntx-utility.log` for error traces; `/etc/resolv.conf` backups; config backup/restore with optional Docker Compose includes; backup compression via `BACKUP_COMPRESS` and retention via `BACKUP_KEEP`
+- Modes: `DRY_RUN=true` to preview commands; `SAFE_MODE=true` to skip destructive actions; `CONFIRM=false` to skip confirmations
 
 ## Requirements 📋
 
 - A Unix-like system with Bash or POSIX sh
+- Debian/Ubuntu-based systems are primary; best-effort support for dnf/pacman (e.g., Fedora/Arch)
 - Basic shell utilities available on most Linux systems (curl, wget, ip, ifconfig or iproute2)
 - Root (or sudo) is required for most actions; the script exits if not run as root
+
+## Package support matrix 🧾
+
+| Feature area | apt (Debian/Ubuntu) | dnf (Fedora/RHEL) | pacman (Arch) |
+| --- | --- | --- | --- |
+| System update/upgrade | yes | yes | yes |
+| Apt sources/proxy/unattended upgrades | yes | no | no |
+| Speedtest repo helper | yes | no | no |
+| Netmaker/CrowdSec repo installers | yes | no | no |
+| Docker install + compose plugin | yes | yes (best-effort) | yes (best-effort) |
+| Essentials bundle | yes | best-effort | best-effort |
+| UFW/Fail2ban/ClamAV installs | yes | best-effort | best-effort |
+| WireGuard installs | yes | best-effort | best-effort |
+| needrestart summary | yes | no | no |
+
+## Non-apt limitations
+
+- Apt sources/proxy/unattended upgrades, Speedtest repo helper, Netmaker/CrowdSec repo installers, and needrestart are apt-only.
+- Some installers rely on distro-specific package names; dnf/pacman support is best-effort.
 
 ## Install 🛠️
 
@@ -46,6 +66,10 @@ Install to PATH (pick one):
 - One-liner installer:
 ```bash
 wget -qO ./i https://raw.githubusercontent.com/ntx007/ntx-linux-utility-menu/main/install_ntxmenu.sh && chmod +x ./i && sudo ./i
+```
+Pin a specific version:
+```bash
+NTX_VERSION=v1.3.2 wget -qO ./i https://raw.githubusercontent.com/ntx007/ntx-linux-utility-menu/main/install_ntxmenu.sh && chmod +x ./i && sudo ./i
 ```
 - Bundled installer:
 ```bash
@@ -108,6 +132,7 @@ sudo ./ntx-utility-menu.sh --run ssh_start|ssh_stop|ssh_restart|ssh_enable|ssh_d
 sudo ./ntx-utility-menu.sh --run change_password
 sudo ./ntx-utility-menu.sh --run health_brief
 sudo ./ntx-utility-menu.sh --run cmatrix
+sudo ./ntx-utility-menu.sh --run config_json
 ```
 
 If installed in PATH, you can run the same actions via the wrapper:
@@ -120,7 +145,7 @@ sudo ntxmenu --help
 
 Run `./ntx-utility-menu.sh --help` for the full list.
 
-## Menu map (v1.3.2) 🗺️
+## Menu map (v1.4.0-dev) 🗺️
 
 - **Core**
   - System update: upgrade flows (wait for apt locks), unattended-upgrades, apt source list/remove, APT health/update health, APT proxy toggle, apt source validator (mismatched codenames), version-aware self-update (release/dev/rollback)
@@ -131,10 +156,10 @@ Run `./ntx-utility-menu.sh --help` for the full list.
 
 - **Operations**
   - Tools/env: essentials bundle (sudo, nano, curl, net-tools, iproute2, unzip, python3-pip, gcc/python3-dev, mariadb-client-core, psutil via pip, gdown, dos2unix, glances, tmux, zsh, mc, npm), ibramenu, QEMU guest agent, nvm installer, MariaDB server (host install, systemd), Node/npm version check
-  - Containers: Docker + Compose plugin, status/info, running/all containers, Compose health, hardening checks (privileged/root/host network/sensitive mounts), prune/scan helpers, compose project manager, container log tail/follow, installers for Portainer, Nginx Proxy Manager, Traefik, Pi-hole, Pi-hole+Unbound, Nextcloud AIO, Tactical RMM, Hemmelig.app
+- Containers: Docker + Compose plugin, status/info, running/all containers, Compose health, quick stop/remove helpers, hardening checks (privileged/root/host network/sensitive mounts), docker socket warning, prune/scan helpers, compose project manager, container log tail/follow, installers for Portainer, Nginx Proxy Manager, Traefik, Pi-hole, Pi-hole+Unbound, Nextcloud AIO, Tactical RMM, Hemmelig.app, Pangolin (native installer), Arcane (installer/compose)
   - Monitoring: node exporter, top CPU/mem, iostat, SMART (single/all disks), status dashboard, export report (text/JSON), headless `health_brief`
   - System info: `/etc/os-release`, neofetch, memory info, VM check, display adapters, GitHub link, service uptime summary, hardware overview
-  - Maintenance/disks: cleanup, log cleanup preset, custom journal vacuum, needrestart summary, disks, largest `/var`, maintenance bundle (update + cleanup + log rotate + status report), log integrity, kernel list/purge helper, /etc backup, config template writer
+  - Maintenance/disks: cleanup, log cleanup preset, custom journal vacuum, needrestart summary, disks, largest `/var`, maintenance bundle (update + cleanup + log rotate + status report), log integrity, kernel list/purge helper, backup routine (etc + config), /etc backup, config template writer
   - Proxmox: LXC/VM/backups/tools submenus covering list/enter/start/stop/restart, storage status, snapshots (create/list/rollback), backup/restore/rotate (vzdump/pct restore), resource tuning, services/cluster status, recent tasks, backup listing, community post-install/templates scripts, Proxmox SSH config updater (PermitRootLogin yes), qm VM helpers (list/start/stop/restart/snapshots/backup/restore) and ISO downloader
   - Users/time: create sudo user, change user password, time sync info, chrony install
 - System control: reboot, power down (SAFE_MODE-aware)

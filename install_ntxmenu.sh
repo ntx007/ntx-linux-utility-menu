@@ -1,12 +1,13 @@
 #!/bin/bash
 
 # Simple installer to place ntxmenu + ntx-utility-menu.sh into /usr/local/bin.
-# If scripts are missing locally, they are downloaded from GitHub main.
+# If scripts are missing locally, they are downloaded from GitHub (default: main).
 set -euo pipefail
 
 TARGET_DIR="${TARGET_DIR:-/usr/local/bin}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-URL_BASE="https://raw.githubusercontent.com/ntx007/ntx-linux-utility-menu/main"
+NTX_VERSION="${NTX_VERSION:-main}"
+URL_BASE="https://raw.githubusercontent.com/ntx007/ntx-linux-utility-menu/${NTX_VERSION}"
 PROFILE_SNIPPET="/etc/profile.d/ntxmenu.sh"
 ALT_LINK="/usr/bin/ntxmenu"
 ALT_SCRIPT_LINK="/usr/local/bin/ntx-utility-menu.sh"

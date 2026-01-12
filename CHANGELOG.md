@@ -1,5 +1,44 @@
 # Changelog 📝
 
+## Unreleased (v1.4.0-dev) 🚧
+- Version: bumped to v1.4.0-dev to start the next development cycle.
+- Distro check: detect apt/dnf/pacman and show a note when apt-only features are unavailable.
+- UI: header now shows distro and detected package manager.
+- UI: apt-only options are labeled in menus when on non-apt systems.
+- Controls: added CONFIRM toggle for skipping confirmation prompts.
+- Package installs: more installers now use the package-manager helpers for non-apt support.
+- Docker manager: added quick actions to stop/remove containers and remove images.
+- Docker: warn when /var/run/docker.sock is mounted in a container.
+- Pangolin: added native installer helper.
+- Arcane: added installer script and Docker Compose helper.
+- Backup routine: added a combined /etc + config backup helper.
+- Backups: compression/retention controls via BACKUP_COMPRESS and BACKUP_KEEP.
+- Auto-update: added a git pull option for self-update when run from a repo.
+- Installer: support pinning a release via NTX_VERSION.
+- Config: added config_json non-interactive output.
+
+### Bug fixes 🐛
+- apt source validator now handles option blocks with multiple fields.
+- Proxmox SSH config helper reloads the configured SSH unit.
+- German Systemupdate menu now includes the apt source validator entry.
+- Display adapter check no longer requires sudo when already running as root.
+- Added strict mode and error logging; root check now runs at startup.
+- Docker socket warning now tolerates Docker daemon being stopped.
+- Backups now fall back to plain tar if gzip is unavailable.
+
+### Known behaviors ⚠️
+- Self-update needs the full script path when realpath/readlink -f is missing or it may write into the current directory.
+- Service status assumes standard systemd unit names (ssh, docker, etc.); adjust unit variables if your distro differs.
+- Pending update count (`apt-get -s upgrade | grep '^Inst'`) can undercount on localized systems.
+- WireGuard enable/disable assumes `/etc/wireguard/wg0.conf`; QR rendering requires `qrencode`.
+- ClamAV `freshclam` may fail if the daemon holds the DB lock; stop/reload `clamav-freshclam` first.
+- SMART on virtio/atypical disks may require manual `smartctl` flags (e.g., `-d scsi`).
+- Rootkit check installs `binutils` for `strings`; install manually if it’s still missing.
+- Offline/proxy: upgrades depend on `apt-get update` succeeding; set `http_proxy/https_proxy` or skip update steps (they stop early on failure).
+- Minimal envs: inode view can be skipped if `df -i` is unsupported; IP listing falls back to `ip addr` or `ifconfig` if `ip` is absent.
+- MariaDB server install expects a systemd host; may fail in containers.
+- Speedtest repo helper is pinned to Ubuntu jammy; on other releases it writes jammy entries, so add a distro-appropriate repo if needed.
+
 ## v1.3.2
 - Version: bumped to v1.3.2.
 - Wrapper: `ntxmenu` now forwards CLI arguments correctly (e.g., `--run`, `--help`).
