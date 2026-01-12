@@ -25,6 +25,7 @@
 - Added strict mode and error logging; root check now runs at startup.
 - Docker socket warning now tolerates Docker daemon being stopped.
 - Backups now fall back to plain tar if gzip is unavailable.
+- System info now falls back to fastfetch when neofetch is unavailable.
 
 ### Known behaviors ⚠️
 - Self-update needs the full script path when realpath/readlink -f is missing or it may write into the current directory.

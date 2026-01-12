@@ -2527,9 +2527,23 @@ qm_list_vms() {
 }
 
 general_information() {
-    run_cmd "Install neofetch" pkg_install neofetch
-    msgbox "Neofetch"
-    neofetch
+    if command -v neofetch >/dev/null 2>&1; then
+        msgbox "Neofetch"
+        neofetch
+        return 0
+    fi
+    if run_cmd "Install neofetch" pkg_install neofetch; then
+        msgbox "Neofetch"
+        neofetch
+        return 0
+    fi
+    echo "neofetch not available; trying fastfetch..."
+    if command -v fastfetch >/dev/null 2>&1 || run_cmd "Install fastfetch" pkg_install fastfetch; then
+        msgbox "Fastfetch"
+        fastfetch
+        return 0
+    fi
+    echo "No system info tool available (neofetch/fastfetch)."
 }
 
 memory_information() {
