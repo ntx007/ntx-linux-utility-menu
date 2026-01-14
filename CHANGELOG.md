@@ -17,6 +17,8 @@
 - Auto-update: added a git pull option for self-update when run from a repo.
 - Installer: support pinning a release via NTX_VERSION.
 - Config: added config_json non-interactive output.
+- AI: added Gemini CLI installer and Node.js v22 install/check helpers.
+- AI: added Claude Code installer.
 
 ### Bug fixes 🐛
 - apt source validator now handles option blocks with multiple fields.

@@ -67,7 +67,7 @@ CROWDSEC_BOUNCER_UNIT="${CROWDSEC_BOUNCER_UNIT:-crowdsec-firewall-bouncer}"
 if [[ -t 1 ]]; then
     C_RED="\033[31m"; C_GRN="\033[32m"; C_YLW="\033[33m"; C_CYN="\033[36m"; C_RST="\033[0m"
 else
-    C_RED=""; C_GRN=""; C_YLW=""; C_CYN=""; C_RST=""
+C_RED=""; C_GRN=""; C_YLW=""; C_CYN=""; C_RST=""
 fi
 
 ibralogo() {
@@ -1851,6 +1851,76 @@ show_node_npm_versions() {
     fi
 }
 
+check_nodejs_v22() {
+    if ! command -v node >/dev/null 2>&1; then
+        echo "Node.js not installed."
+        return 1
+    fi
+    local node_ver
+    node_ver=$(node -v 2>/dev/null || true)
+    echo "Node.js: ${node_ver:-unknown}"
+    if [[ "$node_ver" != v22.* ]]; then
+        echo "Node.js v22 is required for Gemini CLI."
+        return 1
+    fi
+    if command -v npm >/dev/null 2>&1; then
+        echo "npm: $(npm -v 2>/dev/null)"
+    else
+        echo "npm not installed."
+        return 1
+    fi
+    echo "Node.js v22 check: OK"
+}
+
+install_nodejs_v22() {
+    if command -v node >/dev/null 2>&1 && node -v 2>/dev/null | grep -q '^v22\.'; then
+        echo "Node.js v22 already installed."
+        return 0
+    fi
+    case "$PKG_MGR" in
+        apt)
+            run_cmd "Add NodeSource repo (22.x)" bash -c "curl -fsSL https://deb.nodesource.com/setup_22.x | bash -"
+            run_cmd "Install Node.js 22" apt-get install -y nodejs
+            ;;
+        dnf)
+            run_cmd "Install Node.js" dnf -y install nodejs
+            ;;
+        pacman)
+            run_cmd "Install Node.js" pacman -S --noconfirm --needed nodejs npm
+            ;;
+        *)
+            echo "Unsupported package manager for Node.js install."
+            return 1
+            ;;
+    esac
+    check_nodejs_v22 || true
+}
+
+install_gemini_cli() {
+    if ! command -v npm >/dev/null 2>&1; then
+        echo "npm not installed. Install Node.js v22 first."
+        return 1
+    fi
+    if ! check_nodejs_v22; then
+        echo "Install Node.js v22 before installing Gemini CLI."
+        return 1
+    fi
+    run_cmd "Install Gemini CLI" npm install -g @google/gemini-cli
+}
+
+install_claude_code() {
+    if ! command -v curl >/dev/null 2>&1; then
+        echo "curl not installed."
+        return 1
+    fi
+    if [[ "$DRY_RUN" == "true" ]]; then
+        echo "[DRY RUN] curl -fsSL https://claude.ai/install.sh | bash"
+        log_line "OK : Claude Code installer (dry run)"
+        return 0
+    fi
+    run_cmd "Install Claude Code" bash -c "curl -fsSL https://claude.ai/install.sh | bash"
+}
+
 install_ntxmenu_path() {
     local ref="${NTX_VERSION:-main}"
     local url_base="https://raw.githubusercontent.com/ntx007/ntx-linux-utility-menu/${ref}"
@@ -3108,7 +3178,8 @@ main_menu() {
 [Betrieb]
  6) Tools & Umgebung    7) Container / Docker  8) Monitoring
  9) Systeminfo         10) Wartung / Disks    11) Benutzer & Zeit
-12) Proxmox-Helfer     13) Systemsteuerung     m) CMatrix
+12) Proxmox-Helfer     13) Systemsteuerung     14) AI / Gemini
+ m) CMatrix
 
 [Schnellzugriff]
 h) Hilfe / Info    s) Status-Dashboard    l) Logs ansehen
@@ -3126,7 +3197,8 @@ EOF
 [Operations]
  6) Tools & environment 7) Containers / Docker 8) Monitoring
  9) System info        10) Maintenance / disks 11) Users & time
-12) Proxmox helpers    13) System control      m) CMatrix
+12) Proxmox helpers    13) System control      14) AI / Gemini
+ m) CMatrix
 EOF
         render_footer
     fi
@@ -3134,8 +3206,8 @@ EOF
 
 search_section() {
     local query="$1"
-    local -a names=("system update" "dns" "network" "speedtest" "security" "tools" "containers" "monitoring" "system information" "maintenance" "users" "proxmox" "control" "cmatrix" "help" "status" "logs" "config" "update" "language" "install")
-    local -a targets=(1 2 3 4 5 6 7 8 9 10 11 12 13 m h s l c u d i)
+    local -a names=("system update" "dns" "network" "speedtest" "security" "tools" "containers" "monitoring" "system information" "maintenance" "users" "proxmox" "control" "ai" "gemini" "cmatrix" "help" "status" "logs" "config" "update" "language" "install")
+    local -a targets=(1 2 3 4 5 6 7 8 9 10 11 12 13 14 14 m h s l c u d i)
     local matches=()
     for i in "${!names[@]}"; do
         if [[ "${names[$i]}" == *"$query"* ]]; then
@@ -3875,6 +3947,47 @@ EOF
             4) install_nvm ;;
             5) install_mariadb_server ;;
             6) show_node_npm_versions ;;
+            0) break ;;
+            *) echo "Invalid choice." ;;
+        esac
+        should_pause_after "$c" && pause_prompt
+    done
+}
+
+menu_ai() {
+    while true; do
+        if [[ "$LANGUAGE" == "de" ]]; then
+            cat <<EOF
+[AI / Gemini]
+ 1) Node.js v22 installieren
+ 2) Node.js v22 prüfen
+ 3) Gemini CLI installieren
+ 4) Claude Code installieren
+ 0) Zurück
+EOF
+        else
+            cat <<EOF
+[AI / Gemini]
+ 1) Install Node.js v22
+ 2) Check Node.js v22
+ 3) Install Gemini CLI
+ 4) Install Claude Code
+ 0) Back
+EOF
+        fi
+        if [[ "$PKG_MGR" != "apt" ]]; then
+            if [[ "$LANGUAGE" == "de" ]]; then
+                echo "Hinweis: Node.js v22 wird uber den Paketmanager installiert und kann variieren."
+            else
+                echo "Note: Node.js v22 install uses the package manager and may vary."
+            fi
+        fi
+        read -p "Select: " c
+        case "$c" in
+            1) install_nodejs_v22 ;;
+            2) check_nodejs_v22 ;;
+            3) install_gemini_cli ;;
+            4) install_claude_code ;;
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
@@ -5062,6 +5175,7 @@ while true; do
         11) menu_users_time ;;
         12) menu_proxmox ;;
         13) menu_control ;;
+        14) menu_ai ;;
         m|M) run_cmatrix ;;
         u|U) self_update_script ;;
         d|D) toggle_language ;;
