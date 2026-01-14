@@ -1908,6 +1908,18 @@ install_gemini_cli() {
     run_cmd "Install Gemini CLI" npm install -g @google/gemini-cli
 }
 
+set_gemini_api_key() {
+    read -r -s -p "Paste your Gemini API key: " gem_key
+    echo
+    if [[ -z "$gem_key" ]]; then
+        echo "No API key provided."
+        return 1
+    fi
+    export GEMINI_API_KEY="$gem_key"
+    echo "GEMINI_API_KEY exported for current session."
+    echo "Note: export applies to this shell only."
+}
+
 install_claude_code() {
     if ! command -v curl >/dev/null 2>&1; then
         echo "curl not installed."
@@ -3958,20 +3970,22 @@ menu_ai() {
     while true; do
         if [[ "$LANGUAGE" == "de" ]]; then
             cat <<EOF
-[AI / Gemini]
- 1) Node.js v22 installieren
- 2) Node.js v22 prüfen
+[AI Tools]
+ 1) Node.js v22 prüfen
+ 2) Node.js v22 installieren
  3) Gemini CLI installieren
- 4) Claude Code installieren
+ 4) Gemini API Key setzen (export)
+ 5) Claude Code installieren
  0) Zurück
 EOF
         else
             cat <<EOF
-[AI / Gemini]
- 1) Install Node.js v22
- 2) Check Node.js v22
+[AI Tools]
+ 1) Check Node.js v22
+ 2) Install Node.js v22
  3) Install Gemini CLI
- 4) Install Claude Code
+ 4) Set Gemini API Key (export)
+ 5) Install Claude Code
  0) Back
 EOF
         fi
@@ -3984,10 +3998,11 @@ EOF
         fi
         read -p "Select: " c
         case "$c" in
-            1) install_nodejs_v22 ;;
-            2) check_nodejs_v22 ;;
+            1) check_nodejs_v22 ;;
+            2) install_nodejs_v22 ;;
             3) install_gemini_cli ;;
-            4) install_claude_code ;;
+            4) set_gemini_api_key ;;
+            5) install_claude_code ;;
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
