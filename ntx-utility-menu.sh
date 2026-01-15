@@ -1921,16 +1921,17 @@ set_gemini_api_key() {
 }
 
 install_claude_code() {
-    if ! command -v curl >/dev/null 2>&1; then
-        echo "curl not installed."
-        return 1
-    fi
+    local target_user="${SUDO_USER:-root}"
     if [[ "$DRY_RUN" == "true" ]]; then
         echo "[DRY RUN] curl -fsSL https://claude.ai/install.sh | bash"
         log_line "OK : Claude Code installer (dry run)"
         return 0
     fi
-    run_cmd "Install Claude Code" bash -c "curl -fsSL https://claude.ai/install.sh | bash"
+    if [[ "$target_user" != "root" && -n "$SUDO_USER" && command -v sudo >/dev/null 2>&1 ]]; then
+        run_cmd "Install Claude Code (user: $target_user)" sudo -u "$target_user" bash -c "curl -fsSL https://claude.ai/install.sh | bash"
+    else
+        run_cmd "Install Claude Code" bash -c "curl -fsSL https://claude.ai/install.sh | bash"
+    fi
 }
 
 install_ntxmenu_path() {
