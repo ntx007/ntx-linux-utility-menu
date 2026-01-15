@@ -1959,7 +1959,7 @@ install_claude_code() {
         return 0
     fi
     ensure_local_bin_path "$target_user"
-    if [[ "$target_user" != "root" && -n "$SUDO_USER" && command -v sudo >/dev/null 2>&1 ]]; then
+    if [[ "$target_user" != "root" && -n "$SUDO_USER" ]] && command -v sudo >/dev/null 2>&1; then
         run_cmd "Install Claude Code (user: $target_user)" sudo -u "$target_user" bash -c "curl -fsSL https://claude.ai/install.sh | bash"
     else
         run_cmd "Install Claude Code" bash -c "curl -fsSL https://claude.ai/install.sh | bash"
