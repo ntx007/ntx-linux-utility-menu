@@ -1920,6 +1920,37 @@ set_gemini_api_key() {
     echo "Note: export applies to this shell only."
 }
 
+ensure_local_bin_path() {
+    local target_user="$1"
+    local home_dir=""
+    local shell_rc=""
+    local export_line='export PATH="$HOME/.local/bin:$PATH"'
+
+    if command -v getent >/dev/null 2>&1; then
+        home_dir="$(getent passwd "$target_user" 2>/dev/null | cut -d: -f6)"
+    fi
+    if [[ -z "$home_dir" ]]; then
+        home_dir="$(eval echo "~${target_user}" 2>/dev/null || true)"
+    fi
+    if [[ -z "$home_dir" ]]; then
+        return 0
+    fi
+    if [[ ! -d "$home_dir" ]]; then
+        return 0
+    fi
+    shell_rc="${home_dir}/.bashrc"
+
+    if [[ ! -f "$shell_rc" ]]; then
+        echo "$export_line" >> "$shell_rc"
+        log_line "OK : Added ~/.local/bin to PATH in ${shell_rc}"
+        return 0
+    fi
+    if ! grep -Fxq "$export_line" "$shell_rc"; then
+        echo "$export_line" >> "$shell_rc"
+        log_line "OK : Added ~/.local/bin to PATH in ${shell_rc}"
+    fi
+}
+
 install_claude_code() {
     local target_user="${SUDO_USER:-root}"
     if [[ "$DRY_RUN" == "true" ]]; then
@@ -1927,6 +1958,7 @@ install_claude_code() {
         log_line "OK : Claude Code installer (dry run)"
         return 0
     fi
+    ensure_local_bin_path "$target_user"
     if [[ "$target_user" != "root" && -n "$SUDO_USER" && command -v sudo >/dev/null 2>&1 ]]; then
         run_cmd "Install Claude Code (user: $target_user)" sudo -u "$target_user" bash -c "curl -fsSL https://claude.ai/install.sh | bash"
     else
