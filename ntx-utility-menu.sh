@@ -3190,7 +3190,7 @@ main_menu() {
 [Betrieb]
  6) Tools & Umgebung    7) Container / Docker  8) Monitoring
  9) Systeminfo         10) Wartung / Disks    11) Benutzer & Zeit
-12) Proxmox-Helfer     13) Systemsteuerung     14) AI / Gemini
+12) Proxmox-Helfer     13) Systemsteuerung     14) AI Tools
  m) CMatrix
 
 [Schnellzugriff]
@@ -3209,7 +3209,7 @@ EOF
 [Operations]
  6) Tools & environment 7) Containers / Docker 8) Monitoring
  9) System info        10) Maintenance / disks 11) Users & time
-12) Proxmox helpers    13) System control      14) AI / Gemini
+12) Proxmox helpers    13) System control      14) AI Tools
  m) CMatrix
 EOF
         render_footer
@@ -3998,11 +3998,11 @@ EOF
         fi
         read -p "Select: " c
         case "$c" in
-            1) check_nodejs_v22 ;;
-            2) install_nodejs_v22 ;;
-            3) install_gemini_cli ;;
-            4) set_gemini_api_key ;;
-            5) install_claude_code ;;
+            1) check_nodejs_v22 || true ;;
+            2) install_nodejs_v22 || true ;;
+            3) install_gemini_cli || true ;;
+            4) set_gemini_api_key || true ;;
+            5) install_claude_code || true ;;
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
