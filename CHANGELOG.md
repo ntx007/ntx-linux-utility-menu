@@ -18,6 +18,7 @@
 - Installer: support pinning a release via NTX_VERSION.
 - Config: added config_json non-interactive output.
 - AI: added Gemini CLI installer and Node.js v22 install/check helpers.
+- AI: added OpenAI Codex installer.
 - AI: added Claude Code installer.
 - AI: added Gemini API key export helper.
 

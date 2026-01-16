@@ -25,7 +25,7 @@
 - Maintenance includes a backup routine (etc + config).
 - Containers menu includes Arcane (installer/compose) and Pangolin (native installer).
 - Containers menu warns when `/var/run/docker.sock` is mounted in a container.
-- AI tools include Gemini CLI, Gemini API key export, Claude Code, and Node.js v22 check/install helpers.
+- AI tools include Gemini CLI, OpenAI Codex, Gemini API key export, Claude Code, and Node.js v22 check/install helpers.
 
 ## From source 🧱
 ```bash

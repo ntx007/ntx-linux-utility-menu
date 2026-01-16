@@ -1908,6 +1908,14 @@ install_gemini_cli() {
     run_cmd "Install Gemini CLI" npm install -g @google/gemini-cli
 }
 
+install_codex_cli() {
+    if ! command -v npm >/dev/null 2>&1; then
+        echo "npm not installed. Install Node.js v22 first."
+        return 1
+    fi
+    run_cmd "Install OpenAI Codex" npm install -g @openai/codex
+}
+
 set_gemini_api_key() {
     read -r -s -p "Paste your Gemini API key: " gem_key
     echo
@@ -4004,21 +4012,33 @@ menu_ai() {
         if [[ "$LANGUAGE" == "de" ]]; then
             cat <<EOF
 [AI Tools]
+ Voraussetzungen
  1) Node.js v22 prüfen
  2) Node.js v22 installieren
+
+ CLI-Tools
  3) Gemini CLI installieren
- 4) Gemini API Key setzen (export)
+ 4) OpenAI Codex installieren
  5) Claude Code installieren
+
+ Konfiguration
+ 6) Gemini API Key setzen (export)
  0) Zurück
 EOF
         else
             cat <<EOF
 [AI Tools]
+ Prerequisites
  1) Check Node.js v22
  2) Install Node.js v22
+
+ CLI tools
  3) Install Gemini CLI
- 4) Set Gemini API Key (export)
+ 4) Install OpenAI Codex
  5) Install Claude Code
+
+ Configuration
+ 6) Set Gemini API Key (export)
  0) Back
 EOF
         fi
@@ -4034,8 +4054,9 @@ EOF
             1) check_nodejs_v22 || true ;;
             2) install_nodejs_v22 || true ;;
             3) install_gemini_cli || true ;;
-            4) set_gemini_api_key || true ;;
+            4) install_codex_cli || true ;;
             5) install_claude_code || true ;;
+            6) set_gemini_api_key || true ;;
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
