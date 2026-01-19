@@ -8,8 +8,10 @@
 - UI: apt-only options are labeled in menus when on non-apt systems.
 - Controls: added CONFIRM toggle for skipping confirmation prompts.
 - Package installs: more installers now use the package-manager helpers for non-apt support.
+- System update: added package install prompt (package manager).
 - Docker manager: added quick actions to stop/remove containers and remove images.
 - Docker: warn when /var/run/docker.sock is mounted in a container.
+- Docker: added option to update images for running containers (pull).
 - Pangolin: added native installer helper.
 - Arcane: added installer script and Docker Compose helper.
 - Backup routine: added a combined /etc + config backup helper.
@@ -31,6 +33,7 @@
 - Docker socket warning now tolerates Docker daemon being stopped.
 - Backups now fall back to plain tar if gzip is unavailable.
 - System info now falls back to fastfetch when neofetch is unavailable.
+- System update: package install prompt now aborts when apt lock is held.
 
 ### Known behaviors ⚠️
 - Self-update needs the full script path when realpath/readlink -f is missing or it may write into the current directory.

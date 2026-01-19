@@ -26,6 +26,7 @@
 - Containers menu includes Arcane (installer/compose) and Pangolin (native installer).
 - Containers menu warns when `/var/run/docker.sock` is mounted in a container.
 - AI tools include Gemini CLI, OpenAI Codex, Gemini API key export, Claude Code, and Node.js v22 check/install helpers.
+- System update menu includes a package install prompt for adding software via the package manager.
 
 ## From source 🧱
 ```bash

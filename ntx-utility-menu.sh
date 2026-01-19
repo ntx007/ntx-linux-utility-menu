@@ -107,7 +107,18 @@ log_error() {
     echo "$(date '+%Y-%m-%d %H:%M:%S') | ERROR | $message" >> "$ERROR_LOG" 2>/dev/null || true
 }
 
-trap 'rc=$?; log_error "line $LINENO: $BASH_COMMAND (exit $rc)"' ERR
+error_handler() {
+    local rc=$?
+    local line="$1"
+    local cmd="$2"
+    log_error "line $line: $cmd (exit $rc)"
+    if [[ -t 1 ]]; then
+        echo "Error: command failed (exit $rc)." >&2
+        echo "Details: $ERROR_LOG" >&2
+    fi
+}
+
+trap 'error_handler "$LINENO" "$BASH_COMMAND"' ERR
 
 render_header() {
     local title="$1"
@@ -1035,6 +1046,25 @@ docker_prune_safe() {
     run_cmd "Docker prune unused resources" docker system prune -af --volumes
 }
 
+docker_update_images() {
+    if ! command -v docker >/dev/null 2>&1; then
+        echo "Docker not installed."
+        return 1
+    fi
+    local images
+    images=$(docker ps --format '{{.Image}}' | sort -u)
+    if [[ -z "$images" ]]; then
+        echo "No running containers."
+        return 0
+    fi
+    echo "Updating images used by running containers..."
+    while read -r img; do
+        [[ -z "$img" ]] && continue
+        run_cmd "Pull image $img" docker pull "$img" || true
+    done <<< "$images"
+    echo "Note: restart/recreate containers to apply updated images."
+}
+
 docker_scan_images() {
     if ! command -v docker >/dev/null 2>&1; then
         echo "Docker not installed."
@@ -1156,6 +1186,57 @@ should_pause_after() {
 ###############################################################################
 
 # --- System update ---
+
+install_packages_prompt() {
+    if [[ -z "${PKG_MGR:-}" ]]; then
+        echo "No supported package manager found."
+        return 1
+    fi
+    local prompt="Enter package names (space-separated): "
+    local empty_msg="No packages provided."
+    local none_msg="No valid packages to install."
+    local list_msg="Packages to install: "
+    local confirm_msg="Proceed with install?"
+    local cancel_msg="Cancelled."
+    if [[ "$LANGUAGE" == "de" ]]; then
+        prompt="Paketnamen eingeben (durch Leerzeichen getrennt): "
+        empty_msg="Keine Pakete angegeben."
+        none_msg="Keine gültigen Pakete zum Installieren."
+        list_msg="Pakete zur Installation: "
+        confirm_msg="Mit der Installation fortfahren?"
+        cancel_msg="Abgebrochen."
+    fi
+    read -r -p "$prompt" pkgs_line
+    if [[ -z "$pkgs_line" ]]; then
+        echo "$empty_msg"
+        return 1
+    fi
+    local pkgs=()
+    local mapped=()
+    local pkg=""
+    local mapped_pkg=""
+    read -r -a pkgs <<< "$pkgs_line"
+    for pkg in "${pkgs[@]}"; do
+        [[ -z "$pkg" ]] && continue
+        mapped_pkg=$(map_pkg_name "$pkg")
+        mapped+=("$mapped_pkg")
+    done
+    if [[ "${#mapped[@]}" -eq 0 ]]; then
+        echo "$none_msg"
+        return 1
+    fi
+    echo "${list_msg}${mapped[*]}"
+    if ! confirm_prompt "$confirm_msg"; then
+        echo "$cancel_msg"
+        return 0
+    fi
+    if [[ "$PKG_MGR" == "apt" ]]; then
+        if ! wait_for_dpkg_lock 90; then
+            return 1
+        fi
+    fi
+    run_cmd "Install packages: ${mapped[*]}" pkg_install "${mapped[@]}"
+}
 
 update_all() {
     if [[ "$PKG_MGR" == "apt" ]]; then
@@ -3356,6 +3437,7 @@ menu_update() {
 12) Update-Status (Reboot + Zeitstempel, nur apt)
 13) APT Proxy setzen/entfernen (nur apt)
 14) APT-Quellen auf mismatched Codenames prüfen (nur apt)
+15) Pakete installieren (Paketmanager)
  0) Zurück
 EOF
         else
@@ -3377,6 +3459,7 @@ EOF
 12) Update health (reboot + last update, apt-only)
 13) APT proxy toggle (set/remove, apt-only)
 14) Validate apt sources for mismatched codenames (apt-only)
+15) Install packages (package manager)
  0) Back
 EOF
         fi
@@ -3403,6 +3486,7 @@ EOF
             12) update_health_check ;;
             13) toggle_apt_proxy ;;
             14) apt_source_validator ;;
+            15) install_packages_prompt ;;
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
@@ -4092,20 +4176,21 @@ menu_containers() {
 
 18) Docker aufräumen (prune)
 19) Images scannen (docker scan/trivy)
-20) Compose-Projekt verwalten (up/down/restart)
+20) Docker-Images aktualisieren (pull)
+21) Compose-Projekt verwalten (up/down/restart)
 
-21) Portainer installieren
-22) Nginx Proxy Manager installieren
-23) Traefik installieren
-24) Pi-hole installieren
-25) Pi-hole + Unbound installieren
-26) Nextcloud All-in-One installieren
-27) Tactical RMM installieren
-28) Hemmelig.app installieren
-29) Pangolin installieren (native installer)
-30) Arcane installieren (Installer)
-31) Arcane installieren (Docker Compose)
-32) Docker-Logs anzeigen (tail -f)
+22) Portainer installieren
+23) Nginx Proxy Manager installieren
+24) Traefik installieren
+25) Pi-hole installieren
+26) Pi-hole + Unbound installieren
+27) Nextcloud All-in-One installieren
+28) Tactical RMM installieren
+29) Hemmelig.app installieren
+30) Pangolin installieren (native installer)
+31) Arcane installieren (Installer)
+32) Arcane installieren (Docker Compose)
+33) Docker-Logs anzeigen (tail -f)
  0) Zurück
 EOF
         else
@@ -4133,20 +4218,21 @@ EOF
 
 18) Docker prune (safe)
 19) Scan images (docker scan/trivy)
-20) Manage Docker Compose project (up/down/restart)
+20) Update Docker images (pull)
+21) Manage Docker Compose project (up/down/restart)
 
-21) Install Portainer (CE)
-22) Install Nginx Proxy Manager
-23) Install Traefik
-24) Install Pi-hole
-25) Install Pi-hole + Unbound
-26) Install Nextcloud All-in-One
-27) Install Tactical RMM
-28) Install Hemmelig.app
-29) Install Pangolin (native installer)
-30) Install Arcane (installer script)
-31) Install Arcane (Docker Compose)
-32) Tail Docker container logs (follow)
+22) Install Portainer (CE)
+23) Install Nginx Proxy Manager
+24) Install Traefik
+25) Install Pi-hole
+26) Install Pi-hole + Unbound
+27) Install Nextcloud All-in-One
+28) Install Tactical RMM
+29) Install Hemmelig.app
+30) Install Pangolin (native installer)
+31) Install Arcane (installer script)
+32) Install Arcane (Docker Compose)
+33) Tail Docker container logs (follow)
  0) Back
 EOF
         fi
@@ -4171,19 +4257,20 @@ EOF
             17) docker_run_custom ;;
             18) docker_prune_safe ;;
             19) docker_scan_images ;;
-            20) docker_compose_manage ;;
-            21) install_portainer ;;
-            22) install_nginx_proxy_manager ;;
-            23) install_traefik ;;
-            24) install_pihole_only ;;
-            25) install_pihole_unbound ;;
-            26) install_nextcloud_aio ;;
-            27) install_tactical_rmm ;;
-            28) install_hemmelig ;;
-            29) install_pangolin_native ;;
-            30) install_arcane_script ;;
-            31) install_arcane_compose ;;
-            32) docker_logs_follow ;;
+            20) docker_update_images ;;
+            21) docker_compose_manage ;;
+            22) install_portainer ;;
+            23) install_nginx_proxy_manager ;;
+            24) install_traefik ;;
+            25) install_pihole_only ;;
+            26) install_pihole_unbound ;;
+            27) install_nextcloud_aio ;;
+            28) install_tactical_rmm ;;
+            29) install_hemmelig ;;
+            30) install_pangolin_native ;;
+            31) install_arcane_script ;;
+            32) install_arcane_compose ;;
+            33) docker_logs_follow ;;
             0) break ;;
             *) echo "Invalid choice." ;;
         esac

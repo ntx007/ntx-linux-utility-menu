@@ -10,13 +10,13 @@ A portable, menu-driven Bash utility for common Linux admin tasks. Built for Deb
 
 - Interactive nested menu with shortcuts (Help, Status, Logs) and search via `/keyword`; language toggle `d` (en/de)
 - Clean header with host/threads/RAM/IP + update notice, and a grouped main menu (Core / Operations / Shortcuts) for faster navigation
-- Updates: unattended-upgrades enable/disable/status/run; reboot-if-needed flow; apt source hygiene (list/remove); version-aware self-update (pick release/rollback or dev); non-interactive `--run` actions; cadence warning and health checks; APT proxy toggle
+- Updates: unattended-upgrades enable/disable/status/run; reboot-if-needed flow; apt source hygiene (list/remove); package install prompt; version-aware self-update (pick release/rollback or dev); non-interactive `--run` actions; cadence warning and health checks; APT proxy toggle
 - Networking: public IP with fallback, interfaces/routes/connections, DNS backups/restore (option to restart systemd-resolved), custom nameserver append/overwrite, ping/traceroute, top talkers, VLAN/Bond helpers, SSH key generator
 - Security/remote: organized submenus (firewall, Fail2ban, SSH/access, WireGuard, agents, anti-malware, config backup); UFW with snapshots/revert, Fail2ban (summary/list/unban + tuning helper), auditd minimal rules, OpenSSH, Tailscale, Netmaker netclient, CrowdSec + firewall bouncer, WireGuard (client/server, QR, validate/diff, interface choice), SSH hardening and service start/stop/restart/enable/disable, rootkit check, ClamAV improved workflow, Proxmox SSH config updater (PermitRootLogin yes)
   - First-run checklist: install/enable Docker/Compose, SSH, UFW, and Fail2ban in one pass
 - Tools/monitoring: essentials bundle (with mariadb-client-core) and dedicated submenu, nvm installer, node exporter, top CPU/mem, iostat summary, SMART checks (single/all disks), status dashboard, exportable status report (text/JSON with optional upload path) including container count/SMART health where available, service uptime + hardware overview
 - AI tools: Gemini CLI, OpenAI Codex, and Claude Code installers, Gemini API key export, plus Node.js v22 check/install helpers
-- Containers: Docker + Compose plugin install, service status/info, running/all containers, Compose health (ls/ps), quick stop/remove helpers, hardening checks (privileged, root user, host network, sensitive mounts)
+- Containers: Docker + Compose plugin install, service status/info, running/all containers, Compose health (ls/ps), quick stop/remove helpers, image updates (pull), hardening checks (privileged, root user, host network, sensitive mounts)
 - Maintenance/info: cleanup, daily maintenance bundle (optional pre-update + log rotate + status report), log cleanup preset, kernel list/purge helper, backup routine (etc + config), /etc backup, disk usage, largest `/var` dirs, system info (os-release, neofetch, VM check, display adapters, uptime/hardware overview), GitHub link, Proxmox helpers (LXC + VM start/stop/restart, snapshots, backup/restore, ISO download, community scripts)
 - Logging/backups: `/var/log/ntx-menu.log` with rotation/history; `/var/log/ntx-utility.log` for error traces; `/etc/resolv.conf` backups; config backup/restore with optional Docker Compose includes; backup compression via `BACKUP_COMPRESS` and retention via `BACKUP_KEEP`
 - Modes: `DRY_RUN=true` to preview commands; `SAFE_MODE=true` to skip destructive actions; `CONFIRM=false` to skip confirmations
@@ -149,7 +149,7 @@ Run `./ntx-utility-menu.sh --help` for the full list.
 ## Menu map (v1.4.0-dev) 🗺️
 
 - **Core**
-  - System update: upgrade flows (wait for apt locks), unattended-upgrades, apt source list/remove, APT health/update health, APT proxy toggle, apt source validator (mismatched codenames), version-aware self-update (release/dev/rollback)
+  - System update: upgrade flows (wait for apt locks), package install prompt, unattended-upgrades, apt source list/remove, APT health/update health, APT proxy toggle, apt source validator (mismatched codenames), version-aware self-update (release/dev/rollback)
   - DNS: backups/edit, Netcup presets (46.38.225.230 + 46.38.252.230 + 1.1.1.1), Cloudflare/Google IPv4+IPv6, restore last backup, add custom nameserver (append or overwrite)
   - Network/IP: public IP (fallback), interfaces, routes, connections, ping common endpoints, traceroute, MTR quick run, nmap top-50 ports, top talkers (TCP), VLAN/bond helpers, SSH key generator
   - Speedtest/benchmarks: Speedtest install/update/run, repo/key removal, YABS + presets
@@ -158,13 +158,13 @@ Run `./ntx-utility-menu.sh --help` for the full list.
 - **Operations**
   - Tools/env: essentials bundle (sudo, nano, curl, net-tools, iproute2, unzip, python3-pip, gcc/python3-dev, mariadb-client-core, psutil via pip, gdown, dos2unix, glances, tmux, zsh, mc, npm), ibramenu, QEMU guest agent, nvm installer, MariaDB server (host install, systemd), Node/npm version check
   - AI tools: check Node.js v22, install Node.js v22, install Gemini CLI, install OpenAI Codex, set Gemini API key, install Claude Code
-- Containers: Docker + Compose plugin, status/info, running/all containers, Compose health, quick stop/remove helpers, hardening checks (privileged/root/host network/sensitive mounts), docker socket warning, prune/scan helpers, compose project manager, container log tail/follow, installers for Portainer, Nginx Proxy Manager, Traefik, Pi-hole, Pi-hole+Unbound, Nextcloud AIO, Tactical RMM, Hemmelig.app, Pangolin (native installer), Arcane (installer/compose)
+  - Containers: Docker + Compose plugin, status/info, running/all containers, Compose health, quick stop/remove helpers, image updates (pull), hardening checks (privileged/root/host network/sensitive mounts), docker socket warning, prune/scan helpers, compose project manager, container log tail/follow, installers for Portainer, Nginx Proxy Manager, Traefik, Pi-hole, Pi-hole+Unbound, Nextcloud AIO, Tactical RMM, Hemmelig.app, Pangolin (native installer), Arcane (installer/compose)
   - Monitoring: node exporter, top CPU/mem, iostat, SMART (single/all disks), status dashboard, export report (text/JSON), headless `health_brief`
   - System info: `/etc/os-release`, neofetch, memory info, VM check, display adapters, GitHub link, service uptime summary, hardware overview
   - Maintenance/disks: cleanup, log cleanup preset, custom journal vacuum, needrestart summary, disks, largest `/var`, maintenance bundle (update + cleanup + log rotate + status report), log integrity, kernel list/purge helper, backup routine (etc + config), /etc backup, config template writer
   - Proxmox: LXC/VM/backups/tools submenus covering list/enter/start/stop/restart, storage status, snapshots (create/list/rollback), backup/restore/rotate (vzdump/pct restore), resource tuning, services/cluster status, recent tasks, backup listing, community post-install/templates scripts, Proxmox SSH config updater (PermitRootLogin yes), qm VM helpers (list/start/stop/restart/snapshots/backup/restore) and ISO downloader
   - Users/time: create sudo user, change user password, time sync info, chrony install
-- System control: reboot, power down (SAFE_MODE-aware)
+  - System control: reboot, power down (SAFE_MODE-aware)
 
 - **Shortcuts**
   - `h` Help/About, `s` Status dashboard, `l` Tail log, `c` Config/env
