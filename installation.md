@@ -1,4 +1,4 @@
-# Installation (v1.4.0-dev) 🛠️
+# Installation (v1.4.0) 🛠️
 
 ## Prerequisites 📋
 - Debian/Ubuntu-based system with `apt` (primary); dnf/pacman are best-effort for some actions

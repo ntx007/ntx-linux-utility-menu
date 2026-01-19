@@ -8,7 +8,7 @@ fi
 
 ###############################################################################
 # NTX Command Center - Simple server helper menu
-# Version: v1.4.0-dev
+# Version: v1.4.0
 ###############################################################################
 
 LOG_FILE="/var/log/ntx-menu.log"
@@ -22,7 +22,7 @@ BACKUP_KEEP=${BACKUP_KEEP:-5}
 DRY_RUN=${DRY_RUN:-false}
 SAFE_MODE=${SAFE_MODE:-false}
 CONFIRM=${CONFIRM:-true}
-VERSION="v1.4.0-dev"
+VERSION="v1.4.0"
 UPDATE_NOTICE=""
 HEADER_CPU=""
 HEADER_RAM=""

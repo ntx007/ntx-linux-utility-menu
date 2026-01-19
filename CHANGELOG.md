@@ -1,7 +1,6 @@
 # Changelog 📝
 
-## Unreleased (v1.4.0-dev) 🚧
-- Version: bumped to v1.4.0-dev to start the next development cycle.
+## v1.4.0 🚀
 - Distro check: detect apt/dnf/pacman and show a note when apt-only features are unavailable.
 - UI: header now shows distro and detected package manager.
 - UI: header now shows OS version.
