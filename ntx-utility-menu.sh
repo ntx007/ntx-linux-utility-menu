@@ -205,7 +205,7 @@ rotate_log() {
             # Cleanup old rotations beyond LOG_HISTORY
             local keep=$LOG_HISTORY
             if [[ "$keep" -gt 0 ]]; then
-                ls -1t ${LOG_FILE}.1* 2>/dev/null | tail -n +$((keep+1)) | xargs -r rm -f
+                ls -1t "${LOG_FILE}".1* 2>/dev/null | tail -n +$((keep+1)) | xargs -r rm -f
             fi
         fi
     fi
@@ -408,6 +408,11 @@ self_update_script() {
                 done
                 read -p "Select release (1-${#tags[@]}): " sel
                 sel=${sel:-1}
+                # Validate selection is within bounds
+                if [[ ! "$sel" =~ ^[0-9]+$ ]] || [[ "$sel" -lt 1 ]] || [[ "$sel" -gt ${#tags[@]} ]]; then
+                    echo "Invalid selection; cancelling."
+                    return 1
+                fi
                 tag=${tags[$((sel-1))]}
                 if [[ -z "$tag" ]]; then
                     echo "Invalid selection; cancelling."
@@ -569,7 +574,7 @@ backup_cleanup() {
     if [[ "$keep" -le 0 ]]; then
         return 0
     fi
-    ls -1t $pattern 2>/dev/null | tail -n +$((keep+1)) | xargs -r rm -f || true
+    ls -1t "$pattern" 2>/dev/null | tail -n +$((keep+1)) | xargs -r rm -f || true
 }
 
 backup_file() {
@@ -1098,6 +1103,13 @@ docker_compose_manage() {
     fi
     read -r -p "Path to compose project (directory with compose file): " CPATH
     [[ -z "$CPATH" ]] && { echo "No path provided."; return 1; }
+    # Validate path (prevent path traversal, ensure it's a directory)
+    if [[ ! -d "$CPATH" ]]; then
+        echo "Directory not found: $CPATH"
+        return 1
+    fi
+    # Resolve to absolute path to prevent traversal
+    CPATH=$(cd "$CPATH" && pwd) || { echo "Failed to resolve path."; return 1; }
     if [[ ! -f "$CPATH/docker-compose.yml" && ! -f "$CPATH/compose.yaml" && ! -f "$CPATH/compose.yml" ]]; then
         echo "No compose file found in $CPATH"
         return 1
@@ -1256,7 +1268,16 @@ update_all_with_sudo_reboot() {
     if ! require_pkg_mgr apt; then
         return 1
     fi
-    sudo apt install sudo && sudo apt-get update && sudo apt-get upgrade -y && sudo reboot
+    # If sudo doesn't exist and we're root, install it directly
+    if ! command -v sudo >/dev/null 2>&1; then
+        if [[ $EUID -eq 0 ]]; then
+            apt-get install -y sudo
+        else
+            echo "sudo not found and not running as root. Cannot install sudo."
+            return 1
+        fi
+    fi
+    sudo apt-get update && sudo apt-get upgrade -y && sudo reboot
 }
 
 update_all_reboot_if_needed() {
@@ -1438,6 +1459,13 @@ remove_custom_source() {
         echo "File not found: $SRC_FILE"
         return 1
     fi
+    # Validate path to prevent removal of files outside sources.list.d
+    local real_path
+    real_path=$(realpath "$SRC_FILE" 2>/dev/null || readlink -f "$SRC_FILE" 2>/dev/null)
+    if [[ -z "$real_path" ]] || [[ "$real_path" != /etc/apt/sources.list.d/* ]]; then
+        echo "Security: only files in /etc/apt/sources.list.d/ can be removed via this function."
+        return 1
+    fi
     if ! skip_if_safe "removing $SRC_FILE"; then return 1; fi
     if confirm_prompt "Remove $SRC_FILE?"; then
         run_cmd "Remove custom source $SRC_FILE" rm -f "$SRC_FILE"
@@ -1541,6 +1569,11 @@ add_custom_dns() {
     if [[ -z "$CUSTOM_NS" ]]; then
         echo "No nameserver provided; nothing changed."
         return 0
+    fi
+    # Validate IP format (IPv4 or IPv6)
+    if [[ ! "$CUSTOM_NS" =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]] && [[ ! "$CUSTOM_NS" =~ ^[0-9a-fA-F:]+$ ]]; then
+        echo "Invalid IP address format. Expected IPv4 (e.g., 9.9.9.9) or IPv6 format."
+        return 1
     fi
     echo "Choose mode:"
     echo " 1) Append"
@@ -1890,7 +1923,49 @@ install_ibramenu() {
 install_qemu_guest_agent() {
     run_cmd "Package update" pkg_update
     run_cmd "Install QEMU guest agent" pkg_install qemu-guest-agent
-    systemctl enable --now qemu-guest-agent
+    run_cmd "Enable and start QEMU guest agent" systemctl enable --now qemu-guest-agent
+
+    echo
+    echo "Post-install verification:"
+    echo "=========================="
+
+    # Check if service is enabled
+    if systemctl is-enabled qemu-guest-agent >/dev/null 2>&1; then
+        echo -e "${C_GRN}✓${C_RST} Service is enabled"
+    else
+        echo -e "${C_RED}✗${C_RST} Service is NOT enabled"
+    fi
+
+    # Check if service is active
+    if systemctl is-active qemu-guest-agent >/dev/null 2>&1; then
+        echo -e "${C_GRN}✓${C_RST} Service is running"
+    else
+        echo -e "${C_RED}✗${C_RST} Service is NOT running"
+    fi
+
+    # Check if running in a VM
+    if command -v systemd-detect-virt >/dev/null 2>&1; then
+        local virt_type
+        virt_type=$(systemd-detect-virt 2>/dev/null || echo "none")
+        if [[ "$virt_type" != "none" ]]; then
+            echo -e "${C_GRN}✓${C_RST} Running in virtualized environment: $virt_type"
+        else
+            echo -e "${C_YLW}⚠${C_RST} Not running in a detected VM (type: $virt_type)"
+            echo "  Note: QEMU guest agent is designed for virtual machines"
+        fi
+    fi
+
+    # Check if qemu-ga binary exists and is executable
+    if command -v qemu-ga >/dev/null 2>&1; then
+        echo -e "${C_GRN}✓${C_RST} qemu-ga binary is available"
+        echo "  Version: $(qemu-ga --version 2>/dev/null | head -n1 || echo 'unknown')"
+    else
+        echo -e "${C_YLW}⚠${C_RST} qemu-ga binary not found in PATH"
+    fi
+
+    echo
+    echo "QEMU guest agent installation complete."
+    echo "On Proxmox: enable 'QEMU Guest Agent' in VM options and reboot the VM."
 }
 
 install_nvm() {
@@ -1917,6 +1992,18 @@ install_mariadb_server() {
     echo
     echo "MariaDB installed (host install, not containerized). For post-install hardening, run: mysql_secure_installation"
     echo "Default auth on Debian/Ubuntu uses unix_socket; log in as root with: sudo mariadb"
+}
+
+install_tmux() {
+    run_cmd "Package update" pkg_update
+    run_cmd "Install tmux (terminal multiplexer)" pkg_install tmux
+    echo "tmux installed. Use 'tmux' to start a session."
+}
+
+install_wireguard_tools() {
+    run_cmd "Package update" pkg_update
+    run_cmd "Install WireGuard tools" pkg_install wireguard-tools
+    echo "WireGuard tools installed."
 }
 
 show_node_npm_versions() {
@@ -2060,18 +2147,18 @@ install_ntxmenu_path() {
     local url_base="https://raw.githubusercontent.com/ntx007/ntx-linux-utility-menu/${ref}"
     local tmpdir
     tmpdir=$(mktemp -d)
+    # Ensure cleanup on exit or error
+    trap 'rm -rf "$tmpdir"' RETURN
     local script_path="${tmpdir}/ntx-utility-menu.sh"
     local wrapper_path="${tmpdir}/ntxmenu"
     local link_target="/usr/bin/ntxmenu"
     echo "Downloading latest scripts to install into /usr/local/bin..."
     if ! curl -fsSL "${url_base}/ntx-utility-menu.sh" -o "$script_path"; then
         echo "Failed to download ntx-utility-menu.sh"
-        rm -rf "$tmpdir"
         return 1
     fi
     if ! curl -fsSL "${url_base}/ntxmenu" -o "$wrapper_path"; then
         echo "Failed to download ntxmenu wrapper"
-        rm -rf "$tmpdir"
         return 1
     fi
     chmod +x "$script_path" "$wrapper_path"
@@ -2098,7 +2185,7 @@ EOF
     else
         echo "Install failed. Do you have sufficient privileges?"
     fi
-    rm -rf "$tmpdir"
+    # tmpdir cleanup handled by trap
 }
 
 menu_essentials() {
@@ -2423,6 +2510,11 @@ fail2ban_unban_ip() {
     read -p "Enter IP to unban: " IP
     if [[ -z "$JAIL" || -z "$IP" ]]; then
         echo "Jail or IP missing."
+        return 1
+    fi
+    # Validate IP address format (basic check for IPv4)
+    if [[ ! "$IP" =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
+        echo "Invalid IP address format. Expected IPv4 format (e.g., 192.168.1.1)"
         return 1
     fi
     fail2ban-client set "$JAIL" unbanip "$IP"
@@ -2789,6 +2881,11 @@ pct_enter_shell() {
     pct list || true
     read -r -p "Enter VMID to enter: " VMID
     [[ -z "$VMID" ]] && { echo "No VMID provided."; return 1; }
+    # Validate VMID is numeric
+    if [[ ! "$VMID" =~ ^[0-9]+$ ]]; then
+        echo "Invalid VMID. Must be a number."
+        return 1
+    fi
     pct enter "$VMID"
 }
 
@@ -2799,6 +2896,11 @@ pct_start_container() {
     fi
     read -r -p "Enter VMID to start: " VMID
     [[ -z "$VMID" ]] && { echo "No VMID provided."; return 1; }
+    # Validate VMID is numeric
+    if [[ ! "$VMID" =~ ^[0-9]+$ ]]; then
+        echo "Invalid VMID. Must be a number."
+        return 1
+    fi
     run_cmd "Start LXC $VMID" pct start "$VMID"
 }
 
@@ -2809,6 +2911,11 @@ pct_stop_container() {
     fi
     read -r -p "Enter VMID to stop: " VMID
     [[ -z "$VMID" ]] && { echo "No VMID provided."; return 1; }
+    # Validate VMID is numeric
+    if [[ ! "$VMID" =~ ^[0-9]+$ ]]; then
+        echo "Invalid VMID. Must be a number."
+        return 1
+    fi
     run_cmd "Stop LXC $VMID" pct stop "$VMID"
 }
 
@@ -2819,6 +2926,11 @@ pct_restart_container() {
     fi
     read -r -p "Enter VMID to restart: " VMID
     [[ -z "$VMID" ]] && { echo "No VMID provided."; return 1; }
+    # Validate VMID is numeric
+    if [[ ! "$VMID" =~ ^[0-9]+$ ]]; then
+        echo "Invalid VMID. Must be a number."
+        return 1
+    fi
     run_cmd "Restart LXC $VMID" pct restart "$VMID"
 }
 
@@ -4058,9 +4170,12 @@ menu_tools() {
 
  2) ibramenu installieren
  3) QEMU Guest Agent installieren
- 4) nvm (Node Version Manager) installieren
- 5) MariaDB Server installieren
- 6) Node/npm Version anzeigen
+ 4) tmux installieren
+ 5) WireGuard Tools installieren
+ 6) nvm (Node Version Manager) installieren
+ 7) MariaDB Server installieren
+ 8) Node/npm Version anzeigen
+ 9) Nextcloud-Tools Untermenü
  0) Zurück
 EOF
         else
@@ -4070,9 +4185,12 @@ EOF
 
  2) Install ibramenu
  3) Install QEMU guest agent
- 4) Install nvm (Node Version Manager)
- 5) Install MariaDB Server
- 6) Show Node/npm versions
+ 4) Install tmux
+ 5) Install WireGuard tools
+ 6) Install nvm (Node Version Manager)
+ 7) Install MariaDB Server
+ 8) Show Node/npm versions
+ 9) Nextcloud tools submenu
  0) Back
 EOF
         fi
@@ -4081,9 +4199,99 @@ EOF
             1) menu_essentials ;;
             2) install_ibramenu ;;
             3) install_qemu_guest_agent ;;
-            4) install_nvm ;;
-            5) install_mariadb_server ;;
-            6) show_node_npm_versions ;;
+            4) install_tmux ;;
+            5) install_wireguard_tools ;;
+            6) install_nvm ;;
+            7) install_mariadb_server ;;
+            8) show_node_npm_versions ;;
+            9) menu_nextcloud_tools ;;
+            0) break ;;
+            *) echo "Invalid choice." ;;
+        esac
+        should_pause_after "$c" && pause_prompt
+    done
+}
+
+resolve_occ_path() {
+    local occ_path="${OCC_PATH:-}"
+    local candidate=""
+
+    if [[ -n "$occ_path" && -f "$occ_path" ]]; then
+        return 0
+    fi
+    for candidate in /var/www/nextcloud/occ /var/www/html/nextcloud/occ /var/www/html/occ; do
+        if [[ -f "$candidate" ]]; then
+            OCC_PATH="$candidate"
+            return 0
+        fi
+    done
+    read -r -p "Enter full path to occ (e.g., /var/www/nextcloud/occ): " occ_path
+    if [[ -z "$occ_path" || ! -f "$occ_path" ]]; then
+        echo "occ not found."
+        return 1
+    fi
+    OCC_PATH="$occ_path"
+    return 0
+}
+
+run_occ_cmd() {
+    local desc="$1"
+    shift
+    local occ_user="${OCC_USER:-www-data}"
+
+    if ! command -v php >/dev/null 2>&1; then
+        echo "php not installed."
+        return 1
+    fi
+    if ! resolve_occ_path; then
+        return 1
+    fi
+    if [[ "$occ_user" != "$(id -un)" ]] && command -v sudo >/dev/null 2>&1; then
+        run_cmd "$desc" sudo -u "$occ_user" php "$OCC_PATH" "$@"
+    else
+        run_cmd "$desc" php "$OCC_PATH" "$@"
+    fi
+}
+
+menu_nextcloud_tools() {
+    while true; do
+        if [[ "$LANGUAGE" == "de" ]]; then
+            cat <<EOF
+[Nextcloud Tools]
+ 1) occ files:scan -v --all
+ 2) occ db:add-missing-indices
+ 3) occ db:add-missing-columns
+ 4) occ app:update --all
+ 5) occ maintenance:repair
+ 6) occ setupchecks
+ 7) occ db:add-missing-indices && occ db:add-missing-columns
+ 0) Zurück
+EOF
+        else
+            cat <<EOF
+[Nextcloud Tools]
+ 1) occ files:scan -v --all
+ 2) occ db:add-missing-indices
+ 3) occ db:add-missing-columns
+ 4) occ app:update --all
+ 5) occ maintenance:repair
+ 6) occ setupchecks
+ 7) occ db:add-missing-indices && occ db:add-missing-columns
+ 0) Back
+EOF
+        fi
+        read -p "Select: " c
+        case "$c" in
+            1) run_occ_cmd "Nextcloud: files scan" files:scan -v --all ;;
+            2) run_occ_cmd "Nextcloud: add missing indices" db:add-missing-indices ;;
+            3) run_occ_cmd "Nextcloud: add missing columns" db:add-missing-columns ;;
+            4) run_occ_cmd "Nextcloud: update apps" app:update --all ;;
+            5) run_occ_cmd "Nextcloud: maintenance repair" maintenance:repair ;;
+            6) run_occ_cmd "Nextcloud: setup checks" setupchecks ;;
+            7)
+                run_occ_cmd "Nextcloud: add missing indices" db:add-missing-indices || true
+                run_occ_cmd "Nextcloud: add missing columns" db:add-missing-columns
+                ;;
             0) break ;;
             *) echo "Invalid choice." ;;
         esac
@@ -4289,6 +4497,7 @@ docker_stop_all() {
         echo "No running containers to stop."
         return 0
     fi
+    # shellcheck disable=SC2086
     run_cmd "Stop all Docker containers" docker stop $ids
 }
 
@@ -4337,6 +4546,12 @@ docker_run_custom() {
     fi
     read -p "Enter docker command (after 'docker '): " CMD
     [[ -z "$CMD" ]] && { echo "No command provided."; return 1; }
+    # Basic validation to prevent command injection (block semicolons, pipes, redirects)
+    if [[ "$CMD" =~ [;\|\&\>\<\`\$\(] ]]; then
+        echo "Invalid characters detected in command. Only simple docker commands are allowed."
+        return 1
+    fi
+    # shellcheck disable=SC2086
     run_cmd "docker $CMD" docker $CMD
 }
 
@@ -4374,6 +4589,7 @@ install_nginx_proxy_manager() {
 APP_NAME=${app}
 IMAGE=${image}
 EOF
+    chmod 600 "${base}/.env"
     cat > "${base}/compose.yaml" <<EOF
 services:
   nginx-proxy-manager:
@@ -4527,6 +4743,7 @@ WEBPASSWORD=${webpw}
 PIHOLE_IMAGE=pihole/pihole:latest
 UNBOUND_IMAGE=mvance/unbound:latest
 EOF
+    chmod 600 "${base}/.env"
     cat > "${base}/docker-compose.yml" <<'EOF'
 services:
   unbound:

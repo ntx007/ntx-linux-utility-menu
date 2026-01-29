@@ -2,6 +2,23 @@
 
 ## Unreleased (v1.4.1-dev) 🚧
 - Version: bumped to v1.4.1-dev to start the next development cycle.
+- Tools: added a Nextcloud occ submenu with path checks and maintenance helpers.
+- Tools: added standalone tmux installer (menu option).
+- Tools: added standalone WireGuard tools installer (menu option).
+- Tools: enhanced QEMU guest agent installer with post-install verification (service status, VM detection, binary check, Proxmox usage notes).
+- AI: confirmed all AI tools (Gemini CLI, OpenAI Codex) use npm installation method.
+
+### Bug fixes 🐛
+- Security: fixed command injection vulnerability in docker_run_custom by adding input validation.
+- Security: added trap cleanup for temporary files in install_ntxmenu_path.
+- Security: added path validation to prevent traversal attacks in docker_compose_manage and remove_custom_source.
+- Security: fixed unsafe globbing patterns in log rotation and backup cleanup.
+- Security: added array bounds checking in self-update release selection.
+- Security: added IP address validation for fail2ban and DNS operations.
+- Security: added VMID validation for all Proxmox pct functions.
+- Security: fixed file permissions on sensitive .env files (chmod 600).
+- Security: fixed circular sudo dependency in update_all_with_sudo_reboot.
+- Code quality: added shellcheck disable comments for intentional word splitting.
 
 ## v1.4.0 🚀
 - Distro check: detect apt/dnf/pacman and show a note when apt-only features are unavailable.

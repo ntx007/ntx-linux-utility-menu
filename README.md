@@ -156,8 +156,8 @@ Run `./ntx-utility-menu.sh --help` for the full list.
   - Security/remote: firewall, Fail2ban, SSH/access, WireGuard, agents (CrowdSec/Netmaker/Tailscale), anti-malware, config backup/restore, SSH cipher/KEX/MAC audit
 
 - **Operations**
-  - Tools/env: essentials bundle (sudo, nano, curl, net-tools, iproute2, unzip, python3-pip, gcc/python3-dev, mariadb-client-core, psutil via pip, gdown, dos2unix, glances, tmux, zsh, mc, npm), ibramenu, QEMU guest agent, nvm installer, MariaDB server (host install, systemd), Node/npm version check
-  - AI tools: check Node.js v22, install Node.js v22, install Gemini CLI, install OpenAI Codex, set Gemini API key, install Claude Code
+  - Tools/env: essentials bundle (sudo, nano, curl, net-tools, iproute2, unzip, python3-pip, gcc/python3-dev, mariadb-client-core, psutil via pip, gdown, dos2unix, glances, tmux, zsh, mc, npm), ibramenu, QEMU guest agent, standalone tmux installer, standalone WireGuard tools installer, nvm installer, MariaDB server (host install, systemd), Node/npm version check, Nextcloud tools (occ maintenance/helpers with path check)
+  - AI tools: check Node.js v22, install Node.js v22, install Gemini CLI (npm), install OpenAI Codex (npm), set Gemini API key, install Claude Code
   - Containers: Docker + Compose plugin, status/info, running/all containers, Compose health, quick stop/remove helpers, image updates (pull), hardening checks (privileged/root/host network/sensitive mounts), docker socket warning, prune/scan helpers, compose project manager, container log tail/follow, installers for Portainer, Nginx Proxy Manager, Traefik, Pi-hole, Pi-hole+Unbound, Nextcloud AIO, Tactical RMM, Hemmelig.app, Pangolin (native installer), Arcane (installer/compose)
   - Monitoring: node exporter, top CPU/mem, iostat, SMART (single/all disks), status dashboard, export report (text/JSON), headless `health_brief`
   - System info: `/etc/os-release`, neofetch, memory info, VM check, display adapters, GitHub link, service uptime summary, hardware overview
