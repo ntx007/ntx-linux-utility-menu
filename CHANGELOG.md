@@ -3,7 +3,7 @@
 ## Unreleased (v1.4.1-dev) 🚧
 - Version: bumped to v1.4.1-dev to start the next development cycle.
 - Tools: added a Nextcloud occ submenu with path checks and maintenance helpers.
-- Tools: added standalone tmux installer (menu option).
+- Tools: added standalone tmux installer with mouse scrolling enabled by default (menu option).
 - Tools: added standalone WireGuard tools installer (menu option).
 - Tools: enhanced QEMU guest agent installer with post-install verification (service status, VM detection, binary check, Proxmox usage notes).
 - AI: confirmed all AI tools (Gemini CLI, OpenAI Codex) use npm installation method.

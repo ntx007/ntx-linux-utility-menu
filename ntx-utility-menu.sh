@@ -1997,7 +1997,29 @@ install_mariadb_server() {
 install_tmux() {
     run_cmd "Package update" pkg_update
     run_cmd "Install tmux (terminal multiplexer)" pkg_install tmux
-    echo "tmux installed. Use 'tmux' to start a session."
+
+    echo
+    echo "Configuring tmux with mouse scrolling support..."
+
+    # Configure for root user
+    local tmux_conf="/root/.tmux.conf"
+    if ! grep -q "set -g mouse on" "$tmux_conf" 2>/dev/null; then
+        echo "set -g mouse on" >> "$tmux_conf"
+        echo "✓ Enabled mouse scrolling in $tmux_conf"
+    else
+        echo "✓ Mouse scrolling already enabled in $tmux_conf"
+    fi
+
+    # Reload tmux config if there's a running session
+    if tmux list-sessions >/dev/null 2>&1; then
+        tmux source-file "$tmux_conf" 2>/dev/null && echo "✓ Reloaded tmux configuration"
+    fi
+
+    echo
+    echo "tmux installed successfully!"
+    echo "• Mouse scrolling enabled (scroll with mouse/touchpad)"
+    echo "• Start a session: tmux"
+    echo "• For other users: echo 'set -g mouse on' >> ~/.tmux.conf"
 }
 
 install_wireguard_tools() {
