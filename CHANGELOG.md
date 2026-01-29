@@ -9,6 +9,7 @@
 - AI: confirmed all AI tools (Gemini CLI, OpenAI Codex) use npm installation method.
 
 ### Bug fixes 🐛
+- Critical: fixed syntax error in docker_run_custom regex validation (line 4550).
 - Security: fixed command injection vulnerability in docker_run_custom by adding input validation.
 - Security: added trap cleanup for temporary files in install_ntxmenu_path.
 - Security: added path validation to prevent traversal attacks in docker_compose_manage and remove_custom_source.

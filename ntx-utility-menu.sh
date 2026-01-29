@@ -4547,7 +4547,7 @@ docker_run_custom() {
     read -p "Enter docker command (after 'docker '): " CMD
     [[ -z "$CMD" ]] && { echo "No command provided."; return 1; }
     # Basic validation to prevent command injection (block semicolons, pipes, redirects)
-    if [[ "$CMD" =~ [;\|\&\>\<\`\$\(] ]]; then
+    if echo "$CMD" | grep -qE '[;|&><`$()]'; then
         echo "Invalid characters detected in command. Only simple docker commands are allowed."
         return 1
     fi
